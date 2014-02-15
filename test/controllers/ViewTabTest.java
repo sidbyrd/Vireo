@@ -816,7 +816,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		assertTrue("newName".equals(newFileName));
 		assertTrue(AttachmentType.SOURCE==newAttachmentType);
 		
-		Session.current().clear();
+		//Session.current().clear();
 		file.delete();
 		submission.delete();
 		
@@ -881,7 +881,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		submission = subRepo.findSubmission(id);
 		assertEquals(null,submission.findAttachmentById(fileId));
 		
-		Session.current().clear();
+		//Session.current().clear();
 		file.delete();
 		submission.delete();
 		
@@ -938,14 +938,14 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		routeArgs.put("name", fileName);
 		
 		UPDATE_URL = Router.reverse("ViewTab.viewFile",routeArgs).url;		
-		
-		Session.current().put("submission", id.toString());
+
+		//Session.current().put("submission", id.toString());
 					
 		response = GET(UPDATE_URL);
 		
 		assertIsOk(response);
 		
-		Session.current().clear();
+		//Session.current().clear();
 		file.delete();
 		submission.delete();
 		

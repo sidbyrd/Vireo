@@ -4,6 +4,11 @@
 # except for .gitignore
 !.gitignore
 
+# ignore IDEA project files
+*.iml
+*.ipr
+*.iws
+
 # Ignore Play! working directory #
 db
 eclipse
