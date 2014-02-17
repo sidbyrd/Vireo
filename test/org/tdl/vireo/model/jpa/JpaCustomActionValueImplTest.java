@@ -208,7 +208,7 @@ public class JpaCustomActionValueImplTest extends UnitTest {
 		assertEquals("Custom action "+def.getLabel()+" unset", logItr.next().getEntry());
 		assertEquals("Custom action "+def.getLabel()+" set", logItr.next().getEntry());
 		assertEquals("Custom action custom action set",logItr.next().getEntry());
-		assertEquals("Submission status changed to 'Submitted'",logItr.next().getEntry());
+		assertEquals("Submission status changed to '"+nextState.getDisplayName()+"'",logItr.next().getEntry());
 		assertEquals("Submission created",logItr.next().getEntry());
 		assertFalse(logItr.hasNext());
 	}

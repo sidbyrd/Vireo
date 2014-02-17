@@ -719,7 +719,7 @@ public class JpaAttachmentImplTest extends UnitTest {
 		assertEquals("SUPPLEMENTAL file 'newPDF.pdf' modified", logItr.next().getEntry());
 		assertEquals("FEEDBACK file 'newPDF.pdf' modified", logItr.next().getEntry());
 		assertEquals("FEEDBACK file '"+file.getName()+"' (10 bytes) uploaded", logItr.next().getEntry());
-		assertEquals("Submission status changed to 'Submitted'",logItr.next().getEntry());
+		assertEquals("Submission status changed to '"+nextState.getDisplayName()+"'",logItr.next().getEntry());
 		assertEquals("Submission created",logItr.next().getEntry());
 		
 		assertFalse(logItr.hasNext());

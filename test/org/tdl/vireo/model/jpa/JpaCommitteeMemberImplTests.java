@@ -231,7 +231,7 @@ public class JpaCommitteeMemberImplTests extends UnitTest {
 		assertEquals("Committee member 'Changed Middle Last' (Role 1, Role 2) removed", logItr.next().getEntry());
 		assertEquals("Committee member 'Changed Middle Last' (Role 1, Role 2) modified", logItr.next().getEntry());
 		assertEquals("Committee member 'First Middle Last' added", logItr.next().getEntry());
-		assertEquals("Submission status changed to 'Submitted'",logItr.next().getEntry());
+		assertEquals("Submission status changed to '"+nextState.getDisplayName()+"'",logItr.next().getEntry());
 		assertEquals("Submission created",logItr.next().getEntry());
 		
 		assertFalse(logItr.hasNext());

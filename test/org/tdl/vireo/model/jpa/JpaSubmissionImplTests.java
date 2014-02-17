@@ -753,7 +753,7 @@ public class JpaSubmissionImplTests extends UnitTest {
 		assertEquals("Student middle name changed to 'middle'",logItr.next().getEntry());		
 		assertEquals("Student last name changed to 'last'",logItr.next().getEntry());
 		assertEquals("Student first name changed to 'first'",logItr.next().getEntry());	
-		assertEquals("Submission status changed to 'Submitted'",logItr.next().getEntry());
+		assertEquals("Submission status changed to '"+nextState.getDisplayName()+"'",logItr.next().getEntry());
 		assertEquals("Submission created",logItr.next().getEntry());
 		
 		assertFalse(logItr.hasNext());
