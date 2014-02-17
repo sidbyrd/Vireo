@@ -74,7 +74,7 @@ public class LDAPAuthenticationMethodImpl extends
             return code;
         }
     }
-    private SearchScope searchScope = SearchScope.SUBTREE;
+    private SearchScope searchScope = SearchScope.OBJECT;
 
     // If true, the initial bind will be performed anonymously.
     private boolean searchAnonymous = false;
@@ -86,7 +86,13 @@ public class LDAPAuthenticationMethodImpl extends
     // added to netid to create an email address if email not explicitly specified.
     private String netIDEmailDomain = null;
 
-    /// the names of all the Person attributes and user data attributes that can be collected from LDAP
+    // boilerplate value for person.institutionalIdentifier, if desired
+    private String valueInstitutionalIdentifier = null;
+
+    // value for UserStatus attribute indicating active account
+    private String valueUserStatusActive = null;
+    
+    // the names of all the Person attributes and user data attributes that can be collected from LDAP
     public enum AttributeName {
         NetID,
         Email,
@@ -111,46 +117,21 @@ public class LDAPAuthenticationMethodImpl extends
         CurrentMajor,
         CurrentGraduationYear,
         CurrentGraduationMonth,
-        StudentID
+        StudentID,
+        UserStatus
     }
 
-    public final String STUDENT_ID_PREF_NAME = "student_id";
+    // Student ID is stored as a preference in Person, since there's no dedicated field for it.
+    public final String STUDENT_ID_PREF_NAME = "LDAP_STUDENT_ID";
 
     // mapping from names of fields we can collect to the names used in LDAP for those fields
-    private Map <AttributeName, String> attributeNameMap;
+    private Map <AttributeName, String> ldapFieldNames = new HashMap<AttributeName, String>();
     
-    /*private String headerNetID = "uid";
-    private String headerEmail = "mail";
-    private String headerFirstName = "givenName";
-    private String headerMiddleName = null;
-    private String headerLastName = "sn";
-    private String headerBirthYear = null;
-    private String headerDisplayName = "displayName"; // does this go into Person OK?
-    private String headerAffiliations = "eduPersonPrimaryAffiliation"; // optional advisor credential, may be absent
-    private String headerCurrentPhoneNumber = "telephoneNumber"; // "-" means null
-    private String headerCurrentPostalAddress = "postalAddress"; // assemble—all parts optional. this is on-campus dept/office mail
-    private String headerCurrentPostalCity = "l";
-    private String headerCurrentPostalState = "st";
-    private String headerCurrentPostalZip = "postalCode";
-    private String headerCurrentEmailAddress = "mail";
-    private String headerPermanentPhoneNumber = "myuPermPhone"; // "-" means null
-    private String headerPermanentPostalAddress = "myuPermAddress"; // "$" is newline, or solo "$" means null
-    private String headerPermanentEmailAddress = "mail";
-    private String headerCurrentDegree = null;
-    private String headerCurrentDepartment = "myuOrg"; // or myuDistOrg or ou: ours seem all the same
-    private String headerCurrentCollege = null;
-    private String headerCurrentMajor = "myuCurriculum"; // "Undeclared" is null
-    private String headerCurrentGraduationYear = "SHIB_gradYear";
-    private String headerCurrentGraduationMonth = "SHIB_gradMonth";
-    private String headerStudentID = "myuID"; /// stored in Vireo as a user pref, since no dedicated field. Used for OnBase export
-*/
-    private String valueInstitutionalIdentifier = null;
-
 	// Whether LDAP responses and authentication will be mocked or real.
 	private boolean mock = (Play.mode == Play.Mode.DEV);
 
-	// map of attributes about the user returned by LDAP search or injected directly as mock
-	private Map<AttributeName,String> attributes = new HashMap<AttributeName, String>();
+	// map of fake attributes injected directly for mock
+	private Map<AttributeName,String> mockAttributes = new HashMap<AttributeName, String>();
 
     /**
      * This is the url to the institution's ldap server. The /o=myu.edu
@@ -256,25 +237,40 @@ public class LDAPAuthenticationMethodImpl extends
         this.valueInstitutionalIdentifier = valueInstitutionalIdentifier;
     }
 
+    /**
+     * Set value that the UserStatus attribute should have if student is to
+     * be allowed to log into Vireo for the first time. If you don't want to
+     * perform this check, leave this field null.
+     * @param valueUserStatusActive value indicating user is active
+     */
+    public void setValueUserStatusActive(String valueUserStatusActive) {
+        this.valueUserStatusActive = valueUserStatusActive;
+    }
+
 	/**
 	 * Set the LDAP header mapping to Vireo attributes. The keys are the names of all the
      * attributes Vireo can be configured to look for. Then the value of that key
 	 * must be the expected LDAP header name for that particular attribute. For a
 	 * definition of what most attributes are, see the Person model.
-     *
-     * If data values are found in mapped fields for currentPostal City|State|Zip, they
-     * will be appended to the value for currentPostalAddress.
-     *
-     * If a data value is found in mapped field for studentID, it will be stored as a
-     * user preference, since there is no dedicated Person field for that info.
 	 *
 	 * Required Mapping: netID, and also email if no netIDEmailDomain is set.
      * All other mappings are optional.
 	 *
-	 * @param attributeNameMap map from Vireo attribute names to LDAP field names
+	 * @param ldapFieldNames map from Vireo attribute names to LDAP field names.
+     *  mappings to blank values will be ignored.
 	 */
-	public void setAttributeNameMap(Map<AttributeName,String> attributeNameMap) {
-        this.attributeNameMap = attributeNameMap;
+	public void setLdapFieldNames(Map<AttributeName, String> ldapFieldNames) {
+        if (StringUtils.isBlank(ldapFieldNames.get(AttributeName.NetID))) {
+            throw new IllegalArgumentException("ldap: missing required attribute NetID in the provided ldapFieldNames.");
+        }
+
+        this.ldapFieldNames.clear();
+        // save all non-blank mappings. (some may be present but blank depending on Spring/config setup)
+        for (Map.Entry<AttributeName, String> entry : ldapFieldNames.entrySet()) {
+            if (!StringUtils.isBlank(entry.getValue())) {
+                this.ldapFieldNames.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     /**
@@ -300,7 +296,7 @@ public class LDAPAuthenticationMethodImpl extends
      *            A map of mock LDAP attributes.
      */
     public void setMockAttributes(Map<AttributeName,String> mockAttributes) {
-        this.attributes = mockAttributes;
+        this.mockAttributes = mockAttributes;
     }
 
     /**
@@ -323,15 +319,17 @@ public class LDAPAuthenticationMethodImpl extends
         //    If not using a flat LDAP structure with no anon access and no admin login,
         //      this will connect to LDAP and also retrieve user attributes.
         String dn;
+        Map<AttributeName,String> attributes = new HashMap<AttributeName, String>();
+
         if (!searchAnonymous && (StringUtils.isBlank(searchUser) || StringUtils.isBlank(searchPassword))) {
             // Anonymous search not allowed, and no admin user to search as.
             // Just construct the DN for a flat directory structure instead of searching for it.
             // Attributes will not be available.
-            dn = attributeNameMap.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
+            dn = ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
         } else {
             // Search LDAP, hierarchically if needed, to find the correct DN for the user.
             // This also looks up and stores the user's attributes.
-            dn = ldapLookupUser(netID);
+            dn = ldapUserSearch(netID, attributes);
         }
 
         if (!StringUtils.isBlank(dn))
@@ -383,8 +381,17 @@ public class LDAPAuthenticationMethodImpl extends
                 }
             }
 
-            // 5. if no existing Person, create one and pre-fill fields when possible
+            // 5. If no existing Person, create one.
             if (person == null) {
+
+                // check if configured to deny new accounts to students who have gone inactive.
+                if (valueUserStatusActive != null
+                    && !StringUtils.isBlank(attributes.get(AttributeName.UserStatus))
+                    && !attributes.get(AttributeName.UserStatus).toLowerCase().equals(valueUserStatusActive))
+                {
+                    Logger.error("ldap: refused new account to inactive user with netID " + netID);
+                    return AuthenticationResult.BAD_CREDENTIALS;
+                }
 
                 // get first and last name fields, since they're required.
                 String firstName = attributes.remove(AttributeName.FirstName);
@@ -405,17 +412,16 @@ public class LDAPAuthenticationMethodImpl extends
 					return AuthenticationResult.BAD_CREDENTIALS;
 				}
                 Logger.info("ldap: created person for netID " + netID);
-
-                // Fill in the optional attributes from LDAP
-                updatePersonWithAttributes(person, attributes);
             }
 
-            // 6. Else if person already existed, we're done.
-            //    Don't try to overwrite local info with newer from LDAP, because
-            //    a. LDAP removes a bunch of fields and changes others when a student
-            //       goes inactive, which may be before thesis is final, and
-            //    b. the student or Graduate Studies office may have QC'ed fields
-            //       and improved over whatever was originally from LDAP.
+            // 6. Add any optional attributes from LDAP.
+            // Note: This will not overwrite any values that already existed in the Person,
+            //   which may have already been QC'ed by the student of Graduate Studies office.
+            // This will also not remove any pre-existing Person attributes which have been
+            //   removed from LDAP, for example when a student changes to inactive status
+            //   before their thesis is final and many LDAP attributes go away.
+            updatePersonWithAttributes(person, attributes);
+
 
             context.login(person);
             return AuthenticationResult.SUCCESSFULL;
@@ -425,11 +431,25 @@ public class LDAPAuthenticationMethodImpl extends
         }
     }
 
-    protected String ldapLookupUser(String netID) {
+    /**
+     * Bind to LDAP not as user but as either an admin or anon (according
+     * to the configuration of searchAnonymous, searchUser, and searchAnonymous).
+     * Search for the user's record in LDAP to determine the correct DN to use
+     * later when checking that the user credentials will authenticate.
+     * Also retrieve user attributes while we're in there.
+     * @param netID the id of the user to search for
+     * @param attributes a caller-supplied empty Map into which we will add, for each retrieved
+     *      LDAP value for the specified user, whose field name matched a value configured in
+     *      ldapFieldNames, a KVP consisting of the Vireo attribute name and the value from LDAP.
+     * @return the correct DN to specify the user whose netID was provided, or null if
+     *      not found or an error occurred
+     */
+    protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
 
+        // for mock, use pre-injected attributes and make up a plausible flat-directory DN
         if (mock) {
-            // mock attributes should have already been set in this.attributes using setMockAttributes().
-            return attributeNameMap.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
+            attributes.putAll(mockAttributes);
+            return ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
         }
 
         // Set up environment for creating initial context
@@ -453,53 +473,51 @@ public class LDAPAuthenticationMethodImpl extends
             ctx = new InitialDirContext(env);
 
             // look up attributes
-            try {
-                SearchControls controls = new SearchControls();
-                controls.setSearchScope(searchScope.code());
+            SearchControls controls = new SearchControls();
+            controls.setSearchScope(searchScope.code());
 
-                NamingEnumeration<SearchResult> answer = ctx.search(
-                        providerURL + searchContext,
-                        "(&({0}={1}))", new Object[] { attributeNameMap.get(AttributeName.NetID), netID },
-                        controls);
+            NamingEnumeration<SearchResult> answer = ctx.search(
+                    providerURL + searchContext,
+                    "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
+                    controls);
 
-                // LDAP returns a list—hopefully, there's only one user in it.
-                if (answer.hasMoreElements()) {
-                    SearchResult sr = answer.next();
+            // LDAP returns a list—hopefully, there's only one user in it.
+            if (answer.hasMoreElements()) {
+                SearchResult sr = answer.next();
 
-                    // the most important thing we came for is the DN
-                    String dn = sr.getName();
-                    if (!StringUtils.isEmpty(searchContext)) {
-                        dn += ("," + searchContext);
-                    }
-                    Logger.info("ldap: found user with dn " + dn + " for netID " + netID);
+                // the most important thing we came for is the DN
+                String dn = sr.getName();
+                if (!StringUtils.isEmpty(searchContext)) {
+                    dn += ("," + searchContext);
+                }
+                Logger.info("ldap: found user with dn " + dn + " for netID " + netID);
 
-                    // For each attribute we're configured for, check LDAP for its corresponding field.
-                    // If anything is found, save the result.
-                    Attributes ldapAttributes = sr.getAttributes();
-                    for (AttributeName name : attributeNameMap.keySet()) {
-                        Attribute attribute = ldapAttributes.get(attributeNameMap.get(name));
-                        if (attribute != null) {
-                            String value = (String)attribute.get();
-                            if (!StringUtils.isBlank(value)) {
-                                attributes.put(name, value);
-                            }
+                // For each attribute we're configured for, check LDAP for its corresponding field.
+                // If anything is found, save the result.
+                Attributes ldapFields = sr.getAttributes();
+                for (AttributeName attributeName : ldapFieldNames.keySet()) {
+                    String fieldName = ldapFieldNames.get(attributeName);
+                    Attribute ldapField = ldapFields.get(fieldName);
+                    if (ldapField != null) {
+                        String value = (String)ldapField.get();
+                        if (!StringUtils.isBlank(value)) {
+                            attributes.put(attributeName, value);
                         }
                     }
-
-                    if (answer.hasMoreElements()) {
-                        // Oh dear - more than one match. Config error?
-                        Logger.error("ldap: more than one user in LDAP for netID " + netID);
-                    }
-
-                    return dn;
                 }
-            }
-            catch (NamingException e) {
-                Logger.warn(e, "ldap: failed search execution");
+
+                if (answer.hasMoreElements()) {
+                    // Oh dear - more than one user match. Config error?
+                    Logger.error("ldap: more than one user in LDAP for netID " + netID);
+                }
+
+                return dn;
             }
         }
         catch (NamingException e) {
-            Logger.warn(e, "ldap: failed search auth");
+            // if we won't be returning a DN, don't return attributes either.
+            attributes.clear();
+            Logger.warn(e, "ldap: failed search auth or execution");
         }
         finally {
             // Close the context when we're done
@@ -509,10 +527,11 @@ public class LDAPAuthenticationMethodImpl extends
                 }
             }
             catch (NamingException e) {
+                //
             }
         }
 
-        // No DN match found
+        // No DN match found, or error doing the search
         return null;
     }
 
@@ -523,6 +542,8 @@ public class LDAPAuthenticationMethodImpl extends
      * @return whether the bind was successfully authenticated
      */
     protected boolean ldapAuthenticate(String dn, String password) {
+
+        // Mock authentication always succeeds.
         if (mock)
             return true;
         
@@ -551,29 +572,47 @@ public class LDAPAuthenticationMethodImpl extends
                     ctx.close();
                 }
             } catch (NamingException e) {
+                //
             }
         }
 
         return true;
     }
 
-
-/*
-        StudentID
- */
+    /**
+     * Updates supplied Person with attributes from given map, only for fields that do not
+     * already contain a value.
+     * @param person the person to add attributes to
+     * @param attributes values for the attributes, mapped to attribute names.
+     *  Certain attributes get special treatment:
+     *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress if present.
+     *  Attributes that are integer values will be parsed, of course.
+     *  StudentID will be stored as a user preference with key STUDENT_ID_PREF_NAME, since
+     *    there is no place else to store that datum.
+     *  UserStatus is not saved in the Person; it is only consulted when logging in.
+     *  InstitutionalIdentifier is saved into the Person from configuration value if
+     *    present, not from attributes, since it isn't typically in LDAP.
+     *  For phone numbers, "-" is synonymous with null.
+     *  For Addresses, "$" is synonymous with newline (and therefore a single "$" is
+     *    interpreted as blank)
+     *  For CurrentMajor, "Undeclared" is synonymous with null
+     */
     void updatePersonWithAttributes(Person person, Map<AttributeName, String> attributes) {
         String value;
+        boolean modified = false;
 
         value = attributes.get(AttributeName.MiddleName);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getMiddleName())) {
             person.setMiddleName(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.BirthYear);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && person.getBirthYear() == null) {
             try {
                 Integer birthYear = Integer.valueOf(value);
                 person.setBirthYear(birthYear);
+                modified = true;
             } catch (NumberFormatException nfe) {
                 Logger.warn("ldap: Unable to interpret birth year attribute '"
                         + attributes.get(AttributeName.BirthYear)
@@ -582,80 +621,112 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         value = attributes.get(AttributeName.DisplayName);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getDisplayName())) {
             person.setDisplayName(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.Affiliations);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && person.getAffiliations().size() == 0) {
             person.addAffiliation(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentPhoneNumber);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentPhoneNumber())
+                && !value.trim().equals("-")) {
             person.setCurrentPhoneNumber(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentPostalAddress);
-        if (!StringUtils.isBlank(value)) {
-            String city = attributes.get(AttributeName.CurrentPostalCity);
-            if (!StringUtils.isBlank(city))
-                value += "\n " + city;
-            String state = attributes.get(AttributeName.CurrentPostalState);
-            if (!StringUtils.isBlank(state))
-                value += ", " + state;
-            String zip = attributes.get(AttributeName.CurrentPostalZip);
-            if (!StringUtils.isBlank(zip))
-                value += " " + zip;
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentPostalAddress())) {
+            value = value.replace("$", "\n");
+            if (!StringUtils.isBlank(value)) {
+                String city = attributes.get(AttributeName.CurrentPostalCity);
+                if (!StringUtils.isBlank(city)) {
+                    city = city.replace("$", "/n");
+                    if (!StringUtils.isBlank(city))
+                        value += "\n " + city;
+                }
+                String state = attributes.get(AttributeName.CurrentPostalState);
+                if (!StringUtils.isBlank(state)) {
+                    state = state.replace("$", "/n");
+                    if (!StringUtils.isBlank(state))
+                        value += ", " + state;
+                }
+                String zip = attributes.get(AttributeName.CurrentPostalZip);
+                if (!StringUtils.isBlank(zip)) {
+                    zip = zip.replace("$", "/n");
+                    if (!StringUtils.isBlank(zip))
+                        value += " " + zip;
+                }
 
-            person.setCurrentPostalAddress(value);
+                person.setCurrentPostalAddress(value);
+                modified = true;
+            }
         }
 
         value = attributes.get(AttributeName.CurrentEmailAddress);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentEmailAddress())) {
             person.setCurrentEmailAddress(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.PermanentPhoneNumber);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getPermanentPhoneNumber())
+                && !value.trim().equals("-")) {
             person.setPermanentPhoneNumber(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.PermanentPostalAddress);
-        if (!StringUtils.isBlank(value)) {
-            person.setPermanentPostalAddress(value);
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getPermanentPostalAddress())) {
+            value = value.replace("$", "\n");
+            if (!StringUtils.isBlank(value)) {
+                person.setPermanentPostalAddress(value);
+                modified = true;
+            }
         }
 
         value = attributes.get(AttributeName.PermanentEmailAddress);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getPermanentEmailAddress())) {
             person.setPermanentEmailAddress(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentDegree);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentDegree())) {
             person.setCurrentDegree(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentDepartment);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentDepartment())) {
             person.setCurrentDepartment(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentCollege);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentCollege())) {
             person.setCurrentCollege(value);
+            modified = true;
         }
 
         value = attributes.get(AttributeName.CurrentMajor);
-        if (!StringUtils.isBlank(value)) {
-            person.setCurrentMajor(value);
+        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentMajor())) {
+            if (!value.toLowerCase().equals("Undeclared")) {
+                person.setCurrentMajor(value);
+                modified = true;
+            }
         }
 
         value = attributes.get(AttributeName.CurrentGraduationYear);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && person.getCurrentGraduationYear() == null) {
             try {
                 Integer currentGraduationYear = Integer.valueOf(value);
                 person.setCurrentGraduationYear(currentGraduationYear);
+                modified = true;
             } catch (NumberFormatException nfe) {
                 Logger.warn("ldap: Unable to interpret current graduation year attribute '"
                         + attributes.get(AttributeName.CurrentGraduationYear)
@@ -664,10 +735,11 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         value = attributes.get(AttributeName.CurrentGraduationMonth);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && person.getCurrentGraduationMonth() == null) {
             try {
                 Integer currentGraduationMonth = Integer.valueOf(value);
                 person.setCurrentGraduationMonth(currentGraduationMonth);
+                modified = true;
             } catch (NumberFormatException nfe) {
                 Logger.warn("ldap: Unable to interpret current graduation month attribute '"
                         + attributes.get(AttributeName.CurrentGraduationMonth)
@@ -676,15 +748,19 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         value = attributes.get(AttributeName.StudentID);
-        if (!StringUtils.isBlank(value)) {
+        if (!StringUtils.isBlank(value) && person.getPreference(STUDENT_ID_PREF_NAME) == null) {
             person.addPreference(STUDENT_ID_PREF_NAME, value);
+            modified = true;
         }
 
-        if (valueInstitutionalIdentifier != null) {
+        if (valueInstitutionalIdentifier != null && StringUtils.isBlank(person.getInstitutionalIdentifier())) {
             person.setInstitutionalIdentifier(valueInstitutionalIdentifier);
+            modified = true;
         }
 
-        person.save();
-        Logger.info("ldap: updated attributes for user with netID " + person.getNetId());
+        if (modified) {
+            Logger.info("ldap: updated attributes for user with netID " + person.getNetId());
+            person.save();
+        }
     }
 }

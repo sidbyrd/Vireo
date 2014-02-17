@@ -106,6 +106,84 @@
         </property>
     </bean>
     
+    <bean id="LDAPAuthentication" class="org.tdl.vireo.security.impl.LDAPAuthenticationMethodImpl" scope="singleton">
+        <property name="enabled" value="${auth.ldap.enabled}"/>
+        <property name="visible" value="${auth.ldap.visible}"/>
+        <property name="displayName" value="${auth.ldap.name}"/>
+        <property name="displayDescription" value="${auth.ldap.description}"/>
+        <property name="allowNewRegistration" value="false"/>
+        <property name="allowPasswordRecovery" value="false"/>
+        <property name="allowUpdatePassword" value="false"/>
+        <property name="allowUpdateProfile" value="true"/>
+        <property name="personRepository" ref="PersonRepository"/>
+        <property name="securityContext" ref="SecurityContext"/>
+        <property name="providerURL" value="${auth.ldap.provider.url}"/>
+        <property name="objectContext" value="${auth.ldap.object.context}"/>
+        <property name="searchContext" value="${auth.ldap.search.context}"/>
+        <property name="searchScope" value="${auth.ldap.search.scope}"/>
+        <property name="searchAnonymous" value="${auth.ldap.search.anonymous}"/>
+        <property name="searchUser" value="${auth.ldap.search.user}"/>
+        <property name="searchPassword" value="${auth.ldap.search.password}"/>
+        <property name="netIDEmailDomain" value="${auth.ldap.netID.emaildomain}"/>
+        <property name="valueInstitutionalIdentifier" value="${auth.ldap.institutional-identifier.value}"/>
+        <property name="valueUserStatusActive" value="${auth.ldap.userstatus.value.active}"/>
+        <property name="ldapFieldNames">
+        	<util:map>
+        		<!-- Required -->
+        		<entry key="NetID" value="${auth.ldap.attribute.netid}"/>
+
+        		<!-- Optional -->
+                <entry key="Email" value="${auth.ldap.attribute.email}"/>
+                <entry key="FirstName" value="${auth.ldap.attribute.firstName}"/>
+                <entry key="MiddleName" value="${auth.ldap.attribute.middleName}"/>
+                <entry key="LastName" value="${auth.ldap.attribute.lastName}"/>
+                <entry key="BirthYear" value="${auth.ldap.attribute.birthYear}"/>
+                <entry key="DisplayName" value="${auth.ldap.attribute.displayName}"/>
+                <entry key="Affiliations" value="${auth.ldap.attribute.affiliation}"/>
+                <entry key="CurrentPhoneNumber" value="${auth.ldap.attribute.currentPhoneNumber}"/>
+                <entry key="CurrentPostalAddress" value="${auth.ldap.attribute.currentPostalAddress}"/>
+                <entry key="CurrentPostalCity" value="${auth.ldap.attribute.currentPostalCity}"/>
+                <entry key="CurrentPostalState" value="${auth.ldap.attribute.currentPostalState}"/>
+                <entry key="CurrentPostalZip" value="${auth.ldap.attribute.currentPostalZip}"/>
+                <entry key="CurrentEmailAddress" value="${auth.ldap.attribute.currentEmailAddress}"/>
+                <entry key="PermanentPhoneNumber" value="${auth.ldap.attribute.permanentPhoneNumber}"/>
+                <entry key="PermanentPostalAddress" value="${auth.ldap.attribute.permanentPostalAddress}"/>
+                <entry key="PermanentEmailAddress" value="${auth.ldap.attribute.permanentEmailAddress}"/>
+                <entry key="CurrentDegree" value="${auth.ldap.attribute.currentDegree}"/>
+                <entry key="CurrentDepartment" value="${auth.ldap.attribute.currentDepartment}"/>
+                <entry key="CurrentCollege" value="${auth.ldap.attribute.currentCollege}"/>
+                <entry key="CurrentMajor" value="${auth.ldap.attribute.currentMajor}"/>
+                <entry key="CurrentGraduationYear" value="${auth.ldap.attribute.currentGraduationYear}"/>
+                <entry key="CurrentGraduationMonth" value="${auth.ldap.attribute.currentGraduationMonth}"/>
+                <entry key="StudentID" value="${auth.ldap.attribute.studentID}"/>
+                <entry key="UserStatus" value="${auth.ldap.attribute.userStatus}"/>
+        	</util:map>
+        </property>
+        <property name="mockAttributes">
+            <util:map>
+                <entry key="NetID" value="devtest"/>
+                <entry key="Email" value="bthornton@gmail.com"/>
+                <entry key="FirstName" value="Billy"/>
+                <entry key="LastName" value="Thornton"/>
+                <entry key="DisplayName" value="BB Thornton"/>
+                <entry key="Affiliations" value="student"/>
+                <entry key="CurrentPhoneNumber" value="-"/>
+                <entry key="CurrentPostalAddress" value="1100 Congress Ave"/>
+                <entry key="CurrentPostalCity" value="Austin"/>
+                <entry key="CurrentPostalState" value="TX"/>
+                <entry key="CurrentPostalZip" value="78701"/>
+                <entry key="CurrentEmailAddress" value="bthornton@gmail.com"/>
+                <entry key="PermanentPhoneNumber" value="555-555-1932"/>
+                <entry key="PermanentPostalAddress" value="Another City$Another State 54321"/>
+                <entry key="PermanentEmailAddress" value="bthornton@gmail.com"/>
+                <entry key="CurrentDepartment" value="Performance Studies"/>
+                <entry key="CurrentMajor" value="Trapeze"/>
+                <entry key="StudentID" value="S01234567"/>
+                <entry key="UserStatus" value="active"/>
+        	</util:map>
+        </property>
+    </bean>
+
     <!-- Job Management & Error Log-->
     <bean id="JobManager" class="org.tdl.vireo.job.impl.JobManagerImpl" scope="singleton">
     </bean>
