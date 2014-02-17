@@ -130,7 +130,7 @@ public class LDAPAuthenticationMethodImpl extends
     private Map <AttributeName, String> ldapFieldNames = new HashMap<AttributeName, String>();
     
 	// Whether LDAP responses and authentication will be mocked or real.
-	private boolean mock = (Play.mode == Play.Mode.DEV);
+	private boolean mock = false;
 
 	// map of fake attributes injected directly for mock
 	private Map<AttributeName,String> mockAttributes = new HashMap<AttributeName, String>();
@@ -718,7 +718,7 @@ public class LDAPAuthenticationMethodImpl extends
 
         value = attributes.get(AttributeName.CurrentMajor);
         if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentMajor())) {
-            if (!value.toLowerCase().equals("Undeclared")) {
+            if (!value.toLowerCase().equals("undeclared")) {
                 person.setCurrentMajor(value);
                 modified = true;
             }

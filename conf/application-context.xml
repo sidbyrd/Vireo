@@ -10,18 +10,6 @@
 	<import resource="classpath:submission-states.xml" />
     <util:properties id="ConfigurationDefaults" location="classpath:defaults.properties" />
 
-    <!-- add a separate properties file for things that should stay out of github or public view,
-         then re-add the default Play! application.conf file, because we have to disable adding
-         it automatically to allow custom inclusions at all.-->
-    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
-        <property name="locations">
-            <list>
-                <value>classpath:secret.properties</value>
-                <value>classpath:application.conf</value>
-            </list>
-        </property>
-    </bean>
-
 	<!-- Vireo Persistence Repositories -->
 	<bean id="PersonRepository" class="org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl" scope="singleton" />
 	<bean id="SubmissionRepository" class="org.tdl.vireo.model.jpa.JpaSubmissionRepositoryImpl" scope="singleton" />
@@ -31,21 +19,6 @@
 
 	<!-- Security & Authentication -->
 	<bean id="SecurityContext" class="org.tdl.vireo.security.impl.SecurityContextImpl" scope="singleton" />
-	<bean id="PasswordAuthentication" class="org.tdl.vireo.security.impl.PasswordAuthenticationMethodImpl" scope="singleton">
-        <property name="enabled" value="${auth.pass.enabled}"/>
-        <property name="visible" value="${auth.pass.visible}"/>
-        <property name="displayName" value="${auth.pass.name}"/>
-        <property name="displayDescription" value="${auth.pass.description}"/>
-        <property name="allowNewRegistration" value="true"/>
-        <property name="allowPasswordRecovery" value="true"/>
-        <property name="allowUpdatePassword" value="true"/>
-        <property name="allowUpdateProfile" value="true"/>
-        <property name="usernameLabel" value="Email Address"/>
-        <property name="authenticationNote" value="Please provide your email address and password to login to the system."/>
-        <property name="personRepository" ref="PersonRepository"/>
-        <property name="securityContext" ref="SecurityContext"/>
-	</bean>
-
     <bean id="ShibbolethAuthentication" class="org.tdl.vireo.security.impl.ShibbolethAuthenticationMethodImpl" scope="singleton">
         <property name="enabled" value="${auth.shib.enabled}"/>
         <property name="visible" value="${auth.shib.visible}"/>
@@ -123,6 +96,8 @@
         <property name="visible" value="${auth.ldap.visible}"/>
         <property name="displayName" value="${auth.ldap.name}"/>
         <property name="displayDescription" value="${auth.ldap.description}"/>
+        <property name="usernameLabel" value="${auth.ldap.usernameLabel}"/>
+        <property name="authenticationNote" value="${auth.ldap.authenticationNote}"/>
         <property name="allowNewRegistration" value="false"/>
         <property name="allowPasswordRecovery" value="false"/>
         <property name="allowUpdatePassword" value="false"/>
@@ -171,6 +146,7 @@
                 <entry key="UserStatus" value="${auth.ldap.attribute.userStatus}"/>
         	</util:map>
         </property>
+        <property name="mock" value="${auth.ldap.mock:false}"/>
         <property name="mockAttributes">
             <util:map>
                 <entry key="NetID" value="devtest"/>
@@ -194,6 +170,21 @@
                 <entry key="UserStatus" value="active"/>
         	</util:map>
         </property>
+    </bean>
+
+    <bean id="PasswordAuthentication" class="org.tdl.vireo.security.impl.PasswordAuthenticationMethodImpl" scope="singleton">
+        <property name="enabled" value="${auth.pass.enabled}"/>
+        <property name="visible" value="${auth.pass.visible}"/>
+        <property name="displayName" value="${auth.pass.name}"/>
+        <property name="displayDescription" value="${auth.pass.description}"/>
+        <property name="allowNewRegistration" value="true"/>
+        <property name="allowPasswordRecovery" value="true"/>
+        <property name="allowUpdatePassword" value="true"/>
+        <property name="allowUpdateProfile" value="true"/>
+        <property name="usernameLabel" value="Email Address"/>
+        <property name="authenticationNote" value="Please provide your email address and password to login to the system."/>
+        <property name="personRepository" ref="PersonRepository"/>
+        <property name="securityContext" ref="SecurityContext"/>
     </bean>
 
     <!-- Job Management & Error Log-->

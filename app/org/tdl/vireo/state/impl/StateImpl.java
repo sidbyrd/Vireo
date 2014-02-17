@@ -137,7 +137,7 @@ public class StateImpl implements State, BeanNameAware {
 	}
 	
 	/**
-	 * @param deletable Whether the submission may be permanently deleted by the reviewer.
+	 * @param depositable Whether the submission may be permanently deleted by the reviewer.
 	 */
 	public void setDepositable(boolean depositable) {
 		this.depositable = depositable;
