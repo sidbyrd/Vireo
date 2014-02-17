@@ -59,10 +59,12 @@ public class LDAPAuthenticationMethodImpl extends
         /**
          * single level LDAP search scope
          */
+        @SuppressWarnings({"UnusedDeclaration"})
         SINGLE (1),
         /**
          * subtree LDAP search scope
          */
+        @SuppressWarnings({"UnusedDeclaration"})
         SUBTREE (2);
 
         int code;
@@ -279,6 +281,7 @@ public class LDAPAuthenticationMethodImpl extends
      *            attributes. This allows you to use the application without it
      *            talking to a real LDAP.
      */
+    @SuppressWarnings({"UnusedDeclaration"})
     public void setMock(boolean mock) {
         this.mock = mock;
     }
