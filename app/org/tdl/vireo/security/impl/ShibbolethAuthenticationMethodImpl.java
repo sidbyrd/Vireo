@@ -149,9 +149,9 @@ public class ShibbolethAuthenticationMethodImpl extends
 	 *            Either "netid" or "email".
 	 */
 	public void setPrimaryIdentifier(String primaryIdentifier) {
-		if ("netid".equals(primaryIdentifier)) {
+		if ("netid".equals(primaryIdentifier.trim())) {
 			useNetIdAsIdentifier = true;
-		} else if ("email".equals(primaryIdentifier)) {
+		} else if ("email".equals(primaryIdentifier.trim())) {
 			useNetIdAsIdentifier = false;
 		} else {
 			throw new IllegalArgumentException("Invalid primary identifier: "+primaryIdentifier+", the only valid options are 'netid' or 'email'.");

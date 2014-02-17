@@ -10,6 +10,18 @@
 	<import resource="classpath:submission-states.xml" />
     <util:properties id="ConfigurationDefaults" location="classpath:defaults.properties" />
 
+    <!-- add a separate properties file for things that should stay out of github or public view,
+         then re-add the default Play! application.conf file, because we have to disable adding
+         it automatically to allow custom inclusions at all.-->
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:secret.properties</value>
+                <value>classpath:application.conf</value>
+            </list>
+        </property>
+    </bean>
+
 	<!-- Vireo Persistence Repositories -->
 	<bean id="PersonRepository" class="org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl" scope="singleton" />
 	<bean id="SubmissionRepository" class="org.tdl.vireo.model.jpa.JpaSubmissionRepositoryImpl" scope="singleton" />

@@ -335,7 +335,7 @@ public class LDAPAuthenticationMethodImpl extends
             dn = ldapUserSearch(netID, attributes);
         }
 
-        if (!StringUtils.isBlank(dn))
+        if (StringUtils.isBlank(dn))
         {
             // The given netID does not exist in LDAP, or search failed
             Logger.info("ldap: failed login (DN search) for user " + netID);

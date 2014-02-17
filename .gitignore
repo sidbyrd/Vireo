@@ -9,6 +9,9 @@
 *.ipr
 *.iws
 
+# ignore file full of passwords
+secret.properties
+
 # Ignore Play! working directory #
 db
 eclipse
