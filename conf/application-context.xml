@@ -147,29 +147,32 @@
         	</util:map>
         </property>
         <property name="mock" value="${auth.ldap.mock:false}"/>
-        <property name="mockAttributes">
+        <property name="mockResponse">
             <util:map>
-                <entry key="NetID" value="devtest"/>
-                <entry key="Email" value="bthornton@gmail.com"/>
-                <entry key="FirstName" value="Billy"/>
-                <entry key="LastName" value="Thornton"/>
-                <entry key="DisplayName" value="BB Thornton"/>
-                <entry key="Affiliations" value="student"/>
-                <entry key="CurrentPhoneNumber" value="-"/>
-                <entry key="CurrentPostalAddress" value="1100 Congress Ave"/>
-                <entry key="CurrentPostalCity" value="Austin"/>
-                <entry key="CurrentPostalState" value="TX"/>
-                <entry key="CurrentPostalZip" value="78701"/>
-                <entry key="CurrentEmailAddress" value="bthornton@gmail.com"/>
-                <entry key="PermanentPhoneNumber" value="555-555-1932"/>
-                <entry key="PermanentPostalAddress" value="Another City$Another State 54321"/>
-                <entry key="PermanentEmailAddress" value="bthornton@gmail.com"/>
-                <entry key="CurrentDepartment" value="Performance Studies"/>
-                <entry key="CurrentMajor" value="Trapeze"/>
-                <entry key="StudentID" value="S01234567"/>
-                <entry key="UserStatus" value="active"/>
+                <entry key="uid" value="bbt"/>
+                <entry key="mail" value="bthornton@gmail.com"/>
+                <entry key="givenName" value="Billy"/>
+                <entry key="middleName" value="Bob"/>
+                <entry key="sn" value="Thornton"/>
+                <entry key="displayName" value="BB Thornton"/>
+                <entry key="eduPersonPrimaryAffiliation" value="student"/>
+                <entry key="telephoneNumber" value="-"/>
+                <entry key="postalAddress" value="1100 Congress Ave"/>
+                <entry key="l" value="Austin"/>
+                <entry key="st" value="TX"/>
+                <entry key="postalCode" value="78701"/>
+                <entry key="myuPermPhone" value="555-555-1932"/>
+                <entry key="myuPermAddress" value="Another City$Another State 54321"/>
+                <entry key="degree" value="Ph.D."/>
+                <entry key="ou" value="Performance Studies"/>
+                <entry key="major" value="Trapeze"/>
+                <entry key="myuGradYear" value="2014"/>
+                <entry key="myuGradMonth" value="01"/>
+                <entry key="myuID" value="S01234567"/>
+                <entry key="myuUserStatus" value="active"/>
         	</util:map>
         </property>
+        <property name="mockUserDn" value="uid=bbt,OU=people,DC=myu,DC=edu"/>
     </bean>
 
     <bean id="PasswordAuthentication" class="org.tdl.vireo.security.impl.PasswordAuthenticationMethodImpl" scope="singleton">

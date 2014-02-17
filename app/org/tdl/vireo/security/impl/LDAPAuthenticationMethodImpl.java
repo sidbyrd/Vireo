@@ -7,7 +7,6 @@ import org.tdl.vireo.security.AuthenticationMethod;
 import org.tdl.vireo.security.AuthenticationResult;
 
 import play.Logger;
-import play.Play;
 import play.mvc.Http.Request;
 
 import javax.naming.NamingEnumeration;
@@ -133,7 +132,10 @@ public class LDAPAuthenticationMethodImpl extends
 	private boolean mock = false;
 
 	// map of fake attributes injected directly for mock
-	private Map<AttributeName,String> mockAttributes = new HashMap<AttributeName, String>();
+    private Map<String, String> mockResponse;
+
+    // mock DN to look up
+    private String mockUserDn;
 
     /**
      * This is the url to the institution's ldap server. The /o=myu.edu
@@ -295,11 +297,20 @@ public class LDAPAuthenticationMethodImpl extends
      * keys to the map, while the value should be the actual value (or values)
      * of the LDAP attribute.
      *
-     * @param mockAttributes
+     * @param mockResponse
      *            A map of mock LDAP attributes.
      */
-    public void setMockAttributes(Map<AttributeName,String> mockAttributes) {
-        this.mockAttributes = mockAttributes;
+    public void setMockResponse(Map<String, String> mockResponse) {
+        this.mockResponse = mockResponse;
+    }
+
+    /**
+     * If this authentication method is configured to Mock an LDAP
+     * connection then this is the DN that ldapUserSearch() will return.
+     * @param mockUserDn a phony DN to return
+     */
+    public void setMockUserDn(String mockUserDn) {
+        this.mockUserDn = mockUserDn;
     }
 
     /**
@@ -449,12 +460,6 @@ public class LDAPAuthenticationMethodImpl extends
      */
     protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
 
-        // for mock, use pre-injected attributes and make up a plausible flat-directory DN
-        if (mock) {
-            attributes.putAll(mockAttributes);
-            return ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
-        }
-
         // Set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>(11);
         env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
@@ -472,55 +477,77 @@ public class LDAPAuthenticationMethodImpl extends
 
         DirContext ctx = null;
         try {
-            // Create initial context
-            ctx = new InitialDirContext(env);
+            SearchResult sr = null;
 
-            // look up attributes
-            SearchControls controls = new SearchControls();
-            controls.setSearchScope(searchScope.code());
+            if (! mock) {
+                // Create initial context
+                ctx = new InitialDirContext(env);
 
-            NamingEnumeration<SearchResult> answer = ctx.search(
-                    providerURL + searchContext,
-                    "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
-                    controls);
+                // look up attributes
+                SearchControls controls = new SearchControls();
+                controls.setSearchScope(searchScope.code());
+                NamingEnumeration<SearchResult> answer = ctx.search(
+                        providerURL + searchContext,
+                        "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
+                        controls);
 
-            // LDAP returns a list—hopefully, there's only one user in it.
-            if (answer.hasMoreElements()) {
-                SearchResult sr = answer.next();
-
-                // the most important thing we came for is the DN
-                String dn = sr.getName();
-                if (!StringUtils.isEmpty(searchContext)) {
-                    dn += ("," + searchContext);
+                // if there was one match, save it.
+                if (answer.hasMoreElements()) {
+                    sr = answer.next();
                 }
-                Logger.info("ldap: found user with dn " + dn + " for netID " + netID);
+                // if there was more than one result, well, um... Oh dear. Config error?
+                if (answer.hasMoreElements()) {
+                    Logger.error("ldap: more than one user in LDAP for netID " + netID+". Using the first one.");
+                }
+                
+            } else {
+                // for mock, return the mock results if the given NetID matches the mock NetID.
+                if (mockResponse.get(ldapFieldNames.get(AttributeName.NetID)).equals(netID)) {
+                    // for mock, make a fake SearchResult using given mock attributes and a phony DN
+                    Attributes attrs = new BasicAttributes();
+                    for (Map.Entry<String, String> entry : mockResponse.entrySet()) {
+                        attrs.put(entry.getKey(), entry.getValue());
+                    }
+                    sr = new SearchResult(mockUserDn, null, attrs, true);
+                }
+            }
 
-                // For each attribute we're configured for, check LDAP for its corresponding field.
-                // If anything is found, save the result.
-                Attributes ldapFields = sr.getAttributes();
-                for (AttributeName attributeName : ldapFieldNames.keySet()) {
-                    String fieldName = ldapFieldNames.get(attributeName);
-                    Attribute ldapField = ldapFields.get(fieldName);
-                    if (ldapField != null) {
-                        String value = (String)ldapField.get();
-                        if (!StringUtils.isBlank(value)) {
-                            attributes.put(attributeName, value);
-                        }
+            // if no user was found, we're done.
+            if (sr == null) {
+                Logger.info("ldap: user with netid " + netID + " not found");
+                return null;
+            }
+
+            // OK, we have a result.
+            // The most important thing we came for is the DN.
+            String dn = sr.getName();
+            if (!StringUtils.isEmpty(searchContext)) {
+                dn += ("," + searchContext);
+            }
+            Logger.info("ldap: found user with dn " + dn + " for netID " + netID);
+
+            // For each attribute we're configured for, check the result for its
+            //   corresponding LDAP field.
+            // Save anything found in the empty Map this method was passed.
+            Attributes ldapFields = sr.getAttributes();
+            for (AttributeName attributeName : ldapFieldNames.keySet()) {
+                String fieldName = ldapFieldNames.get(attributeName);
+                Attribute ldapField = ldapFields.get(fieldName);
+                if (ldapField != null) {
+                    String value = (String)ldapField.get();
+                    if (!StringUtils.isBlank(value)) {
+                        attributes.put(attributeName, value);
                     }
                 }
-
-                if (answer.hasMoreElements()) {
-                    // Oh dear - more than one user match. Config error?
-                    Logger.error("ldap: more than one user in LDAP for netID " + netID);
-                }
-
-                return dn;
             }
+
+            return dn;
         }
         catch (NamingException e) {
             // if we won't be returning a DN, don't return attributes either.
             attributes.clear();
             Logger.warn(e, "ldap: failed search auth or execution");
+            return null;
         }
         finally {
             // Close the context when we're done
@@ -533,9 +560,6 @@ public class LDAPAuthenticationMethodImpl extends
                 //
             }
         }
-
-        // No DN match found, or error doing the search
-        return null;
     }
 
     /**
@@ -546,8 +570,9 @@ public class LDAPAuthenticationMethodImpl extends
      */
     protected boolean ldapAuthenticate(String dn, String password) {
 
-        // Mock authentication always succeeds.
-        if (mock)
+        // Mock authentication always succeeds if the DN is correct -- no
+        //  password check.
+        if (mock && dn.equals(mockUserDn))
             return true;
         
         // Set up environment for creating initial context

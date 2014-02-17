@@ -243,7 +243,7 @@ public class ShibbolethAuthenticationMethodImplTest extends UnitTest {
 	}
 	
 	/**
-	 * Test that the mock feature is able to succesfully authenticate a person.
+	 * Test that the mock feature is able to successfully authenticate a person.
 	 */
 	@Test
 	public void testPositiveMockAuthentication() {
