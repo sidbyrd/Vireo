@@ -1,5 +1,6 @@
 package org.tdl.vireo.security.impl;
 
+import controllers.Authentication;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
@@ -28,7 +29,7 @@ public class LDAPAuthenticationMethodImpl extends
 	// This is the url to the institution's ldap server. The /o=myu.edu
     // may or may not be required depending on the LDAP server setup.
     // A server may also require the ldaps:// protocol.
-	private String providerURL = "ldaps://ldap.myu.edu:636/";
+	public String providerURL = "ldaps://ldap.myu.edu:636/";
 
     // This is the object context used when authenticating the
     // user.  It is appended to the id_field and username.
@@ -84,15 +85,18 @@ public class LDAPAuthenticationMethodImpl extends
     private String searchUser = null;
     private String searchPassword = null;
 
-    // added to netid to create an email address if email not explicitly specified.
+    // added to netid to create an email address if no email address is available.
     private String netIDEmailDomain = null;
+
+    // whether to allow account creation using NetID as filler value for missing name
+    private boolean allowNetIdAsMissingName = false;
 
     // boilerplate value for person.institutionalIdentifier, if desired
     private String valueInstitutionalIdentifier = null;
 
     // value for UserStatus attribute indicating active account
     private String valueUserStatusActive = null;
-    
+
     // the names of all the Person attributes and user data attributes that can be collected from LDAP
     public enum AttributeName {
         NetID,
@@ -132,7 +136,7 @@ public class LDAPAuthenticationMethodImpl extends
 	private boolean mock = false;
 
 	// map of fake attributes injected directly for mock
-    private Map<String, String> mockResponse;
+    private Map<String, String> mockAttributes;
 
     // mock DN to look up
     private String mockUserDn;
@@ -221,15 +225,30 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * If your LDAP server does not hold an email address for a user, you can use
-     * the following field to specify your email domain. This value is appended
-     * to the netid in order to make an email address. E.g. a netid of 'user' and
-     * netid_email_domain as '@example.com' would set the email of the user
-     * to be 'user@example.com netid_email_domain = @example.com
-     * @param netIDEmailDomain domain to append
+     * If your LDAP server does not hold an email address for a user, or if it
+     * does not allow searching for user attributes, you can specify your email
+     * domain. This value is appended to the NetID in order to make an email
+     * address. E.g. a NetID of 'user' and value of '@example.com' makes the email
+     * 'user@example.com'.
+     * If there is no email address available and this is null, login will
+     * be rejected.
+     * @param netIDEmailDomain domain to append, or null to disallow
      */
     public void setNetIDEmailDomain(String netIDEmailDomain) {
         this.netIDEmailDomain = netIDEmailDomain;
+    }
+
+    /**
+     * If your LDAP server does not hold at least one of firstName or lastName for
+     * a user, or is it does not allow searching for user attributes, you can
+     * set this to true to allow using the NetID as a substitute value for the
+     * lastName field, in order to satisfy Vireo's required Person fields.
+     * Otherwise if there is no name available, login will be rejected.
+     * @param allowNetIdAsMissingName true to allow NetID substitution for lastName, or
+     * false to disallow login if no name available.
+     */
+    public void setAllowNetIdAsMissingName(boolean allowNetIdAsMissingName) {
+        this.allowNetIdAsMissingName = allowNetIdAsMissingName;
     }
 
     /**
@@ -276,6 +295,9 @@ public class LDAPAuthenticationMethodImpl extends
             }
         }
     }
+    public Map<AttributeName, String> getLdapFieldNames() {
+        return ldapFieldNames;
+    }
 
     /**
      * @param mock
@@ -283,7 +305,6 @@ public class LDAPAuthenticationMethodImpl extends
      *            attributes. This allows you to use the application without it
      *            talking to a real LDAP.
      */
-    @SuppressWarnings({"UnusedDeclaration"})
     public void setMock(boolean mock) {
         this.mock = mock;
     }
@@ -297,17 +318,21 @@ public class LDAPAuthenticationMethodImpl extends
      * keys to the map, while the value should be the actual value (or values)
      * of the LDAP attribute.
      *
-     * @param mockResponse
+     * @param mockAttributes
      *            A map of mock LDAP attributes.
      */
-    public void setMockResponse(Map<String, String> mockResponse) {
-        this.mockResponse = mockResponse;
+    public void setMockAttributes(Map<String, String> mockAttributes) {
+        this.mockAttributes = mockAttributes;
+    }
+    public Map<String, String> getMockAttributes() {
+        return mockAttributes;
     }
 
     /**
      * If this authentication method is configured to Mock an LDAP
-     * connection then this is the DN that ldapUserSearch() will return.
-     * @param mockUserDn a phony DN to return
+     * connection then this is the DN that needs to be matched for
+     * authentication to succeed.
+     * @param mockUserDn a mock user DN to match against
      */
     public void setMockUserDn(String mockUserDn) {
         this.mockUserDn = mockUserDn;
@@ -346,51 +371,59 @@ public class LDAPAuthenticationMethodImpl extends
             dn = ldapUserSearch(netID, attributes);
         }
 
-        if (StringUtils.isBlank(dn))
-        {
+        if (StringUtils.isBlank(dn)) {
             // The given netID does not exist in LDAP, or search failed
-            Logger.info("ldap: failed login (DN search) for user " + netID);
+            Logger.info("ldap: could not find user netID=" + netID);
             return AuthenticationResult.BAD_CREDENTIALS;
+        }
+        // sanity check
+        String foundNetId = attributes.get(AttributeName.NetID); // will be null if we assumed flat DN
+        if(foundNetId != null && foundNetId != netID) {
+            Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
+            return AuthenticationResult.UNKNOWN_FAILURE;
         }
 
         // 2. try to authenticate against LDAP with the user's supplied credentials
         if (!ldapAuthenticate(dn, password)) {
             // The netID is not in LDAP and we didn't search the DN, or the password was wrong
-            Logger.info("ldap: failed login (auth) for user " + netID + " with DN=" + dn);
+            Logger.info("ldap: could not authenticate user netID=" + netID);
             return AuthenticationResult.BAD_CREDENTIALS;
         }
 
         // 3. Make sure we have the right email address from LDAP for the user, since
         //     it's required and possibly needed next.
         String email = attributes.remove(AttributeName.Email);
-            if (StringUtils.isBlank(email) && !StringUtils.isBlank(netIDEmailDomain)) {
-                email = netID + netIDEmailDomain;
+        if (StringUtils.isBlank(email) && !StringUtils.isBlank(netIDEmailDomain)) {
+            email = netID + netIDEmailDomain;
         }
-        if (StringUtils.isBlank(email)) {
-            // still no email? Must make a fake one, or creating person will cause exception.
-            // User will need to review account and fix it.
-            Logger.error("ldap: no email address found for user with netID " + netID);
-            email = "nobody@fake.com";
-        }
-        
+
         Person person;
         try {
             context.turnOffAuthorization();
 
             // 4. Check if Vireo Person already exists
+            // first by NetID, if they've logged in with LDAP before
             person = personRepo.findPersonByNetId(netID);
-            if (person == null) {
-                // if no person found, check if there's one with the same
-                //  email address as this user's email address from LDAP
-                if (!StringUtils.isBlank(email)) {
-                    person = personRepo.findPersonByEmail(email);
-                    if (person != null && person.getNetId() == null) {
+
+            // if no person found based on netID, check if there's one with the same
+            //  email address as what LDAP reported for this netID
+            if (person == null && !StringUtils.isBlank(email)) {
+                person = personRepo.findPersonByEmail(email);
+                if (person != null) {
+                    // An existing person is already using this email address.
+                    // Do they already have a netID assigned?
+                    if (person.getNetId() == null) {
                         // found existing user with no existing netID who
                         // presumably had not logged in via LDAP before.
                         // Add netID to this user.
-                        Logger.warn("ldap: added netID " + netID + " to existing person with email " + email);
+                        Logger.warn("ldap: added netID=" + netID + " to existing person id="+person.getId()+" email=" + email);
                         person.setNetId(netID);
                         person.save();
+                    } else {
+                        // If we didn't take the match due to netID conflict, reject the whole login
+                        Logger.warn("ldap: rejected new user with netid="+netID+" trying to log in with same email="
+                            + email + " as existing person id="+person.getId()+" netID=" + person.getNetId());
+                        return AuthenticationResult.BAD_CREDENTIALS;
                     }
                 }
             }
@@ -403,18 +436,30 @@ public class LDAPAuthenticationMethodImpl extends
                     && !StringUtils.isBlank(attributes.get(AttributeName.UserStatus))
                     && !attributes.get(AttributeName.UserStatus).toLowerCase().equals(valueUserStatusActive))
                 {
-                    Logger.error("ldap: refused new account to inactive user with netID " + netID);
+                    Logger.warn("ldap: refused new account to inactive user with netID=" + netID);
                     return AuthenticationResult.BAD_CREDENTIALS;
                 }
 
                 // get first and last name fields, since they're required.
                 String firstName = attributes.remove(AttributeName.FirstName);
                 String lastName = attributes.remove(AttributeName.LastName);
-                if (StringUtils.isBlank(firstName+lastName)) {
+                if (StringUtils.isBlank(firstName) && StringUtils.isBlank(lastName)) {
                     // one of these being non-null is required to avoid an exception creating Person
-                    // User will need to review account and fix it.
-                    Logger.warn("ldap: no first or last name found for user with netID " + netID);
-                    lastName = netID;
+                    if (allowNetIdAsMissingName) {
+                        Logger.warn("ldap: no first or last name found for user netID=" + netID);
+                        lastName = netID;
+                    } else {
+                        Logger.warn("ldap: refused new account for netID="+netID+" because no name was available");
+                        return AuthenticationResult.BAD_CREDENTIALS;
+                    }
+                }
+
+                // if we didn't get email from LDAP or from existing user, make one up I guess.
+                if (StringUtils.isBlank(email)) {
+                    // We already gave the admin a chance to add a netIdEmailDomain, so it seems
+                    // they've chosen to reject logins with no email instead.
+                    Logger.warn("ldap: refused new account for netID="+netID+" because no email address was available");
+                    return AuthenticationResult.BAD_CREDENTIALS;                    
                 }
 
 				// Create the new person
@@ -422,10 +467,10 @@ public class LDAPAuthenticationMethodImpl extends
 					person = personRepo.createPerson(netID, email, firstName, lastName, RoleType.STUDENT).save();
 				} catch (RuntimeException re) {
 					// Unable to create new person, possibly because the email or netID already exist.
-					Logger.error(re,"ldap: unable to create new person with netID " + netID);
+					Logger.error(re,"ldap: unable to create new person with netID=" + netID);
 					return AuthenticationResult.BAD_CREDENTIALS;
 				}
-                Logger.info("ldap: created person for netID " + netID);
+                Logger.info("ldap: created person id="+person.getId()+" netID=" + netID);
             }
 
             // 6. Add any optional attributes from LDAP.
@@ -438,6 +483,7 @@ public class LDAPAuthenticationMethodImpl extends
 
 
             context.login(person);
+            Logger.info("ldap: successfully logged in person id="+person.getId()+" netID="+netID);
             return AuthenticationResult.SUCCESSFULL;
 
         } finally {
@@ -497,24 +543,29 @@ public class LDAPAuthenticationMethodImpl extends
                 }
                 // if there was more than one result, well, um... Oh dear. Config error?
                 if (answer.hasMoreElements()) {
-                    Logger.error("ldap: more than one user in LDAP for netID " + netID+". Using the first one.");
+                    Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
                 }
                 
             } else {
                 // for mock, return the mock results if the given NetID matches the mock NetID.
-                if (mockResponse.get(ldapFieldNames.get(AttributeName.NetID)).equals(netID)) {
+                if (netID.equals(mockAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
                     // for mock, make a fake SearchResult using given mock attributes and a phony DN
                     Attributes attrs = new BasicAttributes();
-                    for (Map.Entry<String, String> entry : mockResponse.entrySet()) {
+                    for (Map.Entry<String, String> entry : mockAttributes.entrySet()) {
                         attrs.put(entry.getKey(), entry.getValue());
                     }
-                    sr = new SearchResult(mockUserDn, null, attrs, true);
+                    // this is not mockUserDN. That's the "correct" value for checking against
+                    // when we authenticate. This is just the node name as LDAP would return it.
+                    // How it comes to match (or not match) mockUserDN is config dependent and
+                    // part of what mock it meant to test.
+                    String mockName = ldapFieldNames.get(AttributeName.NetID)+"="+netID;
+                    sr = new SearchResult(mockName, null, attrs, true);
                 }
             }
 
             // if no user was found, we're done.
             if (sr == null) {
-                Logger.info("ldap: user with netid " + netID + " not found");
+                Logger.debug("ldap.search: user with netid=" + netID + " not found");
                 return null;
             }
 
@@ -524,7 +575,7 @@ public class LDAPAuthenticationMethodImpl extends
             if (!StringUtils.isEmpty(searchContext)) {
                 dn += ("," + searchContext);
             }
-            Logger.info("ldap: found user with dn " + dn + " for netID " + netID);
+            Logger.debug("ldap.search: found user with dn=" + dn + " for netID=" + netID);
 
             // For each attribute we're configured for, check the result for its
             //   corresponding LDAP field.
@@ -546,7 +597,7 @@ public class LDAPAuthenticationMethodImpl extends
         catch (NamingException e) {
             // if we won't be returning a DN, don't return attributes either.
             attributes.clear();
-            Logger.warn(e, "ldap: failed search auth or execution");
+            Logger.debug(e, "ldap.search: failed auth or execution");
             return null;
         }
         finally {
@@ -572,8 +623,8 @@ public class LDAPAuthenticationMethodImpl extends
 
         // Mock authentication always succeeds if the DN is correct -- no
         //  password check.
-        if (mock && dn.equals(mockUserDn))
-            return true;
+        if (mock)
+            return dn.equals(mockUserDn);
         
         // Set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>();
@@ -592,6 +643,7 @@ public class LDAPAuthenticationMethodImpl extends
             // Try to bind
             ctx = new InitialDirContext(env);
         } catch (NamingException e) {
+            Logger.debug("ldap.auth: server refused to authenticate DN=" + dn + " due to " + e.getExplanation());
             return false;
         } finally {
             // Close the context when we're done
@@ -604,6 +656,7 @@ public class LDAPAuthenticationMethodImpl extends
             }
         }
 
+        Logger.debug("ldap.auth: successfully authenticated with DN=" + dn);
         return true;
     }
 
