@@ -1,12 +1,10 @@
 package org.tdl.vireo.security.impl;
 
-import controllers.Authentication;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.security.AuthenticationMethod;
 import org.tdl.vireo.security.AuthenticationResult;
-
 import play.Logger;
 import play.mvc.Http.Request;
 
@@ -378,7 +376,7 @@ public class LDAPAuthenticationMethodImpl extends
         }
         // sanity check
         String foundNetId = attributes.get(AttributeName.NetID); // will be null if we assumed flat DN
-        if(foundNetId != null && foundNetId != netID) {
+        if(foundNetId != null && !foundNetId.equals(netID)) {
             Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
             return AuthenticationResult.UNKNOWN_FAILURE;
         }

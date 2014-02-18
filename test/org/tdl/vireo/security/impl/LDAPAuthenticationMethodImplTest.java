@@ -1,8 +1,5 @@
 package org.tdl.vireo.security.impl;
 
-import java.lang.reflect.Field;
-import java.util.*;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,16 +8,13 @@ import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.security.AuthenticationResult;
 import org.tdl.vireo.security.SecurityContext;
-
-import play.Logger;
-import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
-import play.mvc.Router;
-import play.mvc.Http.Header;
-import play.mvc.Http.Request;
-import play.mvc.Router.ActionDefinition;
 import play.test.UnitTest;
+
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Test the LDAP authentication method. These tests require the method to
@@ -36,6 +30,7 @@ import play.test.UnitTest;
  * (which Shibboleth tests can't do either), configuration issues, and server
  * connection issues.
  */
+@SuppressWarnings({"NotNullable"})
 public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
 	/* Dependencies */
@@ -76,7 +71,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
                 original.put(field.getName(), field.get(instance));
             }
         } catch (IllegalAccessException e) {
-            assert("Couldn't reflect into instance for setup".equals(false));
+            assertTrue("Couldn't reflect into instance for setup", false);
         }
 
 		// Set the instance's state to what the tests expect.
@@ -163,7 +158,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
                 field.set(instance, original.get(field.getName()));
             }
         } catch (IllegalAccessException e) {
-            assert("Couldn't reflect into instance for cleanup".equals(false));
+            assertTrue("Couldn't reflect into instance for cleanup", false);
         }
 
 		context.turnOffAuthorization();
@@ -375,7 +370,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertNull(context.getPerson());
 
         // Missing password
-        result = instance.authenticate("user1", null, null);
+        result = instance.authenticate("user1", "", null);
 
         assertEquals(AuthenticationResult.MISSING_CREDENTIALS, result);
         assertNull(context.getPerson());
@@ -564,7 +559,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     /**
      */
     @Test
-    public void testInstitutionalIdentifer() {
+    public void testInstitutionalIdentifier() {
 
     }
 }
