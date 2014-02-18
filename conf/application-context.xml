@@ -126,14 +126,12 @@
                 <entry key="MiddleName" value="${auth.ldap.attribute.middleName}"/>
                 <entry key="LastName" value="${auth.ldap.attribute.lastName}"/>
                 <entry key="BirthYear" value="${auth.ldap.attribute.birthYear}"/>
-                <entry key="DisplayName" value="${auth.ldap.attribute.displayName}"/>
                 <entry key="Affiliations" value="${auth.ldap.attribute.affiliation}"/>
                 <entry key="CurrentPhoneNumber" value="${auth.ldap.attribute.currentPhoneNumber}"/>
                 <entry key="CurrentPostalAddress" value="${auth.ldap.attribute.currentPostalAddress}"/>
                 <entry key="CurrentPostalCity" value="${auth.ldap.attribute.currentPostalCity}"/>
                 <entry key="CurrentPostalState" value="${auth.ldap.attribute.currentPostalState}"/>
                 <entry key="CurrentPostalZip" value="${auth.ldap.attribute.currentPostalZip}"/>
-                <entry key="CurrentEmailAddress" value="${auth.ldap.attribute.currentEmailAddress}"/>
                 <entry key="PermanentPhoneNumber" value="${auth.ldap.attribute.permanentPhoneNumber}"/>
                 <entry key="PermanentPostalAddress" value="${auth.ldap.attribute.permanentPostalAddress}"/>
                 <entry key="PermanentEmailAddress" value="${auth.ldap.attribute.permanentEmailAddress}"/>

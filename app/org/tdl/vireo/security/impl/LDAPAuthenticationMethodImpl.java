@@ -8,6 +8,8 @@ import org.tdl.vireo.security.AuthenticationResult;
 import play.Logger;
 import play.mvc.Http.Request;
 
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.*;
@@ -95,7 +97,13 @@ public class LDAPAuthenticationMethodImpl extends
     // value for UserStatus attribute indicating active account
     private String valueUserStatusActive = null;
 
-    // the names of all the Person attributes and user data attributes that can be collected from LDAP
+    // The names of all the Person attributes and user data attributes that can be collected from LDAP
+    //
+    // Would've included DisplayName and CurrentEmailAddress as attribute names, but both those fields in
+    // the Person object suffer from logic that lies about whether a real value is present (and not just
+    // a derived value), and code exists that can recycle derived values back and store them as if they were
+    // real values. That is incompatible with a login model that needs to know whether a real, non-derived
+    // value is present in order to know whether to update the field or not.
     public enum AttributeName {
         NetID,
         Email,
@@ -103,14 +111,12 @@ public class LDAPAuthenticationMethodImpl extends
         MiddleName,
         LastName,
         BirthYear,
-        DisplayName,
         Affiliations,
         CurrentPhoneNumber,
         CurrentPostalAddress,
         CurrentPostalCity,
         CurrentPostalState,
         CurrentPostalZip,
-        CurrentEmailAddress,
         PermanentPhoneNumber,
         PermanentPostalAddress,
         PermanentEmailAddress,
@@ -125,7 +131,9 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     // Student ID is stored as a preference in Person, since there's no dedicated field for it.
-    public final String STUDENT_ID_PREF_NAME = "LDAP_STUDENT_ID";
+    // Pros: doesn't require db schema change, having arbitrary named String data on a student is flexible
+    // Cons: this isn't what people expect to see in a field called preferences.
+    public static final String personPrefKeyForStudentID = "LDAP_STUDENT_ID";
 
     // mapping from names of fields we can collect to the names used in LDAP for those fields
     private Map <AttributeName, String> ldapFieldNames = new HashMap<AttributeName, String>();
@@ -136,7 +144,7 @@ public class LDAPAuthenticationMethodImpl extends
 	// map of fake attributes injected directly for mock
     private Map<String, String> mockAttributes;
 
-    // mock DN to look up
+    // mock DN expected for authentication
     private String mockUserDn;
 
     /**
@@ -312,9 +320,8 @@ public class LDAPAuthenticationMethodImpl extends
      * connection then these are the LDAP attributes that will be assumed
      * when authenticating.
      *
-     * The map should contain the configured LDAP field names as
-     * keys to the map, while the value should be the actual value (or values)
-     * of the LDAP attribute.
+     * The map should contain LDAP field names as keys and corresponding
+     * LDAP attribute data as values.
      *
      * @param mockAttributes
      *            A map of mock LDAP attributes.
@@ -345,11 +352,16 @@ public class LDAPAuthenticationMethodImpl extends
      *   search the tree and find the DN of the user. A second bind is then required to
      *   check the credentials of the user by binding directly to their DN.
 	 *
+     * Also looks up user attributes and applies them if configured.
+     * Required attributes (email and name) are only updated the first time a
+     * user logs in with their netID. Optional attributes (everything else) may be
+     * added from LDAP on subsequent logins, but never modified from LDAP (to protect
+     * local edits).
 	 */
 	public AuthenticationResult authenticate(String netID, String password,
 			Request request) {
 
-		if (StringUtils.isBlank(netID) || password == null)
+		if (StringUtils.isBlank(netID) || StringUtils.isBlank(password))
 			return AuthenticationResult.MISSING_CREDENTIALS;
 
         // 1. Get or construct the correct DN for the user.
@@ -374,8 +386,8 @@ public class LDAPAuthenticationMethodImpl extends
             Logger.info("ldap: could not find user netID=" + netID);
             return AuthenticationResult.BAD_CREDENTIALS;
         }
-        // sanity check
-        String foundNetId = attributes.get(AttributeName.NetID); // will be null if we assumed flat DN
+        // sanity check -- did the search return the user we asked for?
+        String foundNetId = attributes.get(AttributeName.NetID); // will be null if we couldn't search
         if(foundNetId != null && !foundNetId.equals(netID)) {
             Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
             return AuthenticationResult.UNKNOWN_FAILURE;
@@ -383,7 +395,7 @@ public class LDAPAuthenticationMethodImpl extends
 
         // 2. try to authenticate against LDAP with the user's supplied credentials
         if (!ldapAuthenticate(dn, password)) {
-            // The netID is not in LDAP and we didn't search the DN, or the password was wrong
+            // rejected
             Logger.info("ldap: could not authenticate user netID=" + netID);
             return AuthenticationResult.BAD_CREDENTIALS;
         }
@@ -395,13 +407,11 @@ public class LDAPAuthenticationMethodImpl extends
             email = netID + netIDEmailDomain;
         }
 
-        Person person;
         try {
-            context.turnOffAuthorization();
-
-            // 4. Check if Vireo Person already exists
+            // 4. Check if person already exists in Vireo,
             // first by NetID, if they've logged in with LDAP before
-            person = personRepo.findPersonByNetId(netID);
+            context.turnOffAuthorization();
+            Person person = personRepo.findPersonByNetId(netID);
 
             // if no person found based on netID, check if there's one with the same
             //  email address as what LDAP reported for this netID
@@ -411,7 +421,7 @@ public class LDAPAuthenticationMethodImpl extends
                     // An existing person is already using this email address.
                     // Do they already have a netID assigned?
                     if (person.getNetId() == null) {
-                        // found existing user with no existing netID who
+                        // Found existing user with no existing netID who
                         // presumably had not logged in via LDAP before.
                         // Add netID to this user.
                         Logger.warn("ldap: added netID=" + netID + " to existing person id="+person.getId()+" email=" + email);
@@ -438,11 +448,11 @@ public class LDAPAuthenticationMethodImpl extends
                     return AuthenticationResult.BAD_CREDENTIALS;
                 }
 
-                // get first and last name fields, since they're required.
+                // required field for new Person: first and last name
                 String firstName = attributes.remove(AttributeName.FirstName);
                 String lastName = attributes.remove(AttributeName.LastName);
                 if (StringUtils.isBlank(firstName) && StringUtils.isBlank(lastName)) {
-                    // one of these being non-null is required to avoid an exception creating Person
+                    // at least one of these being non-null is required
                     if (allowNetIdAsMissingName) {
                         Logger.warn("ldap: no first or last name found for user netID=" + netID);
                         lastName = netID;
@@ -452,11 +462,20 @@ public class LDAPAuthenticationMethodImpl extends
                     }
                 }
 
-                // if we didn't get email from LDAP or from existing user, make one up I guess.
-                if (StringUtils.isBlank(email)) {
-                    // We already gave the admin a chance to add a netIdEmailDomain, so it seems
-                    // they've chosen to reject logins with no email instead.
-                    Logger.warn("ldap: refused new account for netID="+netID+" because no email address was available");
+                // required field for new Person: email address must be present and valid.
+                // email validation is done when registering a new Password login, so it
+                // seems consistent to do it for LDAP.
+                try {
+                    if (email != null) {
+                        new InternetAddress(email).validate();
+                    }
+                } catch (AddressException ae) {
+                    Logger.warn("ldap: rejected invalid email='"+email+"' because " +ae.getMessage());
+                    email = null;
+                }
+                if (email == null) {
+                    // Either email is blank (and no netIdEmailDomain was set), or it was invalid
+                    Logger.warn("ldap: refused new account for netID="+netID+" because no valid email address was available");
                     return AuthenticationResult.BAD_CREDENTIALS;                    
                 }
 
@@ -464,22 +483,42 @@ public class LDAPAuthenticationMethodImpl extends
 				try {
 					person = personRepo.createPerson(netID, email, firstName, lastName, RoleType.STUDENT).save();
 				} catch (RuntimeException re) {
-					// Unable to create new person, possibly because the email or netID already exist.
-					Logger.error(re,"ldap: unable to create new person with netID=" + netID);
+					// Unable to create new person.
+                    // We already checked that netID doesn't match and email doesn't match, so it must
+                    // be some other sort of error.
+					Logger.error(re,"ldap: attempted and failed to create new person with netID="+netID+" email="+email);
 					return AuthenticationResult.BAD_CREDENTIALS;
 				}
-                Logger.info("ldap: created person id="+person.getId()+" netID=" + netID);
+
+                // We have a new user
+                Logger.info("ldap: created person id="+person.getId()+" netID="+netID+" email="+email);
+
+                // MiddleName should be set at the same time as first and last, i.e. treated
+                // as a semi-required attribute and set only at account creation, but the method
+                // for doing the setting in code is as if it were an optional attribute.
+                String middleName = attributes.remove(AttributeName.MiddleName);
+                if (!StringUtils.isBlank(middleName)) {
+                    person.setMiddleName(middleName);
+                    person.save();
+                }
             }
 
-            // 6. Add any optional attributes from LDAP.
-            // Note: This will not overwrite any values that already existed in the Person,
-            //   which may have already been QC'ed by the student of Graduate Studies office.
-            // This will also not remove any pre-existing Person attributes which have been
-            //   removed from LDAP, for example when a student changes to inactive status
-            //   before their thesis is final and many LDAP attributes go away.
-            updatePersonWithAttributes(person, attributes);
+            // 6. Add any optional attributes from LDAP that are not already present.
+            //    Do this every time the user logs in, not just the first time.
+            addOptionalAttributes(person, attributes);
 
+            // 6.5 Bonus note: why not update required attributes at every login?
+            // These are required fields, so any update is necessarily an overwrite, not
+            // merely an addition. (For name, only 1 of first,middle,last must be present,
+            // but it makes no sense to update one without treating all three together.)
+            // Email: if a student goes inactive and has to switch to a gmail account,
+            //      campus LDAP won't reflect that. We should leave the student's choice
+            //      in place.
+            // Name: sometimes a student wants to publish under a name that isn't exactly
+            //      how they registered with the university. We should not overwrite
+            //      local edits here either.
 
+            // 7. Log the user in
             context.login(person);
             Logger.info("ldap: successfully logged in person id="+person.getId()+" netID="+netID);
             return AuthenticationResult.SUCCESSFULL;
@@ -661,12 +700,14 @@ public class LDAPAuthenticationMethodImpl extends
     /**
      * Updates supplied Person with attributes from given map, only for fields that do not
      * already contain a value.
+     * Does not apply to NetID, Email, or *Name
      * @param person the person to add attributes to
-     * @param attributes values for the attributes, mapped to attribute names.
+     * @param attributes values for the attributes, mapped as values to attribute name keys.
      *  Certain attributes get special treatment:
      *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress if present.
      *  Attributes that are integer values will be parsed, of course.
-     *  StudentID will be stored as a user preference with key STUDENT_ID_PREF_NAME, since
+     *  PermanentEmailAddress must pass format validation.
+     *  StudentID will be stored as a user preference with key personPrefKeyForStudentID, since
      *    there is no place else to store that datum.
      *  UserStatus is not saved in the Person; it is only consulted when logging in.
      *  InstitutionalIdentifier is saved into the Person from configuration value if
@@ -676,15 +717,16 @@ public class LDAPAuthenticationMethodImpl extends
      *    interpreted as blank)
      *  For CurrentMajor, "Undeclared" is synonymous with null
      */
-    void updatePersonWithAttributes(Person person, Map<AttributeName, String> attributes) {
+    void addOptionalAttributes(Person person, Map<AttributeName, String> attributes) {
         String value;
         boolean modified = false;
 
-        value = attributes.get(AttributeName.MiddleName);
-        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getMiddleName())) {
-            person.setMiddleName(value);
-            modified = true;
-        }
+        // treat MiddleName the same as FirstName and LastName, for consistency
+        //value = attributes.get(AttributeName.MiddleName);
+        //if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getMiddleName())) {
+        //    person.setMiddleName(value);
+        //    modified = true;
+        //}
 
         value = attributes.get(AttributeName.BirthYear);
         if (!StringUtils.isBlank(value) && person.getBirthYear() == null) {
@@ -697,12 +739,6 @@ public class LDAPAuthenticationMethodImpl extends
                         + attributes.get(AttributeName.BirthYear)
                         + "'='" + value + "' as an integer.");
             }
-        }
-
-        value = attributes.get(AttributeName.DisplayName);
-        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getDisplayName())) {
-            person.setDisplayName(value);
-            modified = true;
         }
 
         value = attributes.get(AttributeName.Affiliations);
@@ -726,7 +762,7 @@ public class LDAPAuthenticationMethodImpl extends
                 if (!StringUtils.isBlank(city)) {
                     city = city.replace("$", "/n");
                     if (!StringUtils.isBlank(city))
-                        value += "\n " + city;
+                        value += "\n" + city;
                 }
                 String state = attributes.get(AttributeName.CurrentPostalState);
                 if (!StringUtils.isBlank(state)) {
@@ -744,12 +780,6 @@ public class LDAPAuthenticationMethodImpl extends
                 person.setCurrentPostalAddress(value);
                 modified = true;
             }
-        }
-
-        value = attributes.get(AttributeName.CurrentEmailAddress);
-        if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getCurrentEmailAddress())) {
-            person.setCurrentEmailAddress(value);
-            modified = true;
         }
 
         value = attributes.get(AttributeName.PermanentPhoneNumber);
@@ -770,8 +800,13 @@ public class LDAPAuthenticationMethodImpl extends
 
         value = attributes.get(AttributeName.PermanentEmailAddress);
         if (!StringUtils.isBlank(value) && StringUtils.isBlank(person.getPermanentEmailAddress())) {
-            person.setPermanentEmailAddress(value);
-            modified = true;
+            try {
+                new InternetAddress(value).validate();
+                person.setPermanentEmailAddress(value);
+                modified = true;
+            } catch (AddressException ae) {
+                Logger.warn("ldap: rejected invalid permanent email='"+value+"' because " +ae.getMessage());
+            }
         }
 
         value = attributes.get(AttributeName.CurrentDegree);
@@ -827,8 +862,8 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         value = attributes.get(AttributeName.StudentID);
-        if (!StringUtils.isBlank(value) && person.getPreference(STUDENT_ID_PREF_NAME) == null) {
-            person.addPreference(STUDENT_ID_PREF_NAME, value);
+        if (!StringUtils.isBlank(value) && person.getPreference(personPrefKeyForStudentID) == null) {
+            person.addPreference(personPrefKeyForStudentID, value);
             modified = true;
         }
 

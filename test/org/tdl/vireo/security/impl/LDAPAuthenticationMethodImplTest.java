@@ -8,11 +8,13 @@ import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.security.AuthenticationResult;
 import org.tdl.vireo.security.SecurityContext;
+import play.Logger;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,14 +92,12 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.MiddleName,           "middleName");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.LastName,             "sn");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.BirthYear,            "myuBirthYear");
-        ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.DisplayName,          "displayName");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.Affiliations,         "eduPersonPrimaryAffiliation");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentPhoneNumber,   "telephoneNumber");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalAddress, "postalAddress");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalCity,    "l");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalState,   "st");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalZip,     "postalCode");
-        ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.CurrentEmailAddress,  "mail2");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.PermanentPhoneNumber, "myuPermPhone");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.PermanentPostalAddress,"myuPermAddress");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.PermanentEmailAddress,"mail3");
@@ -118,14 +118,12 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         mockAttributes.put("middleName", "Bob");
         mockAttributes.put("sn", "Thornton");
         mockAttributes.put("myuBirthYear", "1955");
-        mockAttributes.put("displayName", "BB Thornton");
         mockAttributes.put("eduPersonPrimaryAffiliation", "student");
-        mockAttributes.put("telephoneNumber", "-");
+        mockAttributes.put("telephoneNumber", "+99 (55) 555-5555");
         mockAttributes.put("postalAddress", "1100 Congress Ave");
         mockAttributes.put("l", "Austin");
         mockAttributes.put("st", "TX");
         mockAttributes.put("postalCode", "78701");
-        mockAttributes.put("mail2", "current@email.com");
         mockAttributes.put("myuPermPhone", "555-555-1932");
         mockAttributes.put("myuPermAddress", "Another City$Another State 54321");
         mockAttributes.put("mail3", "perm@email.com");
@@ -154,11 +152,13 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 		// Restore the method's state.
         try {
             for (Field field : instance.getClass().getDeclaredFields()) {
+                if (Modifier.isFinal(field.getModifiers()))
+                    continue;
                 field.setAccessible(true);
                 field.set(instance, original.get(field.getName()));
             }
         } catch (IllegalAccessException e) {
-            assertTrue("Couldn't reflect into instance for cleanup", false);
+            assertTrue("failed to restore field", false);
         }
 
 		context.turnOffAuthorization();
@@ -183,7 +183,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
         assertNotNull(context.getPerson());
-        assertEquals(person1,context.getPerson());
+        assertEquals(person1, context.getPerson());
 
         context.logout();
 
@@ -194,7 +194,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
         assertNotNull(context.getPerson());
-        assertEquals(person1,context.getPerson());
+        assertEquals(person1, context.getPerson());
     }
 
     /**
@@ -214,8 +214,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         Person person = context.getPerson();
         assertNotNull(person);
         // make sure person is new
-        assertNotSame(person1,person);
-        assertNotSame(person2,person);
+        assertNotSame(person1, person);
+        assertNotSame(person2, person);
         // clean up person
         context.logout();
         context.turnOffAuthorization();
@@ -245,7 +245,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertNotNull(person);
         // make sure person is new
         assertNotSame(person1,person);
-        assertNotSame(person2,person);
+        assertNotSame(person2, person);
         // clean up person
         context.logout();
         context.turnOffAuthorization();
@@ -271,7 +271,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertNotNull(person);
         // make sure person is new
         assertNotSame(person1,person);
-        assertNotSame(person2,person);
+        assertNotSame(person2, person);
         // make sure email got set
         assertEquals("netid3@myu.edu", person.getEmail());
         // clean up person
@@ -497,6 +497,36 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     }
 
     /**
+     * Negative cases that should result in failures:
+     * New user with whose reported email address isn't valid.
+     * Should test getting rejected by personRepo.createUser()
+     */
+    @Test
+    public void testNegativeCaseIllegalEmail() {
+        // invalid email reported by LDAP
+        instance.getMockAttributes().remove("uid");
+        instance.getMockAttributes().put("uid", "netid3");
+        instance.getMockAttributes().remove("mail");
+        instance.getMockAttributes().put("mail", "no-at-character");
+        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        AuthenticationResult result = instance.authenticate("netid3", "ignoredInMock", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        Person person = context.getPerson();
+        assertNull(person);
+
+        // no email reported by LDAP, and invalid configuration of netIdEmailDomain
+        instance.getMockAttributes().remove("mail");
+        instance.setNetIDEmailDomain("myu.edu"); // no leading "@"
+        result = instance.authenticate("netid3", "ignoredInMock", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        person = context.getPerson();
+        assertNull(person);
+
+    }
+
+    /**
      * Setting searchAnonymous to false with no searchUser or searchPassword should
      * trigger construction of a flat DN instead of search. When this happens,
      * attributes cannot be retrieved and so cannot be added to the existing user.
@@ -508,7 +538,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
         assertNotNull(context.getPerson());
-        assertEquals(person1,context.getPerson());
+        assertEquals(person1, context.getPerson());
         assertNull(person1.getFirstName());
         assertNull(person1.getBirthYear());
     }
@@ -536,30 +566,168 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     }
 
     /**
-     */
-    @Test
-    public void testNotOverridingExistingAttributes() {
-        
-    }
-
-    /**
+     * An existing user logs in.
+     * Email and all name fields should be unaffected.
+     * Optional attributes should be added if not already present,
+     * left unchanged if already present,
+     * and left unchanged if not present in LDAP
      */
     @Test
     public void testAttributesExistingUser() {
+        // LDAP has Billy, Bob, Thornton as name parts.
+        instance.getMockAttributes().remove("mail");
+        // email would be collision with person2, but shouldn't matter because shouldn't be set
+        instance.getMockAttributes().put("mail", "mail2@email.com");
+        instance.getMockAttributes().remove("mail2"); // perm email
+        // put some optional attributes onto person1
+        context.turnOffAuthorization();
+        person1.setCurrentCollege("Electoral");
+        person1.setPermanentEmailAddress("forever@gradschool.edu");
+        context.restoreAuthorization();
+        AuthenticationResult result = instance.authenticate("netid1", "ignoredInMock", null);
 
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        Person person = context.getPerson();
+        assertEquals(person1, person);
+
+        // make sure email and name did not update
+        assertEquals("mail1@email.com", person.getEmail());
+        assertNull(person.getFirstName());
+        assertNull(person.getMiddleName());
+        assertEquals("last1", person.getLastName());
+
+        // make sure existing optional fields was not affected by different value in LDAP
+        assertEquals("Electoral", person.getCurrentCollege());
+
+        // make sure existing optional fields was not affected by missing value in LDAP
+        assertEquals("forever@gradschool.edu", person.getPermanentEmailAddress());
+
+        // make sure all previously empty optional fields did update
+        assertEquals(Integer.valueOf(1955), person.getBirthYear());
+        assertEquals("student", person.getAffiliations().get(0));
+        assertEquals("+99 (55) 555-5555", person.getCurrentPhoneNumber());
+        assertEquals("1100 Congress Ave\nAustin, TX 78701", person.getCurrentPostalAddress());
+        assertEquals("555-555-1932", person.getPermanentPhoneNumber());
+        assertEquals("Another City\nAnother State 54321", person.getPermanentPostalAddress());
+        assertEquals("Ph.D.", person.getCurrentDegree());
+        assertEquals("Performance Studies", person.getCurrentDepartment());
+        assertEquals("Trapeze", person.getCurrentMajor());
+        assertEquals(Integer.valueOf(2014), person.getCurrentGraduationYear());
+        assertEquals(Integer.valueOf(1), person.getCurrentGraduationMonth());
+        assertEquals("S01234567", person.getPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID).getValue());
     }
 
     /**
+     * A new user logs in.
+     * Name, email, and all optional fields should update from LDAP.
      */
     @Test
     public void testAttributesNewUser() {
+        instance.getMockAttributes().remove("uid");
+        instance.getMockAttributes().put("uid", "netid3");
+        instance.getMockAttributes().remove("mail");
+        instance.getMockAttributes().put("mail", "mail3@email.com");
+        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        AuthenticationResult result = instance.authenticate("netid3", "ignoredInMock", null);
 
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        Person person = context.getPerson();
+        assertNotNull(person);
+        // make sure person is new
+        assertNotSame(person1, person);
+        assertNotSame(person2, person);
+
+        // make sure name and email were set
+        assertEquals("mail3@email.com", person.getEmail());
+        assertEquals("Billy", person.getFirstName());
+        assertEquals("Bob", person.getMiddleName());
+        assertEquals("Thornton", person.getLastName());
+
+        // make sure all optional fields were set
+        assertEquals(Integer.valueOf(1955), person.getBirthYear());
+        assertEquals("student", person.getAffiliations().get(0));
+        assertEquals("+99 (55) 555-5555", person.getCurrentPhoneNumber());
+        assertEquals("1100 Congress Ave\nAustin, TX 78701", person.getCurrentPostalAddress());
+        assertEquals("555-555-1932", person.getPermanentPhoneNumber());
+        assertEquals("Another City\nAnother State 54321", person.getPermanentPostalAddress());
+        assertEquals("perm@email.com", person.getPermanentEmailAddress());
+        assertEquals("Ph.D.", person.getCurrentDegree());
+        assertEquals("Performance Studies", person.getCurrentDepartment());
+        assertEquals("Trapeze", person.getCurrentMajor());
+        assertEquals("Clown College", person.getCurrentCollege());
+        assertEquals(Integer.valueOf(2014), person.getCurrentGraduationYear());
+        assertEquals(Integer.valueOf(1), person.getCurrentGraduationMonth());
+        assertEquals("S01234567", person.getPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID).getValue());
+
+        // clean up person
+        context.logout();
+        context.turnOffAuthorization();
+		person.delete();
+		context.restoreAuthorization();
     }
 
     /**
+     * User logs into account with no InstitutionalIdentifier, and one is
+     * set in configs. Should be added.
      */
     @Test
     public void testInstitutionalIdentifier() {
+        instance.setValueInstitutionalIdentifier("University of Atlantis");
+        AuthenticationResult result = instance.authenticate("netid1", "ignoredInMock", null);
 
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        Person person = context.getPerson();
+        assertEquals(person1, person);
+        assertEquals("University of Atlantis", person.getInstitutionalIdentifier());
+    }
+
+    /**
+     * LDAP has attributes that aren't in the Vireo config, and
+     * Vireo config has attributes configured that aren't returned by LDAP.
+     */
+    @Test
+    public void testExtraAndMissingLdapData() {
+        instance.getLdapFieldNames().remove(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalZip);
+        instance.getLdapFieldNames().remove(LDAPAuthenticationMethodImpl.AttributeName.CurrentDegree);
+        instance.getMockAttributes().remove("l"); // currentPostalCity
+        instance.getMockAttributes().remove("myuMajor"); // currentMajor
+        AuthenticationResult result = instance.authenticate("netid1", "ignoredInMock", null);
+
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        Person person = context.getPerson();
+        assertEquals(person1, person);
+        // missing things should be missing
+        assertEquals("1100 Congress Ave, TX", person.getCurrentPostalAddress());
+        assertNull(person.getCurrentDegree());
+        assertNull(person.getCurrentMajor());
+        // present things should be present
+        assertEquals("last1", person.getLastName());
+        assertEquals("Clown College", person.getCurrentCollege());
+    }
+
+    /*
+    *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress if present.
+    *  Attributes that are integer values will be parsed, of course.
+    *  PermanentEmailAddress must pass format validation.
+    *  StudentID will be stored as a user preference with key personPrefKeyForStudentID, since
+    *    there is no place else to store that datum.
+    *  UserStatus is not saved in the Person; it is only consulted when logging in.
+    *  InstitutionalIdentifier is saved into the Person from configuration value if
+    *    present, not from attributes, since it isn't typically in LDAP.
+    *  For phone numbers, "-" is synonymous with null.
+    *  For Addresses, "$" is synonymous with newline (and therefore a single "$" is
+    *    interpreted as blank)
+    *  For CurrentMajor, "Undeclared" is synonymous with null
+    *  */
+
+    /**
+     * Test data transformations, etc. done to the optional attributes as they're added
+     *
+     */
+    @Test
+    public void testDataTransformations() {
     }
 }
