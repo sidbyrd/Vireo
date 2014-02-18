@@ -30,7 +30,7 @@ import java.util.Map;
  * (which Shibboleth tests can't do either), configuration issues, and server
  * connection issues.
  */
-@SuppressWarnings({"NotNullable"})
+@SuppressWarnings({"NullableProblems"})
 public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
 	/* Dependencies */
