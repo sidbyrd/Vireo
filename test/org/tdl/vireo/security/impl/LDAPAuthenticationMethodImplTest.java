@@ -583,6 +583,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         context.turnOffAuthorization();
         person1.setCurrentCollege("Electoral");
         person1.setPermanentEmailAddress("forever@gradschool.edu");
+        person1.addPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID, "S9999");
+        person1.save();
         context.restoreAuthorization();
         AuthenticationResult result = instance.authenticate("netid1", "ignoredInMock", null);
 
@@ -599,6 +601,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
         // make sure existing optional fields was not affected by different value in LDAP
         assertEquals("Electoral", person.getCurrentCollege());
+        assertEquals("S9999", person.getPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID).getValue());
+        assertEquals(1, person.getPreferences().size());
 
         // make sure existing optional fields was not affected by missing value in LDAP
         assertEquals("forever@gradschool.edu", person.getPermanentEmailAddress());
@@ -615,7 +619,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertEquals("Trapeze", person.getCurrentMajor());
         assertEquals(Integer.valueOf(2014), person.getCurrentGraduationYear());
         assertEquals(Integer.valueOf(1), person.getCurrentGraduationMonth());
-        assertEquals("S01234567", person.getPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID).getValue());
     }
 
     /**
@@ -659,6 +662,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertEquals(Integer.valueOf(2014), person.getCurrentGraduationYear());
         assertEquals(Integer.valueOf(1), person.getCurrentGraduationMonth());
         assertEquals("S01234567", person.getPreference(LDAPAuthenticationMethodImpl.personPrefKeyForStudentID).getValue());
+        assertEquals(1, person.getPreferences().size());
 
         // clean up person
         context.logout();
@@ -708,26 +712,87 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertEquals("Clown College", person.getCurrentCollege());
     }
 
-    /*
-    *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress if present.
-    *  Attributes that are integer values will be parsed, of course.
-    *  PermanentEmailAddress must pass format validation.
-    *  StudentID will be stored as a user preference with key personPrefKeyForStudentID, since
-    *    there is no place else to store that datum.
-    *  UserStatus is not saved in the Person; it is only consulted when logging in.
-    *  InstitutionalIdentifier is saved into the Person from configuration value if
-    *    present, not from attributes, since it isn't typically in LDAP.
-    *  For phone numbers, "-" is synonymous with null.
-    *  For Addresses, "$" is synonymous with newline (and therefore a single "$" is
-    *    interpreted as blank)
-    *  For CurrentMajor, "Undeclared" is synonymous with null
-    *  */
-
     /**
-     * Test data transformations, etc. done to the optional attributes as they're added
-     *
+     * Test special per-field data transformations/validations done to
+     * optional attributes as they're added
+     * Specifically:
+     * PermanentEmailAddress should not be saved if it doesn't validate.
+     * CurrentPhoneNumber and PermanentPhoneNumber should not be saved if "-";
+     * CurrentMajor should not be saved if "Undeclared" (case insensitive).
+     * CurrentPostalAddress should be assembled from address, city, state,
+     *   and zip, whichever are present, as long as at least address is present.
+     * PermanentPostalAddress should have any "$" characters replaced with newlines.
+     * BirthYear, CurrentGraduationMonth, CurrentGraduationYear should not be
+     *   saved if values are not integers (negative is valid in Person, so I
+     *   guess it's fine with me). CurrentGraduationMonth must be in [0..11].
      */
     @Test
-    public void testDataTransformations() {
+    public void testOptionalDataTransformations() {
+        Map<String, String> ldap = instance.getMockAttributes();
+        // invalid permanent email
+        ldap.remove("mail3");
+        ldap.put("mail3", "invalidEmail");
+        // pseudo-null telephone numbers
+        ldap.remove("telephoneNumber");
+        ldap.put("telephoneNumber", "-");
+        ldap.remove("myuPermPhone");
+        ldap.put("myuPermPhone", "-");
+        // pseudo-null major
+        ldap.remove("myuMajor");
+        ldap.put("myuMajor", "unDECLared");
+        // missing address portion of current address
+        ldap.remove("postalAddress");
+        // permanent address boils down to empty
+        ldap.remove("myuPermAddress");
+        ldap.put("myuPermAddress", "$$$");
+        // non-integer values
+        ldap.remove("myuBirthYear");
+        ldap.put("myuBirthYear", "0xfeed");
+        ldap.remove("myuGradYear");
+        ldap.put("myuGradYear", "3.14159");
+        ldap.remove("myuGradMonth");
+        ldap.put("myuGradMonth", "12");
+
+        AuthenticationResult result = instance.authenticate("netid1", "ignoredInMock", null);
+
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        Person person = context.getPerson();
+        assertEquals(person1, person);
+
+        // everything above should be rejected as empty or invalid
+        assertNull(person.getPermanentEmailAddress());
+        assertNull(person.getCurrentPhoneNumber());
+        assertNull(person.getPermanentPhoneNumber());
+        assertNull(person.getCurrentMajor());
+        assertNull(person.getCurrentPostalAddress());
+        assertNull(person.getPermanentPostalAddress());
+        assertNull(person.getBirthYear());
+        assertNull(person.getCurrentGraduationYear());
+        assertNull(person.getCurrentGraduationMonth());
+
+        context.logout();
+
+        // newlines in permanent address
+        ldap.remove("myuPermAddress");
+        ldap.put("myuPermAddress", "line1$line2$line3");
+        // combining current address
+        ldap.put("postalAddress", "1234 Main St");
+        ldap.remove("l"); // no city
+        // telephone with "-" but other things too
+        ldap.remove("telephoneNumber");
+        ldap.put("telephoneNumber", "-55 (82) 123-456");
+
+        result = instance.authenticate("netid1", "ignoredInMock", null);
+
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        person = context.getPerson();
+        assertEquals(person1, person);
+
+        // everything above should be accepted, even if it's changed in the process.
+        assertEquals("line1\nline2\nline3", person.getPermanentPostalAddress());
+        assertEquals("1234 Main St, TX 78701", person.getCurrentPostalAddress());
+        assertEquals("-55 (82) 123-456", person.getCurrentPhoneNumber());
     }
 }

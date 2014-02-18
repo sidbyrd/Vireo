@@ -99,11 +99,9 @@ public class LDAPAuthenticationMethodImpl extends
 
     // The names of all the Person attributes and user data attributes that can be collected from LDAP
     //
-    // Would've included DisplayName and CurrentEmailAddress as attribute names, but both those fields in
-    // the Person object suffer from logic that lies about whether a real value is present (and not just
-    // a derived value), and code exists that can recycle derived values back and store them as if they were
-    // real values. That is incompatible with a login model that needs to know whether a real, non-derived
-    // value is present in order to know whether to update the field or not.
+    // Note: LDAP can include a value for displayName, and Shibboleth includes currentEmail, but setting
+    // either of those from an external source seems incompatible with the way the behavior of those
+    // attributes was designed.
     public enum AttributeName {
         NetID,
         Email,
@@ -367,19 +365,8 @@ public class LDAPAuthenticationMethodImpl extends
         // 1. Get or construct the correct DN for the user.
         //    If not using a flat LDAP structure with no anon access and no admin login,
         //      this will connect to LDAP and also retrieve user attributes.
-        String dn;
         Map<AttributeName,String> attributes = new HashMap<AttributeName, String>();
-
-        if (!searchAnonymous && (StringUtils.isBlank(searchUser) || StringUtils.isBlank(searchPassword))) {
-            // Anonymous search not allowed, and no admin user to search as.
-            // Just construct the DN for a flat directory structure instead of searching for it.
-            // Attributes will not be available.
-            dn = ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
-        } else {
-            // Search LDAP, hierarchically if needed, to find the correct DN for the user.
-            // This also looks up and stores the user's attributes.
-            dn = ldapUserSearch(netID, attributes);
-        }
+        String dn = ldapUserSearch(netID, attributes);
 
         if (StringUtils.isBlank(dn)) {
             // The given netID does not exist in LDAP, or search failed
@@ -401,7 +388,7 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         // 3. Make sure we have the right email address from LDAP for the user, since
-        //     it's required and possibly needed next.
+        //     it's required and possibly needed to find the Person.
         String email = attributes.remove(AttributeName.Email);
         if (StringUtils.isBlank(email) && !StringUtils.isBlank(netIDEmailDomain)) {
             email = netID + netIDEmailDomain;
@@ -424,6 +411,11 @@ public class LDAPAuthenticationMethodImpl extends
                         // Found existing user with no existing netID who
                         // presumably had not logged in via LDAP before.
                         // Add netID to this user.
+                        // This seems secure as long as the owner of this existing account wasn't
+                        // ever able to freely change their email address without verification,
+                        // and as long as the user authenticating against LDAP cannot freely change
+                        // the email address LDAP reports for them, both of which seem to be the case.
+                        // If this still makes you uncomfortable, turn this feature off.
                         Logger.warn("ldap: added netID=" + netID + " to existing person id="+person.getId()+" email=" + email);
                         person.setNetId(netID);
                         person.save();
@@ -534,6 +526,8 @@ public class LDAPAuthenticationMethodImpl extends
      * Search for the user's record in LDAP to determine the correct DN to use
      * later when checking that the user credentials will authenticate.
      * Also retrieve user attributes while we're in there.
+     * Or if no ability to bind for search, just construct a DN for a flat-directory
+     * system, and return no attributes.
      * @param netID the id of the user to search for
      * @param attributes a caller-supplied empty Map into which we will add, for each retrieved
      *      LDAP value for the specified user, whose field name matched a value configured in
@@ -542,6 +536,13 @@ public class LDAPAuthenticationMethodImpl extends
      *      not found or an error occurred
      */
     protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
+
+        if (!searchAnonymous && (StringUtils.isBlank(searchUser) || StringUtils.isBlank(searchPassword))) {
+            // Anonymous search not allowed, and no admin user to search as.
+            // Just construct the DN for a flat directory structure instead of searching for it.
+            // Attributes will not be available.
+            return ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
+        }
 
         // Set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>(11);
@@ -566,7 +567,7 @@ public class LDAPAuthenticationMethodImpl extends
                 // Create initial context
                 ctx = new InitialDirContext(env);
 
-                // look up attributes
+                // search for the user's LDAP record, filtering on netID, with configured search setup
                 SearchControls controls = new SearchControls();
                 controls.setSearchScope(searchScope.code());
                 NamingEnumeration<SearchResult> answer = ctx.search(
@@ -574,17 +575,17 @@ public class LDAPAuthenticationMethodImpl extends
                         "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
                         controls);
 
-                // if there was one match, save it.
+                // if one user matched, save it.
                 if (answer.hasMoreElements()) {
                     sr = answer.next();
                 }
-                // if there was more than one result, well, um... Oh dear. Config error?
+                // if more than one user matched the same netID, well, um... Oh dear. Config error?
                 if (answer.hasMoreElements()) {
                     Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
                 }
                 
             } else {
-                // for mock, return the mock results if the given NetID matches the mock NetID.
+                // for mock, save the mock results if the given NetID matches the mock record's NetID field.
                 if (netID.equals(mockAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
                     // for mock, make a fake SearchResult using given mock attributes and a phony DN
                     Attributes attrs = new BasicAttributes();
@@ -704,18 +705,27 @@ public class LDAPAuthenticationMethodImpl extends
      * @param person the person to add attributes to
      * @param attributes values for the attributes, mapped as values to attribute name keys.
      *  Certain attributes get special treatment:
-     *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress if present.
-     *  Attributes that are integer values will be parsed, of course.
-     *  PermanentEmailAddress must pass format validation.
+     *  CurrentPostalAddress, City, State, and Zip will be combined into CurrentPostalAddress
+     *    if present. This does not apply to PermanentPostalAddress since I've never seen
+     *    an LDAP that broke down the permanent address, only the current one.
+     *  PermanentPostalAddress: "$" is synonymous with newline (and therefore a single "$"
+     *    is interpreted as blank). Some LDAP systems use this convention, and it shouldn't
+     *    hurt on those that don't.
+     *  BirthYear, CurrentGraduationMonth, CurrentGraduationYear: integer values must be
+     *    parsed successfully. If not, the value will be ignored. In addition,
+     *    grad month must be within the valid range for person.setGraduationMonth() or it
+     *    will be ignored.
+     *  PermanentEmailAddress must pass format validation. If not, the value will be ignored.
      *  StudentID will be stored as a user preference with key personPrefKeyForStudentID, since
-     *    there is no place else to store that datum.
-     *  UserStatus is not saved in the Person; it is only consulted when logging in.
+     *    there is no place else in Person to store that field.
+     *  UserStatus is not saved to the Person; it is only consulted when logging in and is
+     *    ignored here.
      *  InstitutionalIdentifier is saved into the Person from configuration value if
      *    present, not from attributes, since it isn't typically in LDAP.
-     *  For phone numbers, "-" is synonymous with null.
-     *  For Addresses, "$" is synonymous with newline (and therefore a single "$" is
-     *    interpreted as blank)
-     *  For CurrentMajor, "Undeclared" is synonymous with null
+     *  CurrentPhoneNumber and PermanentPhoneNumber: "-" is synonymous with null. Some
+     *    LDAP systems use this convention, and it shouldn't hurt on those that don't.
+     *  CurrentMajor: "Undeclared" is synonymous with null. If we saved the "undeclared"
+     *    value, it would block a later actual choice of majors from overwriting.
      */
     void addOptionalAttributes(Person person, Map<AttributeName, String> attributes) {
         String value;
@@ -842,7 +852,7 @@ public class LDAPAuthenticationMethodImpl extends
                 person.setCurrentGraduationYear(currentGraduationYear);
                 modified = true;
             } catch (NumberFormatException nfe) {
-                Logger.warn("ldap: Unable to interpret current graduation year attribute '"
+                Logger.warn("ldap: unable to interpret current graduation year attribute '"
                         + attributes.get(AttributeName.CurrentGraduationYear)
                         + "'='" + value + "' as an integer.");
             }
@@ -855,9 +865,13 @@ public class LDAPAuthenticationMethodImpl extends
                 person.setCurrentGraduationMonth(currentGraduationMonth);
                 modified = true;
             } catch (NumberFormatException nfe) {
-                Logger.warn("ldap: Unable to interpret current graduation month attribute '"
+                Logger.warn("ldap: unable to interpret current graduation month attribute '"
                         + attributes.get(AttributeName.CurrentGraduationMonth)
                         + "'='" + value + "' as an integer.");
+            } catch (IllegalArgumentException iae) {
+                Logger.warn("ldap: unable to set current graduation month attribute '"
+                        + attributes.get(AttributeName.CurrentGraduationMonth)
+                        + "'='" + value + "' because "+iae.getMessage());
             }
         }
 
@@ -877,4 +891,16 @@ public class LDAPAuthenticationMethodImpl extends
             person.save();
         }
     }
+
+    /*
+     * Absolutely not useful for this auth method--we cannot statelessly tell anything
+     * about what the failure was from the information provided. And stashing it in the
+     * request object seems tacky. Ideally, AuthenticationResult would have a message
+     * field where we could put some details if it were important to report anything
+     * more than a mere "failed".
+    @Override
+    public String getFailureMessage(Request request, AuthenticationResult result) {
+    }
+    */
+
 }
