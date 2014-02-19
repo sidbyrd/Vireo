@@ -30,13 +30,13 @@ public class LDAPAuthenticationMethodImpl extends
 	/* Injected configuration */
 
 	// URL of server
-	private String providerURL = "ldaps://ldap.myu.edu:636/";
+	private String providerURL = "";
 
     // context for constructing DN
-    private String objectContext = "OU=people,DC=myu,DC=edu";
+    private String objectContext = "";
 	
     // context for searching for DN and attributes
-    private String searchContext = "OU=people,DC=myu,DC=edu";
+    private String searchContext = "";
 
     /**
      * LDAP search scope. May be object scope, single-level, or subtree.
