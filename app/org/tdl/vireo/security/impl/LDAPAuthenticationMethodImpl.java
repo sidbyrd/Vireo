@@ -564,18 +564,9 @@ public class LDAPAuthenticationMethodImpl extends
      *      netID was provided, or null if not found or an error occurred
      */
     protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
-        // Are we able to search?
-        if (!searchAnonymous && (StringUtils.isBlank(searchUser) || StringUtils.isBlank(searchPassword))) {
-            // Anonymous search not allowed, and no admin user to search as.
-            // Just construct the DN for a flat directory structure instead of searching for it.
-            // Attributes will not be available.
-            return ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
-        }
 
         // Set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>(11);
-        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
-        env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
         // set up authentication
         if (!StringUtils.isBlank(searchUser) && !StringUtils.isBlank(searchPassword)) {
@@ -584,9 +575,21 @@ public class LDAPAuthenticationMethodImpl extends
             env.put(javax.naming.Context.SECURITY_PRINCIPAL, searchUser);
             env.put(javax.naming.Context.SECURITY_CREDENTIALS, searchPassword);
         } else {
-            // Use anonymous authentication
-            env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "none");
+            // No credentials; must use anonymous authentication
+            if (searchAnonymous) {
+                // Anonymous search is allowed. Good.
+                env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "none");
+            } else {
+                // Anonymous search not allowed. We have no way left to search.
+                // Just construct the DN for a flat directory structure instead of searching for it.
+                // Attributes will not be available.
+                return ldapFieldNames.get(AttributeName.NetID) + "=" + netID + "," + objectContext;
+            }
         }
+
+        // set up connection
+        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
         // set up search scope
         SearchControls controls = new SearchControls();
