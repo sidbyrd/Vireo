@@ -24,12 +24,6 @@ import java.util.Map;
  * we save the current state of, run our tests, then restore the state after the
  * test has run. This means that if a tests fails we may leave the method in a
  * changed state, but other than that it should remain as original configured.
- *
- * Note: unlike with Shibboleth where the HTTP headers contain everything, all
- * LDAP responses must be mocked since there is no universally available and consistent
- * live server to talk to. We can test everything this way except password checking
- * (which Shibboleth tests can't do either), configuration issues, and server
- * connection issues.
  */
 @SuppressWarnings({"NullableProblems"})
 public class LDAPAuthenticationMethodImplTest extends UnitTest {
