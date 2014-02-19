@@ -705,6 +705,7 @@ public class LDAPAuthenticationMethodImpl extends
                 // Try to bind
                 ctx = new InitialDirContext(env);
             } else {
+                // for mock, check that DN and password match mock values
                 if (StringUtils.isBlank(mockUserDn) || !mockUserDn.equals(dn)) {
                     throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+((mockUserDn==null)?"null":mockUserDn));
                 }
