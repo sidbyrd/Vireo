@@ -1,6 +1,7 @@
 package org.tdl.vireo.security.impl;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.poi.util.StringUtil;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.security.AuthenticationMethod;
@@ -704,11 +705,10 @@ public class LDAPAuthenticationMethodImpl extends
                 // Try to bind
                 ctx = new InitialDirContext(env);
             } else {
-                // For mock, make sure the DN is right and verify password.
-                if (!dn.equals(mockUserDn)) {
+                if (StringUtils.isBlank(mockUserDn) || !mockUserDn.equals(dn)) {
                     throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+mockUserDn);
                 }
-                if (!mockPassword.equals(password)) {
+                if (StringUtils.isBlank(mockPassword) || !mockPassword.equals(password)) {
                     throw new NamingException("ldap.mockserver: incorrect password");
                 }
             }
