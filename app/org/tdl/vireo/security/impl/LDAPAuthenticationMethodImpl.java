@@ -30,7 +30,7 @@ public class LDAPAuthenticationMethodImpl extends
 	/* Injected configuration */
 
 	// URL of server
-	public String providerURL = "ldaps://ldap.myu.edu:636/";
+	private String providerURL = "ldaps://ldap.myu.edu:636/";
 
     // context for constructing DN
     private String objectContext = "OU=people,DC=myu,DC=edu";
@@ -38,6 +38,10 @@ public class LDAPAuthenticationMethodImpl extends
     // context for searching for DN and attributes
     private String searchContext = "OU=people,DC=myu,DC=edu";
 
+    /**
+     * LDAP search scope. May be object scope, single-level, or subtree.
+     * Correct value will depend on your LDAP setup.
+     */
     public enum SearchScope {
         /**
          * object level LDAP search scope
@@ -87,8 +91,10 @@ public class LDAPAuthenticationMethodImpl extends
     // value for UserStatus attribute indicating active account, or null to disable checking
     private String valueUserStatusActive = null;
 
-    // The names of all the Person attributes and user data attributes that can be collected from LDAP
-    //
+    /**
+     * Names for all the Person attributes and user data attributes that can be collected from LDAP.
+     * Most correspond to fields in Person.
+     */
     // Note: LDAP can include a value for displayName, and Shibboleth includes currentEmail, but setting
     // either of those from an external source seems incompatible with the way the behavior of those
     // attributes was designed.
@@ -118,9 +124,13 @@ public class LDAPAuthenticationMethodImpl extends
         UserStatus
     }
 
-    // Student ID is stored as a preference in Person, since there's no dedicated field for it.
-    // Pros: doesn't require db schema change; having arbitrary named String data on a student is flexible
-    // Cons: this isn't what people/code expects to see in a field called preferences.
+    /**
+     * Student ID is stored as a Preference in Person, since there's no dedicated field for it.
+     * This is the name of the Preference it's stored in.
+     *
+     * Pros: doesn't require db schema change; having arbitrary named String data on a student is flexible
+     * Cons: this isn't what people/code expects to see in a field called preferences.
+     */
     public static final String personPrefKeyForStudentID = "LDAP_STUDENT_ID";
 
     // mapping from names of fields we can collect to the names used in LDAP for those fields
@@ -135,7 +145,9 @@ public class LDAPAuthenticationMethodImpl extends
     // mock DN expected for authentication match
     private String mockUserDn;
 
-    // mock password might as well just be hardcoded.
+    /**
+     * mock password might as well just be hardcoded.
+     */
     public static final String mockPassword = "secret";
 
     /**
