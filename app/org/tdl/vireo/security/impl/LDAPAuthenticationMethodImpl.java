@@ -537,12 +537,6 @@ public class LDAPAuthenticationMethodImpl extends
             // These are required fields, so any update is necessarily an overwrite, not
             // merely an addition. (For name, only 1 of first,middle,last must be present,
             // but it makes no sense to update one without treating all three together.)
-            // Email: if a student goes inactive and has to switch to a gmail account,
-            //      campus LDAP won't reflect that. We should leave the student's choice
-            //      in place.
-            // Name: sometimes a student wants to publish under a name that isn't exactly
-            //      how they registered with the university. We should not overwrite
-            //      local edits here either.
 
             // 7. Log the user in
             context.login(person);
