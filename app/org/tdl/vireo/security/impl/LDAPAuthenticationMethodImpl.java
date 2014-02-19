@@ -511,8 +511,6 @@ public class LDAPAuthenticationMethodImpl extends
 					person = personRepo.createPerson(netID, email, firstName, lastName, RoleType.STUDENT).save();
 				} catch (RuntimeException re) {
 					// Unable to create new person.
-                    // We already checked that netID doesn't match and email doesn't match, so it must
-                    // be some other sort of error.
 					Logger.error(re,"ldap: attempted and failed to create new person with netID="+netID+" email="+email);
 					return AuthenticationResult.BAD_CREDENTIALS;
 				}
