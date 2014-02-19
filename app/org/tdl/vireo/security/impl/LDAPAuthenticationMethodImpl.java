@@ -706,7 +706,7 @@ public class LDAPAuthenticationMethodImpl extends
                 ctx = new InitialDirContext(env);
             } else {
                 if (StringUtils.isBlank(mockUserDn) || !mockUserDn.equals(dn)) {
-                    throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+mockUserDn);
+                    throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+((mockUserDn==null)?"null":mockUserDn));
                 }
                 if (StringUtils.isBlank(mockPassword) || !mockPassword.equals(password)) {
                     throw new NamingException("ldap.mockserver: incorrect password");
