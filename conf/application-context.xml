@@ -112,7 +112,8 @@
         <property name="searchUser" value="${auth.ldap.search.user}"/>
         <property name="searchPassword" value="${auth.ldap.search.password}"/>
         <property name="netIDEmailDomain" value="${auth.ldap.netID.emaildomain}"/>
-        <property name="allowNetIdAsMissingName" value="${auth.ldap.netID.allowAsMissingName}"/>
+        <property name="allowNetIdAsMissingName" value="${auth.ldap.allowNetIdAsMissingName}"/>
+        <property name="allowNewUserEmailMatch" value="${auth.ldap.allowNewUserEmailMatch}"/>
         <property name="valueInstitutionalIdentifier" value="${auth.ldap.institutional-identifier.value}"/>
         <property name="valueUserStatusActive" value="${auth.ldap.userstatus.value.active}"/>
         <property name="ldapFieldNames">

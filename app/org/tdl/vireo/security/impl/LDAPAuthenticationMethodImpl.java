@@ -17,8 +17,10 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 
+// adapted starting with org.dspace.authenticate.LDAPAuthentication and several Vireo classes.
 /**
  * Authenticates netID and password against LDAP. Retrieves personal information.
+ * Selects or creates correct Person. Logs in.
  */
 public class LDAPAuthenticationMethodImpl extends
 		AbstractAuthenticationMethodImpl.AbstractExplicitAuthenticationMethod implements
@@ -26,29 +28,13 @@ public class LDAPAuthenticationMethodImpl extends
 
 	/* Injected configuration */
 
-	// This is the url to the institution's ldap server. The /o=myu.edu
-    // may or may not be required depending on the LDAP server setup.
-    // A server may also require the ldaps:// protocol.
+	// URL of server
 	public String providerURL = "ldaps://ldap.myu.edu:636/";
 
-    // This is the object context used when authenticating the
-    // user.  It is appended to the id_field and username.
-    // For example uid=username,ou=people,o=myu.edu.  This must match
-    // the LDAP server configuration.
-    // objectContext = ou=people,o=myu.edu
+    // context for constructing DN
     private String objectContext = "OU=people,DC=myu,DC=edu";
 	
-    // This is the search context used when looking up a user's
-    // LDAP object to retrieve their data for autoregistering.
-    // With autoregister turned on, when a user authenticates
-    // without an EPerson object, a search on the LDAP directory to
-    // get their name and email address is initiated so that DSpace
-    // can create a EPerson object for them.  So after we have authenticated against
-    // uid=username,ou=people,o=byu.edu we now search in ou=people
-    // for filtering on [uid=username].  Often the
-    // searchContext is the same as the objectContext
-    // parameter.  But again this depends on each individual LDAP server
-    // configuration.
+    // context for searching for DN and attributes
     private String searchContext = "OU=people,DC=myu,DC=edu";
 
     public enum SearchScope {
@@ -78,23 +64,26 @@ public class LDAPAuthenticationMethodImpl extends
     }
     private SearchScope searchScope = SearchScope.OBJECT;
 
-    // If true, the initial bind will be performed anonymously.
+    // search for user DN and attributes anonymously?
     private boolean searchAnonymous = false;
 
-    // if hierarchical LDAP search is required, the login credentials for the search
+    // if non-anonymous search is required, the login credentials for the search
     private String searchUser = null;
     private String searchPassword = null;
 
     // added to netid to create an email address if no email address is available.
     private String netIDEmailDomain = null;
 
-    // whether to allow account creation using NetID as filler value for missing name
+    // allow account creation using NetID as filler value for missing name?
     private boolean allowNetIdAsMissingName = false;
+
+    // allow new users to match to existing NetID-free user accounts based on email?
+    private boolean allowNewUserEmailMatch = false;
 
     // boilerplate value for person.institutionalIdentifier, if desired
     private String valueInstitutionalIdentifier = null;
 
-    // value for UserStatus attribute indicating active account
+    // value for UserStatus attribute indicating active account, or null to disable checking
     private String valueUserStatusActive = null;
 
     // The names of all the Person attributes and user data attributes that can be collected from LDAP
@@ -129,8 +118,8 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     // Student ID is stored as a preference in Person, since there's no dedicated field for it.
-    // Pros: doesn't require db schema change, having arbitrary named String data on a student is flexible
-    // Cons: this isn't what people expect to see in a field called preferences.
+    // Pros: doesn't require db schema change; having arbitrary named String data on a student is flexible
+    // Cons: this isn't what people/code expects to see in a field called preferences.
     public static final String personPrefKeyForStudentID = "LDAP_STUDENT_ID";
 
     // mapping from names of fields we can collect to the names used in LDAP for those fields
@@ -139,16 +128,20 @@ public class LDAPAuthenticationMethodImpl extends
 	// Whether LDAP responses and authentication will be mocked or real.
 	private boolean mock = false;
 
-	// map of fake attributes injected directly for mock
+	// map of fake ldap user attributes injected directly for mock
     private Map<String, String> mockAttributes;
 
-    // mock DN expected for authentication
+    // mock DN expected for authentication match
     private String mockUserDn;
+
+    // mock password might as well just be hardcoded.
+    public static final String mockPassword = "secret";
 
     /**
      * This is the url to the institution's ldap server. The /o=myu.edu
      * may or may not be required depending on the LDAP server setup.
      * A server may also require the ldaps:// protocol.
+     * Example: ldaps://ldap.myu.edu:636/
      * @param providerURL URL required to talk to LDAP server
      */
     public void setProviderURL(String providerURL) {
@@ -157,7 +150,7 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * This is the object context used when authenticating the user.
-     *  It is appended to the id_field and username.
+     *  It is appended to the NetID field and username.
      *  For example uid=username,ou=people,o=myu.edu.
      *  This must match the LDAP server configuration.
      * @param objectContext LDAP object context where users may be found
@@ -167,15 +160,10 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * This is the search context used when looking up a user's
-     * LDAP object to retrieve their data for new user registration.
-     * When a user authenticates without a Person object, a search on
-     * the LDAP directory to get their name and email address is initiated
-     * so that Vireo can create a Person object for them.  So after we
-     * have authenticated against uid=username,ou=people,o=byu.edu we now
-     * search in ou=people for filtering on [uid=username].  Often the
-     * searchContext is the same as the objectContext.
-     * But again this depends on each individual LDAP server configuration.
+     * This is the search context used when searching for a user to
+     * retrieve their DN and user attributes.
+     * Often the searchContext is the same as the objectContext,
+     * but this depends on each individual LDAP server configuration.
      * @param searchContext LDAP context used to search for user info
      */
     public void setSearchContext(String searchContext) {
@@ -183,8 +171,8 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * This is the optional search scope value for the LDAP search during
-     * user creation. This will depend on your LDAP server setup.
+     * This is the optional search scope value for the initial LDAP search.
+     * This will depend on your LDAP server setup.
      * @param searchScope one of three valid search scopes
      */
     public void setSearchScope(SearchScope searchScope) {
@@ -192,19 +180,22 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     If your users are spread out across a hierarchical tree on your
-     LDAP server, you will need to search the tree to find the full DN of
-     the user who is logging in.
-     * If anonymous search is allowed on your LDAP server, you will need to set
-       search.anonymous = true
+     * If your users are spread out across a hierarchical tree on your
+       LDAP server, or if you want to retrieve attributes about users,
+       you will need to search the tree to find the full DN of the user
+       who is logging in.
+     * If your server allows anonymous search, you may set searchAnonymous
+       to true.
      * If not, you will need to specify the full DN and password of a
-       user that is allowed to bind in order to search for the users.
-     * If neither search.anonymous is true, nor search.user is specified,
+       user that is allowed to bind in order to search for the users
+       using setSearchUser() and setSearchPassword().
+     * If neither searchAnonymous is true, nor searchUser/Pass is specified,
        LDAP will not do the hierarchical search for a DN and will assume
-       a flat directory structure.
+       a flat directory structure. Since it cannot search, it will also
+       not be able to return user attributes.
      * @param searchAnonymous If true, the initial bind will be performed
      * anonymously to get the correct DN and retrieve attributes.
-     *  This applies to both flat and hierarchical searches.
+     * This applies to both flat and hierarchical searches.
      */
     public void setSearchAnonymous(boolean searchAnonymous) {
         this.searchAnonymous = searchAnonymous;
@@ -212,7 +203,10 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * Set credentials of a user allowed to connect to the LDAP server and
-     * search hierarchically for the DN and attributes of the user trying to log in.
+     * search for the DN and attributes of the user trying to log in. This is
+     * not required if your LDAP may be searched anonymously and searchAnonymous
+     * is true, or if you are using a flat directory structure and do not need
+     * to search for user attributes.
      * @param searchUser the full DN of the authorized search account
      */
     public void setSearchUser(String searchUser) {
@@ -221,7 +215,10 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * Set credentials of a user allowed to connect to the LDAP server and
-     * search hierarchically for the DN and attributes of the user trying to log in.
+     * search for the DN and attributes of the user trying to log in. This is
+     * not required if your LDAP may be searched anonymously and searchAnonymous
+     * is true, or if you are using a flat directory structure and do not need
+     * to search for user attributes.
      * @param searchPassword the plaintext password of the authorized search account
      */
     public void setSearchPassword(String searchPassword) {
@@ -248,6 +245,8 @@ public class LDAPAuthenticationMethodImpl extends
      * set this to true to allow using the NetID as a substitute value for the
      * lastName field, in order to satisfy Vireo's required Person fields.
      * Otherwise if there is no name available, login will be rejected.
+     * If you do this, you should probably have a procedure for manually
+     * correcting the names later.
      * @param allowNetIdAsMissingName true to allow NetID substitution for lastName, or
      * false to disallow login if no name available.
      */
@@ -256,18 +255,44 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * LDAP is usually single-institution, so if this is set, all created users
-     * will get this value set as their institutional identifier
-     * @param valueInstitutionalIdentifier a boilerplate inst. id.
+     * If user A submits valid NetId credentials and there is no existing Vireo
+     * person with that NetID, but there is an existing person B with the email
+     * address derived from LDAP for user A and no existing NetID, should user A
+     * in be allowed to claim the existing person B account? If so, person B's
+     * NetID will be filled in, so this would only happen once per user. This is
+     * useful if you are transitioning from password accounts to LDAP accounts,
+     * for example.
+     *
+     * Security note: This seems secure as long as person B wasn't ever able to
+     * freely change their email address without verification (in order to
+     * capture the new and still retain password access to the account), and as
+     * long as user A cannot freely change the email address LDAP reports for
+     * them (in order to hijack an person B's existing password account). Both
+     * of these conditions seem to be the default case unless you configure
+     * things differently.
+     * If this still makes you uncomfortable, leave this feature off.
+     * @param allowNewUserEmailMatch whether to allow claiming accounts based on email
+     */
+    public void setAllowNewUserEmailMatch(boolean allowNewUserEmailMatch) {
+        this.allowNewUserEmailMatch = allowNewUserEmailMatch;
+    }
+
+    /**
+     * LDAP is usually single-institution, so if this is set, all users
+     * will get this value set as their institutional identifier (as long
+     * as they don't already have a different one set).
+     * @param valueInstitutionalIdentifier a boilerplate inst. id. to set
      */
     public void setValueInstitutionalIdentifier(String valueInstitutionalIdentifier) {
         this.valueInstitutionalIdentifier = valueInstitutionalIdentifier;
     }
 
     /**
-     * Set value that the UserStatus attribute should have if student is to
-     * be allowed to log into Vireo for the first time. If you don't want to
-     * perform this check, leave this field null.
+     * Set value that the UserStatus attribute (if present) must have to
+     * permit a user to log into Vireo for the first time. If the attribute
+     * is present but differs from what is set here, login will be denied
+     * for any user not already in the Vireo system.
+     * If you don't want to perform this check, leave this field null.
      * @param valueUserStatusActive value indicating user is active
      */
     public void setValueUserStatusActive(String valueUserStatusActive) {
@@ -305,18 +330,18 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * @param mock
-     *            True if LDAP authentication should be mocked with test
-     *            attributes. This allows you to use the application without it
-     *            talking to a real LDAP.
+     * True if LDAP authentication should be mocked with test
+     * attributes. This allows you to use the application without it
+     * talking to a real LDAP.
      */
     public void setMock(boolean mock) {
         this.mock = mock;
     }
 
     /**
-     * If this authentication method is configured to Mock an LDAP
-     * connection then these are the LDAP attributes that will be assumed
-     * when authenticating.
+     * If this authentication method is configured to mock an LDAP
+     * connection then these are the raw LDAP field names and attributes
+     * that will be returned from the mock LDAP service when authenticating.
      *
      * The map should contain LDAP field names as keys and corresponding
      * LDAP attribute data as values.
@@ -343,18 +368,32 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
 	 * LDAP authentication. Handles both:
-     * - authentication against a flat LDAP tree where all users are in the same unit
-     *   (if search.user or search.password is not set)
-     * - authentication against structured hierarchical LDAP trees of users.
-     *   An initial bind is required using a user name and password in order to
-     *   search the tree and find the DN of the user. A second bind is then required to
-     *   check the credentials of the user by binding directly to their DN.
-	 *
-     * Also looks up user attributes and applies them if configured.
-     * Required attributes (email and name) are only updated the first time a
-     * user logs in with their netID. Optional attributes (everything else) may be
-     * added from LDAP on subsequent logins, but never modified from LDAP (to protect
-     * local edits).
+     * 1) Authentication against a flat LDAP tree where all users are in the same unit
+     *   and searching LDAP for a user's record is not possible.
+     *
+     *   This method of search cannot return user attributes, so pay attention
+     *   to setAllowNetIdAsMissingName() and setNetIdEmailDomain().
+     *
+     * 2) Authentication against structured hierarchical LDAP trees of users, or
+     *   authentication against a flat tree with search.
+     *
+     *   An initial bind is required (not connected as the logging-in user) in order to
+     *   search the tree and find the DN for the given NetID. A second bind is then
+     *   required to authenticate the user by binding directly to their searched-for DN
+     *   with their supplied password.
+     *
+     *   This method of search supports returning user attributes.
+     *   Required attributes (email and name) are only updated the first time a
+     *   user logs in with their netID. Optional attributes (everything else) may be
+     *   added from LDAP on subsequent logins, but never modified from LDAP (to protect
+     *   local edits).
+     *
+     * Logs in the correct person, or creates and logs in a new person based on LDAP
+     * attributes if required (and possible).
+     * 
+     * @return whether authentication (and any subsequent steps such as attribute lookup
+     *   or creating a new user) and login were successful, given the user credentials and
+     *   the configuration settings.
 	 */
 	public AuthenticationResult authenticate(String netID, String password,
 			Request request) {
@@ -402,7 +441,7 @@ public class LDAPAuthenticationMethodImpl extends
 
             // if no person found based on netID, check if there's one with the same
             //  email address as what LDAP reported for this netID
-            if (person == null && !StringUtils.isBlank(email)) {
+            if (person == null && allowNewUserEmailMatch && !StringUtils.isBlank(email)) {
                 person = personRepo.findPersonByEmail(email);
                 if (person != null) {
                     // An existing person is already using this email address.
@@ -411,11 +450,6 @@ public class LDAPAuthenticationMethodImpl extends
                         // Found existing user with no existing netID who
                         // presumably had not logged in via LDAP before.
                         // Add netID to this user.
-                        // This seems secure as long as the owner of this existing account wasn't
-                        // ever able to freely change their email address without verification,
-                        // and as long as the user authenticating against LDAP cannot freely change
-                        // the email address LDAP reports for them, both of which seem to be the case.
-                        // If this still makes you uncomfortable, turn this feature off.
                         Logger.warn("ldap: added netID=" + netID + " to existing person id="+person.getId()+" email=" + email);
                         person.setNetId(netID);
                         person.save();
@@ -521,22 +555,23 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * Bind to LDAP not as user but as either an admin or anon (according
-     * to the configuration of searchAnonymous, searchUser, and searchAnonymous).
-     * Search for the user's record in LDAP to determine the correct DN to use
-     * later when checking that the user credentials will authenticate.
-     * Also retrieve user attributes while we're in there.
-     * Or if no ability to bind for search, just construct a DN for a flat-directory
-     * system, and return no attributes.
+     * - Bind to LDAP not as user but as either an admin or anon (according
+     *   to the configuration of searchAnonymous, searchUser, and searchAnonymous).
+     *   Search for the user's record in LDAP to determine the correct DN to use
+     *   later when checking that the user credentials will authenticate.
+     *   Also retrieve user attributes while we're in there.
+     * - Or if no ability to bind for search, just construct a DN for a flat-directory
+     *   system, and return no attributes.
      * @param netID the id of the user to search for
      * @param attributes a caller-supplied empty Map into which we will add, for each retrieved
      *      LDAP value for the specified user, whose field name matched a value configured in
-     *      ldapFieldNames, a KVP consisting of the Vireo attribute name and the value from LDAP.
-     * @return the correct DN to specify the user whose netID was provided, or null if
-     *      not found or an error occurred
+     *      ldapFieldNames, a KVP consisting of the Vireo attribute name and the raw value
+     *      from LDAP.
+     * @return the correct DN to attempt to bind to to authenticate the user whose
+     *      netID was provided, or null if not found or an error occurred
      */
     protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
-
+        // Are we able to search?
         if (!searchAnonymous && (StringUtils.isBlank(searchUser) || StringUtils.isBlank(searchPassword))) {
             // Anonymous search not allowed, and no admin user to search as.
             // Just construct the DN for a flat directory structure instead of searching for it.
@@ -549,6 +584,7 @@ public class LDAPAuthenticationMethodImpl extends
         env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
+        // set up authentication
         if (!StringUtils.isBlank(searchUser) && !StringUtils.isBlank(searchPassword)) {
             // Use admin credentials for search authentication
             env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "simple");
@@ -559,17 +595,17 @@ public class LDAPAuthenticationMethodImpl extends
             env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "none");
         }
 
+        // set up search scope
+        SearchControls controls = new SearchControls();
+        controls.setSearchScope(searchScope.code());
+
         DirContext ctx = null;
         try {
             SearchResult sr = null;
 
             if (! mock) {
-                // Create initial context
+                // do search, filtering on netID, with configured search setup
                 ctx = new InitialDirContext(env);
-
-                // search for the user's LDAP record, filtering on netID, with configured search setup
-                SearchControls controls = new SearchControls();
-                controls.setSearchScope(searchScope.code());
                 NamingEnumeration<SearchResult> answer = ctx.search(
                         providerURL + searchContext,
                         "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
@@ -583,19 +619,16 @@ public class LDAPAuthenticationMethodImpl extends
                 if (answer.hasMoreElements()) {
                     Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
                 }
-                
             } else {
                 // for mock, save the mock results if the given NetID matches the mock record's NetID field.
                 if (netID.equals(mockAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
-                    // for mock, make a fake SearchResult using given mock attributes and a phony DN
+                    // for mock, make a fake SearchResult using given mock attributes
                     Attributes attrs = new BasicAttributes();
                     for (Map.Entry<String, String> entry : mockAttributes.entrySet()) {
                         attrs.put(entry.getKey(), entry.getValue());
                     }
-                    // this is not mockUserDN. That's the "correct" value for checking against
-                    // when we authenticate. This is just the node name as LDAP would return it.
-                    // How it comes to match (or not match) mockUserDN is config dependent and
-                    // part of what mock it meant to test.
+                    // This is not (yet) a mock DN. This is just the raw node name as LDAP
+                    // would return it but before further processing by this method.
                     String mockName = ldapFieldNames.get(AttributeName.NetID)+"="+netID;
                     sr = new SearchResult(mockName, null, attrs, true);
                 }
@@ -610,12 +643,12 @@ public class LDAPAuthenticationMethodImpl extends
             // OK, we have a result.
             // The most important thing we came for is the DN.
             String dn = sr.getName();
-            if (!StringUtils.isEmpty(searchContext)) {
-                dn += ("," + searchContext);
+            if (!StringUtils.isEmpty(objectContext)) {
+                dn += ("," + objectContext);
             }
             Logger.debug("ldap.search: found user with dn=" + dn + " for netID=" + netID);
 
-            // For each attribute we're configured for, check the result for its
+            // For each attribute we're configured for, check the LDAP data for its
             //   corresponding LDAP field.
             // Save anything found in the empty Map this method was passed.
             Attributes ldapFields = sr.getAttributes();
@@ -659,17 +692,12 @@ public class LDAPAuthenticationMethodImpl extends
      */
     protected boolean ldapAuthenticate(String dn, String password) {
 
-        // Mock authentication always succeeds if the DN is correct -- no
-        //  password check.
-        if (mock)
-            return dn.equals(mockUserDn);
-        
-        // Set up environment for creating initial context
+        // set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>();
         env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
-        // Authenticate
+        // set up authentication credentials
         env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "Simple");
         env.put(javax.naming.Context.SECURITY_PRINCIPAL, dn);
         env.put(javax.naming.Context.SECURITY_CREDENTIALS, password);
@@ -678,8 +706,18 @@ public class LDAPAuthenticationMethodImpl extends
 
         DirContext ctx = null;
         try {
-            // Try to bind
-            ctx = new InitialDirContext(env);
+            if (! mock) {
+                // Try to bind
+                ctx = new InitialDirContext(env);
+            } else {
+                // For mock, make sure the DN is right and verify password.
+                if (!dn.equals(mockUserDn)) {
+                    throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+mockUserDn);
+                }
+                if (!mockPassword.equals(password)) {
+                    throw new NamingException("ldap.mockserver: incorrect password");
+                }
+            }
         } catch (NamingException e) {
             Logger.debug("ldap.auth: server refused to authenticate DN=" + dn + " due to " + e.getExplanation());
             return false;
@@ -893,14 +931,20 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /*
-     * Absolutely not useful for this auth method--we cannot statelessly tell anything
+     * Not very useful for this auth method--we cannot statelessly tell anything
      * about what the failure was from the information provided. And stashing it in the
      * request object seems tacky. Ideally, AuthenticationResult would have a message
      * field where we could put some details if it were important to report anything
      * more than a mere "failed".
+     * This works better for Shibboleth because
+     * 1) as an implicit auth method, shib can already assume auth succeeded, and its job
+     *    is just to set attributes and deal with Person objects. LDAP has to deal with
+     *    the possibility that the NetID or password was simply wrong. But there's no
+     *    was to tell those situations apart--they're both covered by BAD_CREDENTIALS.
+     * 2) all the information to authenticate the shib request was in the Request,
+     *    which this method here still has access to. For LDAP, the server response is gone.
     @Override
     public String getFailureMessage(Request request, AuthenticationResult result) {
     }
     */
-
 }
