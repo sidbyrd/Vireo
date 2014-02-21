@@ -9,12 +9,9 @@
 *.ipr
 *.iws
 
-# ignore file full of passwords
+# ignore files full of passwords
 secret.properties
-*.key
-*.cer
-*.cert
-thesis_rice_edu.*
+certificate.jks
 
 # Ignore Play! working directory #
 db
