@@ -376,6 +376,37 @@
 	        </map>
 	    </property>
     </bean>
+    <bean id="riceDSpaceMETS" class="org.tdl.vireo.export.impl.TemplatePackagerImpl" scope="prototype">
+        <property name="personRepository" ref="PersonRepository"/>
+        <property name="submissionRepository" ref="SubmissionRepository"/>
+        <property name="settingsRepository" ref="SettingsRepository"/>
+        <property name="proquestVocabularyRepository" ref="ProquestVocabularyRepository"/>
+        <property name="displayName" value="Rice-customized DSpace METS"/>
+        <property name="format" value="http://purl.org/net/sword-types/METSDSpaceSIP"/>
+        <property name="manifestTemplatePath" value="conf/formats/dspace_mets.rice.xml"/>
+        <property name="manifestName" value="mets.xml"/>
+        <property name="manifestTemplateArguments">
+            <util:map>
+                <entry key="agent" value="Vireo DSpace METS packager"/>
+            </util:map>
+        </property>
+        <property name="attachmentTypeNames">
+            <map>
+            	<entry key="PRIMARY">
+            		<props></props>
+            	</entry>
+            	<entry key="SUPPLEMENTAL">
+            		<props></props>
+            	</entry>
+            	<entry key="LICENSE">
+            		<props></props>
+            	</entry>
+            	<entry key="SOURCE">
+            		<props></props>
+            	</entry>
+            </map>
+        </property>
+    </bean>
     <bean id="DSpaceMETS" class="org.tdl.vireo.export.impl.TemplatePackagerImpl" scope="prototype">
         <property name="personRepository" ref="PersonRepository"/>
         <property name="submissionRepository" ref="SubmissionRepository"/>
