@@ -1,7 +1,6 @@
 package org.tdl.vireo.security.impl;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.poi.util.StringUtil;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.security.AuthenticationMethod;
@@ -18,7 +17,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 
-// adapted starting with org.dspace.authenticate.LDAPAuthentication and several Vireo classes.
+// adapted starting from org.dspace.authenticate.LDAPAuthentication and several Vireo classes.
 /**
  * Authenticates netID and password against LDAP. Retrieves personal information.
  * Selects or creates correct Person. Logs in.

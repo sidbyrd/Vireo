@@ -11,6 +11,9 @@
 
 # ignore file full of passwords
 secret.properties
+*.key
+*.cert
+thesis_rice_edu.*
 
 # Ignore Play! working directory #
 db
