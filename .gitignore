@@ -12,6 +12,7 @@
 # ignore file full of passwords
 secret.properties
 *.key
+*.cer
 *.cert
 thesis_rice_edu.*
 
