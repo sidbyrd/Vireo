@@ -71,6 +71,27 @@ public class AppConfig {
 	/** Submission Step Button highlight color when in "off" state */
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
 	
+    /** Path to "left-logo" image */
+    public final static String LEFT_LOGO_PATH = "left_logo_path";
+
+    /** Path to "right-logo" image */
+    public final static String RIGHT_LOGO_PATH = "right_logo_path";
+
+    /** Pixel height of the current "left-logo" image */
+    public final static String LEFT_LOGO_HEIGHT = "left_logo_height";
+
+    /** Pixel width of the current "left-logo" image */
+    public final static String LEFT_LOGO_WIDTH = "left_logo_width";
+
+    /** Pixel height of the current "right-logo" image */
+    public final static String RIGHT_LOGO_HEIGHT = "right_logo_height";
+
+    /** Pixel width of the current "right-logo" image */
+    public final static String RIGHT_LOGO_WIDTH = "right_logo_width";
+
+    /** Pixel height of the taller of left-logo and right-logo */
+    public final static String TALLEST_LOGO_HEIGHT_PLUS_45 = "tallest_logo_height_plus_45";
+
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";
 	

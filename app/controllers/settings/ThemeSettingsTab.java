@@ -1,24 +1,26 @@
 package controllers.settings;
 
-import static org.tdl.vireo.constant.AppConfig.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.io.FileUtils;
-import org.tdl.vireo.model.Configuration;
-import org.tdl.vireo.model.RoleType;
-
-import play.Logger;
-import play.Play;
-import play.mvc.Router;
-import play.mvc.With;
-import play.vfs.VirtualFile;
 import controllers.Authentication;
 import controllers.Security;
 import controllers.SettingsTab;
+import org.apache.commons.io.FileUtils;
+import org.tdl.vireo.model.Configuration;
+import org.tdl.vireo.model.RoleType;
+import play.Logger;
+import play.mvc.With;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.FileImageInputStream;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import static org.tdl.vireo.constant.AppConfig.*;
 
 /**
  * Theme settings
@@ -29,9 +31,7 @@ import controllers.SettingsTab;
 public class ThemeSettingsTab extends SettingsTab {
 	
 	public static final String THEME_PATH = "conf"+File.separator+"theme"+File.separator;
-	public static final String LEFT_LOGO_PATH = THEME_PATH + "left-logo";
-	public static final String RIGHT_LOGO_PATH = THEME_PATH + "right-logo";
-			
+
 	@Security(RoleType.MANAGER)
 	public static void themeSettings() {
 		
@@ -49,12 +49,20 @@ public class ThemeSettingsTab extends SettingsTab {
 		renderArgs.put("CUSTOM_CSS", settingRepo.getConfigValue(CUSTOM_CSS));
 				
 		// Logos
-		File leftLogo = new File(LEFT_LOGO_PATH);
-		File rightLogo = new File(RIGHT_LOGO_PATH);
+        File leftLogo = new File("conf"+File.separator+settingRepo.getConfigValue(LEFT_LOGO_PATH));
+        File rightLogo = new File("conf"+File.separator+settingRepo.getConfigValue(RIGHT_LOGO_PATH));
+		boolean leftLogoIsDefault = settingRepo.getConfigValue(LEFT_LOGO_PATH).equals(Configuration.DEFAULTS.get(LEFT_LOGO_PATH));
+        boolean rightLogoIsDefault = settingRepo.getConfigValue(RIGHT_LOGO_PATH).equals(Configuration.DEFAULTS.get(RIGHT_LOGO_PATH));
+        renderArgs.put("LEFT_LOGO_PATH", settingRepo.getConfigValue(LEFT_LOGO_PATH));
+        renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
+        renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
+        renderArgs.put("RIGHT_LOGO_PATH", settingRepo.getConfigValue(RIGHT_LOGO_PATH));
+        renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
+        renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
 		
 		String nav = "settings";
 		String subNav = "theme";
-		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogo, rightLogo);
+		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogo, rightLogo, leftLogoIsDefault, rightLogoIsDefault);
 	}
 	
 	
@@ -94,24 +102,10 @@ public class ThemeSettingsTab extends SettingsTab {
 				
 			} else if (textFields.contains(field)) {
 				// This is a free-form text field
-				Configuration config = settingRepo.findConfigurationByName(field);
-				
-				if (config == null)
-					config = settingRepo.createConfiguration(field, value);
-				else {
-					config.setValue(value);
-				}
-				config.save();
+				saveField(field, value);
 			} else if (inputFields.contains(field)) {
 				// This is a input field
-				Configuration config = settingRepo.findConfigurationByName(field);
-				
-				if (config == null)
-					config = settingRepo.createConfiguration(field, value);
-				else
-					config.setValue(value);
-				
-				config.save();
+				saveField(field, value);
 			} else {
 				throw new IllegalArgumentException("Unknown field '"+field+"'");
 			}
@@ -139,41 +133,109 @@ public class ThemeSettingsTab extends SettingsTab {
 		}
 		
 		if(params.get("deleteLeftLogo") != null) {
-			File logoFile = new File(LEFT_LOGO_PATH);
+			File logoFile = new File(THEME_PATH + "left-logo");
 			
 			if(logoFile.exists()){
 				logoFile.delete();
 			}
+            saveField(LEFT_LOGO_PATH, Configuration.DEFAULTS.get(LEFT_LOGO_PATH));
+            saveField(LEFT_LOGO_HEIGHT, Configuration.DEFAULTS.get(LEFT_LOGO_HEIGHT));
+            saveField(LEFT_LOGO_WIDTH, Configuration.DEFAULTS.get(LEFT_LOGO_WIDTH));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(
+                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)),
+                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
 		}
 		
 		if(params.get("deleteRightLogo") != null) {
-			File logoFile = new File(RIGHT_LOGO_PATH);
+			File logoFile = new File(THEME_PATH + "right-logo");
 			
-			if(logoFile.exists()){
+            if(logoFile.exists()){
 				logoFile.delete();
 			}
+            saveField(RIGHT_LOGO_PATH, Configuration.DEFAULTS.get(RIGHT_LOGO_PATH));
+            saveField(RIGHT_LOGO_HEIGHT, Configuration.DEFAULTS.get(RIGHT_LOGO_HEIGHT));
+            saveField(RIGHT_LOGO_WIDTH, Configuration.DEFAULTS.get(RIGHT_LOGO_WIDTH));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(
+                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)),
+                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
 		}
 		
 		if(leftLogo != null) {
-			File logoFile = new File(LEFT_LOGO_PATH);
-			
-			if(logoFile.exists()){
+			File logoFile = new File(THEME_PATH + "left-logo");
+            Dimension dim = getImageDimension(leftLogo);
+
+            if(logoFile.exists()){
 				logoFile.delete();
 			}
 			
 			FileUtils.copyFile(leftLogo, logoFile);
+            saveField(LEFT_LOGO_PATH, String.valueOf("theme/left-logo"));
+            saveField(LEFT_LOGO_HEIGHT, String.valueOf(dim.getHeight()));
+            saveField(LEFT_LOGO_WIDTH, String.valueOf(dim.getWidth()));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(dim.getHeight(),
+                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
 		}
-		
+
 		if(rightLogo != null) {
-			File logoFile = new File(RIGHT_LOGO_PATH);
-			
-			if(logoFile.exists()){
+			File logoFile = new File(THEME_PATH + "right-logo");
+            Dimension dim = getImageDimension(rightLogo);
+
+            if(logoFile.exists()){
 				logoFile.delete();
 			}
 			
 			FileUtils.copyFile(rightLogo, logoFile);
+            saveField(RIGHT_LOGO_PATH, String.valueOf("theme/right-logo"));
+            saveField(RIGHT_LOGO_HEIGHT, String.valueOf(dim.getHeight()));
+            saveField(RIGHT_LOGO_WIDTH, String.valueOf(dim.getWidth()));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(dim.getHeight(),
+                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)))));
 		}
 		
 		themeSettings();
 	}
+
+    private static void saveField(String field, String value) {
+        Configuration config = settingRepo.findConfigurationByName(field);
+
+        if (config == null)
+            config = settingRepo.createConfiguration(field, value);
+        else {
+            config.setValue(value);
+        }
+        config.save();
+    }
+
+    /**
+     * Gets image dimensions for given file
+     * @param imgFile image file
+     * @return dimensions of image
+     * @throws IOException if the file is not a known image
+     */
+    public static Dimension getImageDimension(File imgFile) throws IOException {
+        int pos = imgFile.getName().lastIndexOf(".");
+        if (pos == -1)
+        throw new IOException("No extension for file: " + imgFile.getAbsolutePath());
+        String suffix = imgFile.getName().substring(pos + 1);
+        Iterator<ImageReader> iter = ImageIO.getImageReadersBySuffix(suffix);
+        IOException error = null;
+        if (iter.hasNext()) {
+            ImageReader reader = iter.next();
+            try {
+                ImageInputStream stream = new FileImageInputStream(imgFile);
+                reader.setInput(stream);
+                int width = reader.getWidth(reader.getMinIndex());
+                int height = reader.getHeight(reader.getMinIndex());
+                return new Dimension(width, height);
+            } catch (IOException e) {
+                error = e;
+            } finally {
+                reader.dispose();
+            }
+        }
+
+        if (error != null)
+            throw error;
+        throw new IOException("Not a known image file: " + imgFile.getAbsolutePath());
+    }
 }

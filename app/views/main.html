@@ -63,16 +63,19 @@
 				background: linear-gradient(top,  ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)} 0%,${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_HIGHLIGHT_COLOR_ON)} 50%, ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)} 100%); /* W3C */
 				filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)}', endColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_HIGHLIGHT_COLOR_ON)}');
 			}			
-			#{if new java.io.File(controllers.settings.ThemeSettingsTab.LEFT_LOGO_PATH).exists()}
 			#left-logo{
-				background-image:url("@{Application.index()}theme/left-logo");
+                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_PATH)}');
+                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
+                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px;
 			}
-			#{/if}
-			#{if new java.io.File(controllers.settings.ThemeSettingsTab.RIGHT_LOGO_PATH).exists()}
 			#right-logo{
-				background-image:url("@{Application.index()}theme/right-logo");
+                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_PATH)}');
+                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
+                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px;
 			}
-			#{/if}
+            #header{
+                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.TALLEST_LOGO_HEIGHT_PLUS_45)}px;
+            }
 			${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CUSTOM_CSS)};
         </style>
     </head>
