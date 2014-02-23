@@ -13,7 +13,9 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
+import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -213,29 +215,30 @@ public class ThemeSettingsTab extends SettingsTab {
      * @throws IOException if the file is not a known image
      */
     public static Dimension getImageDimension(File imgFile) throws IOException {
+        // if file extension present, use that
         int pos = imgFile.getName().lastIndexOf(".");
-        if (pos == -1)
-        throw new IOException("No extension for file: " + imgFile.getAbsolutePath());
-        String suffix = imgFile.getName().substring(pos + 1);
-        Iterator<ImageReader> iter = ImageIO.getImageReadersBySuffix(suffix);
-        IOException error = null;
-        if (iter.hasNext()) {
-            ImageReader reader = iter.next();
-            try {
-                ImageInputStream stream = new FileImageInputStream(imgFile);
-                reader.setInput(stream);
-                int width = reader.getWidth(reader.getMinIndex());
-                int height = reader.getHeight(reader.getMinIndex());
-                return new Dimension(width, height);
-            } catch (IOException e) {
-                error = e;
-            } finally {
-                reader.dispose();
+        if (pos > -1) {
+            String suffix = imgFile.getName().substring(pos + 1);
+            Iterator<ImageReader> iter = ImageIO.getImageReadersBySuffix(suffix);
+            if (iter.hasNext()) {
+                ImageReader reader = iter.next();
+                try {
+                    ImageInputStream stream = new FileImageInputStream(imgFile);
+                    reader.setInput(stream);
+                    int width = reader.getWidth(reader.getMinIndex());
+                    int height = reader.getHeight(reader.getMinIndex());
+                    return new Dimension(width, height);
+                } catch (IOException e) {
+                    // we have more things left to try
+                } finally {
+                    reader.dispose();
+                }
             }
         }
 
-        if (error != null)
-            throw error;
-        throw new IOException("Not a known image file: " + imgFile.getAbsolutePath());
+        // can't use file extension, so try slower generic method
+        ImageIcon imageIcon = new ImageIcon(imgFile.getAbsolutePath());
+        BufferedImage readImage = ImageIO.read(imgFile);
+        return new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
     }
 }
