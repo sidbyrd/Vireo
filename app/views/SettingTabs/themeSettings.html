@@ -102,11 +102,12 @@ jQuery(document).ready(function(){
 			<td>
 			<div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_PATH}'); height:${LEFT_LOGO_HEIGHT}px; width:${LEFT_LOGO_WIDTH}px;"></div>
 			</td>
-			#{if !leftLogoIsDefault}
 			<td>
-				<button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Remove</button>
+                <p>#{if leftLogoIsDefault}Default left logo<br />#{/if}Size: ${LEFT_LOGO_HEIGHT} × ${LEFT_LOGO_WIDTH}</p>
+                #{if !leftLogoIsDefault}
+				</p><button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Remove</button>
+                #{/if}
 			</td>
-			#{/if}
 		</tr>
 		<tr>
 			<td>
@@ -117,11 +118,12 @@ jQuery(document).ready(function(){
 			<td>
                 <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_PATH}'); height:${RIGHT_LOGO_HEIGHT}px; width:${RIGHT_LOGO_WIDTH}px;"></div>
 			</td>
-            #{if !rightLogoIsDefault}
 			<td>
-				<button class="confirm btn btn-small" type="submit" name="deleteRightLogo">Remove</button>
+                <p>#{if rightLogoIsDefault}Default right logo<br />#{/if}Size: ${RIGHT_LOGO_HEIGHT} × ${RIGHT_LOGO_WIDTH}</p>
+                #{if !rightLogoIsDefault}
+				</p><button class="confirm btn btn-small" type="submit" name="deleteRightLogo">Remove</button>
+                #{/if}
 			</td>
-			#{/if}
 		</tr>
 	</table>
 	<p><input class="btn" type="submit" name="submit_upload" value="Upload" /></p>

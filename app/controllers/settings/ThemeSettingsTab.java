@@ -170,9 +170,9 @@ public class ThemeSettingsTab extends SettingsTab {
 			
 			FileUtils.copyFile(leftLogo, logoFile);
             saveField(LEFT_LOGO_PATH, String.valueOf("theme/left-logo"));
-            saveField(LEFT_LOGO_HEIGHT, String.valueOf(dim.getHeight()));
-            saveField(LEFT_LOGO_WIDTH, String.valueOf(dim.getWidth()));
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(dim.getHeight(),
+            saveField(LEFT_LOGO_HEIGHT, String.valueOf((int)dim.getHeight()));
+            saveField(LEFT_LOGO_WIDTH, String.valueOf((int)dim.getWidth()));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max((int)dim.getHeight(),
                     Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
 		}
 
@@ -186,9 +186,9 @@ public class ThemeSettingsTab extends SettingsTab {
 			
 			FileUtils.copyFile(rightLogo, logoFile);
             saveField(RIGHT_LOGO_PATH, String.valueOf("theme/right-logo"));
-            saveField(RIGHT_LOGO_HEIGHT, String.valueOf(dim.getHeight()));
-            saveField(RIGHT_LOGO_WIDTH, String.valueOf(dim.getWidth()));
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(dim.getHeight(),
+            saveField(RIGHT_LOGO_HEIGHT, String.valueOf((int)dim.getHeight()));
+            saveField(RIGHT_LOGO_WIDTH, String.valueOf((int)dim.getWidth()));
+            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max((int)dim.getHeight(),
                     Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)))));
 		}
 		
