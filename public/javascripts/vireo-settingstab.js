@@ -16,7 +16,7 @@
  * @param type
  *            The type of sortable being displayed.
  * @param editable
- *            Weather the field shouldbe displayed as editable or static.
+ *            Weather the field should be displayed as editable or static.
  * @param $element
  *            The current element in the list to be replaced.
  * @param id
@@ -24,7 +24,7 @@
  * @param name
  *            The object's name.
  * @param level
- *            The object's degree level (as an integere, and optional)
+ *            The object's degree level (as an integer, and optional)
  */
 function displaySortableItem(type, editable, $element, id, name, level) {
 		
@@ -132,7 +132,7 @@ function displaySortableItem(type, editable, $element, id, name, level) {
 					 "</div>"
 					 );
 			
-			// Animate the from's appearance
+			// Animate the form's appearance
 			$element.find("form").slideToggle();
 			
 			// Trigger loading the data from the server for this template
@@ -355,13 +355,13 @@ function sortableSaveEditHandler(type,jsonURL) {
 
 			displaySortableItem(type,false,jQuery("#"+type+"_" + data.id), type+"_"+data.id, data.name, data.level);
 
-		}
+		};
 
 		var failureCallback = function(message) {
 			jQuery("#"+type+"-list").removeClass("waiting");
 			jQuery("#"+id).addClass("settings-sortable-error");
 			displayAlert(type + "-edit-" + id, "Unable to edit "+type, message);
-		}
+		};
 
 		var data = {};
 		data[type+'Id'] = id;
@@ -423,11 +423,11 @@ function sortableUpdateHandler(type, reorderURL, removeURL) {
 				if (jQuery("#"+type+"-list li").length == 0) {
 					jQuery("#"+type+"-remove").fadeOut();
 				}
-			}
+			};
 
 			var failureCallback = function (message) {
 				displayAlert(type + "-remove-" + id,"Unable to remove "+type,message);
-			}
+			};
 
 			var data = {};
 			data[type+'Id'] = id;
@@ -459,11 +459,11 @@ function sortableUpdateHandler(type, reorderURL, removeURL) {
 			var successCallback = function(data) {
 				// Remove the ajax loading indicators & alerts
 				clearAlert(type + "-reorder");
-			}
+			};
 
 			var failureCallback = function (message) {
 				displayAlert(type + "-reorder","Unable to reorder "+type,message);
-			}
+			};
 
 			var data = {};
 			data[type+'Ids'] = list;
@@ -485,7 +485,7 @@ function sortableUpdateHandler(type, reorderURL, removeURL) {
 				}
 
 			});
-		};
+		}
 		
 		event.stopPropagation();
 	};
@@ -526,7 +526,7 @@ function saveAddActionHandler(type, jsonURL) {
 			if (jQuery("#add-"+type+"-level").length > 0)
 				jQuery("#add-"+type+"-level").val("-1");
 			jQuery("#add-"+type+"-dialog .control-group").removeClass("error");
-		}
+		};
 
 		var failureCallback = function(message) {
 			jQuery("#add-"+type+"-name").closest('.control-group').addClass("error");
@@ -541,7 +541,7 @@ function saveAddActionHandler(type, jsonURL) {
 				jQuery("#add-"+type+"-message").closest('.control-group').addClass("error");
 			
 			displayAlert(type+"-add","Unable to add "+type, message);
-		}
+		};
 
 		var data = {};
 		
@@ -613,7 +613,7 @@ function cancelAddActionHandler(type) {
 
 
 /**
- * Retrieve an email template from the server and fill in it's editable fields.
+ * Retrieve an email template from the server and fill in its editable fields.
  * If the email template is a system template then the name field and delete
  * field are disabled.
  * 
@@ -642,7 +642,7 @@ function retrieveEmailTemplateHandler(jsonURL) {
 				
 				jQuery("#"+id+" form fieldset").prepend("<div class='control-group warning'><label class='control-label'><p><strong>System Template</strong></p></label><div class='controls'><p id='system-warning' class='help-inline'></p></div></div>");
 				if (data.name == "SYSTEM Initial Submission") {
-					jQuery("#"+id+" #system-warning").html("This system defined template is sent to the student immediatly after completing their submission.");
+					jQuery("#"+id+" #system-warning").html("This system defined template is sent to the student immediately after completing their submission.");
 				} else if (data.name == "SYSTEM Advisor Review Request") {
 					jQuery("#"+id+" #system-warning").html("This system defined template is sent to the student's advisor requesting their approval of the submission and embargo options.");					
 				} else if (data.name == "SYSTEM Verify Email Address") {
@@ -660,11 +660,11 @@ function retrieveEmailTemplateHandler(jsonURL) {
 
 			}
 
-		}
+		};
 
 		var failureCallback = function(message) {
 			displayAlert("emailTemplate-retrieve-"+id,"Unable to load email template", message);
-		}
+		};
 		
 		jQuery.ajax({
 			url : jsonURL,
@@ -715,7 +715,7 @@ function removeEmailTemplateHandler(jsonURL) {
 			jQuery("#"+id).slideToggle(null, function () {
 				jQuery("#"+id).remove();
 			});
-		}
+		};
 
 		var failureCallback = function(message) {
 			displayAlert("emailTemplate-delete-"+id,"Unable to remove email template", message);
@@ -723,7 +723,7 @@ function removeEmailTemplateHandler(jsonURL) {
 			jQuery("#"+id+" .control-group").each( function() {
 				jQuery(this).addClass("error");
 			});
-		}
+		};
 		
 		jQuery.ajax({
 			url : jsonURL,
@@ -778,7 +778,7 @@ function editEmailTemplateHandler(jsonURL) {
 			});
 			
 			displaySortableItem('emailTemplate',false,$element, "emailTemplate_"+data.id, data.name);
-		}
+		};
 
 		var failureCallback = function(message) {
 			$element.removeClass("waiting");
@@ -787,7 +787,7 @@ function editEmailTemplateHandler(jsonURL) {
 			jQuery("#"+id+" .control-group").each( function() {
 				jQuery(this).addClass("error");
 			});
-		}
+		};
 		
 		jQuery.ajax({
 			url : jsonURL,
@@ -861,7 +861,7 @@ function myProfileHandler(jsonURL) {
 
 			// The input field
 			jQuery("#displayName").val(data.displayName);
-		}
+		};
 
 		var failureCallback = function (message) {
 			jQuery("#my-profile").removeClass("waiting");
@@ -869,7 +869,7 @@ function myProfileHandler(jsonURL) {
 
 			$this.parent("fieldset").addClass("error");
 			displayAlert("profile-alert-"+field,"Unable to update profile",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -912,7 +912,7 @@ function userPreferenceHandler(jsonURL) {
 	return function () {
 		var $this = jQuery(this);
 		var field = $this.attr('name');
-		value = $this.attr('checked');
+		var value = $this.attr('checked');
 
 		$this.closest("fieldset").addClass("waiting");
 
@@ -921,13 +921,13 @@ function userPreferenceHandler(jsonURL) {
 			$this.closest("fieldset").removeClass("waiting");
 			$this.closest("fieldset").removeClass("error");
 			clearAlert("user-preference-"+field);
-		}
+		};
 
 		var failureCallback = function (message) {
 			$this.closest("fieldset").removeClass("waiting");
 			$this.closest("fieldset").addClass("error");
 			displayAlert("user-preference-"+field,"Unable to update preference",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -960,7 +960,7 @@ function userPreferenceHandler(jsonURL) {
 
 /**
  * Handler for the application settings field to save their state via ajax. This
- * method supports all the toggleable fields on this page, as well as submision
+ * method supports all the toggleable fields on this page, as well as submission
  * semester and submission instructions.
  * 
  * @param jsonURL The JSON url to submit updates too.
@@ -980,13 +980,13 @@ function applicationSettingsHandler(jsonURL) {
 			$this.parent().removeClass("waiting");
 			$this.removeClass("settings-error");
 			clearAlert("application-setting-"+field);
-		}
+		};
 
 		var failureCallback = function (message) {
 			$this.parent().removeClass("waiting");
 			$this.addClass("settings-error");
 			displayAlert("application-setting-"+field,"Unable to update setting",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -1013,9 +1013,9 @@ function applicationSettingsHandler(jsonURL) {
 
 /**
  * Callback handler to unlock a text area field under the application settings
- * tab. These fields have the "readonly" attribute set to prevent accedential
+ * tab. These fields have the "readonly" attribute set to prevent accidental
  * editing. Clicking a link with this call back will remove the readonly
- * attribute, and change the mesage to indicate that the field may now be
+ * attribute, and change the message to indicate that the field may now be
  * edited.
  */
 function applicationUnlockField() {
@@ -1085,7 +1085,7 @@ function memberAddHandler(htmlURL) {
 
 		// Follow pagination links
 		var id = jQuery(this).closest("tr").attr("id");
-		var role = "2" // We always add people at the reviewer level
+		var role = "2"; // We always add people at the reviewer level
 
 			var $this = jQuery(this);
 
@@ -1116,7 +1116,7 @@ function memberAddHandler(htmlURL) {
 
 /**
  * Handler to update a current reviewer's role. This will switch the input to an
- * editable select list and attach the nessesary handlers to modify or cancel
+ * editable select list and attach the necessary handlers to modify or cancel
  * the entry.
  * 
  * @param htmlURL
@@ -1137,10 +1137,10 @@ function memberUpdateHandler(htmlURL) {
 				jQuery(".member-editing").each(function () {
 					jQuery(this).hide();
 					jQuery(this).find("select").unbind("click");
-				})
+				});
 				jQuery(".member-editable").each(function () {
 					jQuery(this).show();
-				})
+				});
 
 				// Unregister this event
 				jQuery(document).unbind("click",cancelHandler);
@@ -1221,12 +1221,12 @@ function emailSettingsHandler(jsonURL) {
 			// Remove the ajax loading indicators & alerts
 			$this.parent().removeClass("waiting");
 			clearAlert("email-setting-"+field);
-		}
+		};
 
 		var failureCallback = function (message) {
 			$this.parent().removeClass("waiting");
 			displayAlert("email-setting-"+field,"Unable to update setting",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -1252,7 +1252,7 @@ function emailSettingsHandler(jsonURL) {
 }
 
 /**********************************************************
- * Configurable Settings Tab (Embargos)
+ * Configurable Settings Tab (Embargoes)
  **********************************************************/
 
 /**
@@ -1350,7 +1350,7 @@ function embargoOpenDialogHandler() {
  * saving the embargo dialog box.
  * 
  * @param jsonURL
- *            The url where embargos should be updated.
+ *            The url where embargoes should be updated.
  * @returns A Callback Function
  */
 function embargoSaveDialogHandler(jsonURL) {
@@ -1363,7 +1363,7 @@ function embargoSaveDialogHandler(jsonURL) {
 		if (jQuery("#embargoType-active:checked").length > 0)
 			active = "true";
 
-		var months = null
+		var months = null;
 		if (jQuery("#timeframe-determinate:checked").length > 0)
 			months = jQuery("#embargoType-months").val();
 		jQuery("#embargo-type-modal").addClass("waiting");
@@ -1377,7 +1377,7 @@ function embargoSaveDialogHandler(jsonURL) {
 				jQuery(this).removeClass("error"); 
 			});
 
-			var $row
+			var $row;
 			if (jQuery("#embargoType_"+data.id).length > 0) {
 				// Look up the old row
 				$row = jQuery("#embargoType_"+data.id);
@@ -1408,7 +1408,7 @@ function embargoSaveDialogHandler(jsonURL) {
 
 			jQuery('#embargo-type-modal').modal('hide');
 
-		}
+		};
 
 		var failureCallback = function (message) {
 
@@ -1421,7 +1421,7 @@ function embargoSaveDialogHandler(jsonURL) {
 			// Display the error
 			jQuery("#embargoType-errors").html("<li><strong>Unable to save embargo</strong>: "+message);
 
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -1456,7 +1456,7 @@ function embargoSaveDialogHandler(jsonURL) {
  * Delete an existing embargo type. This will confirm that this is what the user wants to do.
  * 
  * @param jsonURL
- *            The url where embargos are deleted.
+ *            The url where embargoes are deleted.
  * @returns A Callback Function
  */
 function embargoRemoveDialogHandler(jsonURL) {
@@ -1483,7 +1483,7 @@ function embargoRemoveDialogHandler(jsonURL) {
 			// Go back to the list
 			jQuery('#embargo-type-modal').modal('hide');
 
-		}
+		};
 
 		var failureCallback = function (message) {
 
@@ -1496,7 +1496,7 @@ function embargoRemoveDialogHandler(jsonURL) {
 			// Display the error
 			jQuery("#embargoType-errors").html("<li><strong>Unable to save embargo</strong>: "+message);
 
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -1528,7 +1528,7 @@ function embargoRemoveDialogHandler(jsonURL) {
 
 /**
  * Sortable update handler for embargo types. This callback is called whenever
- * re-sorts the list of embargos, saving the new order in the system.
+ * re-sorts the list of embargoes, saving the new order in the system.
  * 
  * @param jsonURL
  *            The json url to update embargo order.
@@ -1544,13 +1544,13 @@ var embargoSortableUpdateHandler = function(jsonURL) {
 			// Remove the ajax loading indicators & alerts
 			clearAlert("embargoType-reorder");
 			jQuery("#embargoType-list").removeClass("waiting");
-		}
+		};
 
 		var failureCallback = function(message) {
 			displayAlert("embargoType-reorder", "Unable to reorder " + type,
 					message);
 			jQuery("#embargoType-list").removeClass("waiting");
-		}
+		};
 
 		var data = {};
 		data['embargoTypeIds'] = list;
@@ -1573,7 +1573,7 @@ var embargoSortableUpdateHandler = function(jsonURL) {
 
 		});
 	};
-}
+};
 
 /**********************************************************
  * Deposit Settings
@@ -1652,7 +1652,7 @@ function depositAddModalHandler(url) {
 /**
  * This is not a handler. This is expected to be called by other handlers. It
  * function will update the list of depositLocations. The url where to get the
- * snipit of HTML is expected to be passed. Basically each time a location is
+ * snippet of HTML is expected to be passed. Basically each time a location is
  * added, modified, or deleted this function is called to update the list.
  * 
  * The sortable handler works on the
@@ -1665,7 +1665,7 @@ function depositAddModalHandler(url) {
  * <ul>.
  * 
  * @param url
- *            The url where a snipit of HTML for the deposit list is located.
+ *            The url where a snippet of HTML for the deposit list is located.
  */
 function depositUpdateLocationList(url) {
 	
@@ -1678,7 +1678,7 @@ function depositUpdateLocationList(url) {
         success : function(data) {
         	
         	jQuery("#depositLocation-list").empty();
-        	jQuery("#depositLocation-list").append(jQuery(data).children())
+        	jQuery("#depositLocation-list").append(jQuery(data).children());
         	jQuery("#depositLocation-list").removeClass("waiting");
         },
         error:function(){
@@ -1689,15 +1689,15 @@ function depositUpdateLocationList(url) {
 
 /**
  * Save a deposit location handler. This method is for multiple buttons on the
- * deposit location modal dialog box. Basicaly for everything but the delete &
+ * deposit location modal dialog box. Basically for everything but the delete &
  * cancel buttons. This works for adding new locations, or editing existing
  * ones.
  * 
  * @param closeOnSave
  *            A boolean flag to determine if the dialog box should be saved if
- *            this update is successfull.
+ *            this update is successful.
  * @param saveURL
- *            The url where to send the updates too, an HTML snipit of a new
+ *            The url where to send the updates too, an HTML snippet of a new
  *            form is expected.
  * @param updateURL
  *            The url where to update the list of deposit locations (in-case the
@@ -1711,7 +1711,7 @@ function depositSaveHandler(closeOnSave, saveURL, updateURL) {
 		jQuery("#deposit-location-modal form").addClass("waiting");
 
 		var action = jQuery(this).attr("id");
-		var id = jQuery("#depositLocation-id").val()
+		var id = jQuery("#depositLocation-id").val();
 		var name = jQuery("#depositLocation-name").val();
 		var depositor = jQuery("#depositLocation-depositor").val();
 		var packager = jQuery("#depositLocation-packager").val();
@@ -1757,30 +1757,30 @@ function depositSaveHandler(closeOnSave, saveURL, updateURL) {
 
 		return false;
 	};
-};
+}
 
 /**
  * Delete deposit location handler. This method will send the ajax query to
- * delete the deposit location, and after that has returned succesfully it will
+ * delete the deposit location, and after that has returned successfully it will
  * update the list of deposit locations.
  * 
  * @param deleteURL
  *            The JSON url where deletes should be posted.
  * @param updateURL
  *            The URL to update the list of deposit locations after the delete
- *            has occured.
+ *            has occurred.
  * @returns A call back function.
  */
 function depositDeleteHandler(deleteURL, updateURL) {
 	return function() {
 		jQuery("#deposit-location-modal form").addClass("waiting");
 
-		var id = jQuery("#depositLocation-id").val()
+		var id = jQuery("#depositLocation-id").val();
 
 		jQuery.ajax({
 			url : deleteURL,
 			data : {
-				depositLocationId : id,
+				depositLocationId : id
 			},
 			dataType : 'json',
 			type : 'POST',
@@ -1837,13 +1837,13 @@ function submissionSettingsHandler(jsonURL) {
 				$element.addClass(data.value);
 			}
 			
-		}
+		};
 
 		var failureCallback = function (message) {
 			$this.removeClass("waiting");
 			$this.addClass("settings-error");
 			displayAlert("submission-setting-"+field,"Unable to update setting",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
@@ -1903,13 +1903,13 @@ function stickySettingsHandler(jsonURL) {
 				});
 			}
 			
-		}
+		};
 
 		var failureCallback = function (message) {
 			$this.removeClass("waiting");
 			$this.addClass("settings-error");
 			displayAlert("submission-setting-"+field,"Unable to update setting",message);
-		}
+		};
 
 		jQuery.ajax({
 			url:jsonURL,
