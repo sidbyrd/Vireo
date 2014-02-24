@@ -7,8 +7,8 @@ jQuery(document).ready(function(){
 
 	// Settings toggle and input/textarea fields
      jQuery(".theme-textarea").change(applicationSettingsHandler('@{settings.ThemeSettingsTab.updateThemeSettingsJSON()}'));
-     jQuery(".theme-input").blur(applicationSettingsHandler('@{settings.ThemeSettingsTab.updateThemeSettingsJSON()}')); 
-	
+     jQuery(".theme-input").blur(applicationSettingsHandler('@{settings.ThemeSettingsTab.updateThemeSettingsJSON()}'));
+
      // Reset Theme Color
      jQuery(".color-reset").click(function(){    	
     	var $this = jQuery(this);
@@ -30,8 +30,13 @@ jQuery(document).ready(function(){
  	 */
  	 
  	jQuery('.tooltip-icon').tooltip();
-     
-}) // document ready
+
+    #{if flash.error}
+    // display error from non-AJAX form submission, if present
+    displayAlert("application-setting-logo","Unable to update setting","${flash.error}");
+    #{/if}
+
+}); // document ready
 </script>
 #{/set}
 
@@ -91,7 +96,7 @@ jQuery(document).ready(function(){
 <div class="well">
 <h4 style="display:inline;">Logos</h4>
 <a href="#" class="tooltip-icon" rel="tooltip" title="Change the logos located on the student side in the top left and top right corners. The recommended size is approximately 50 x 150 pixels."><i class="icon-info-sign"></i></a>
-<form method="post"  enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadLogos()}">
+    <form method="post"  enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadLogos()}">
 	<table class="logo-options">
 		<tr>
 			<td>

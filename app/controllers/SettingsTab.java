@@ -121,9 +121,9 @@ public class SettingsTab extends AbstractVireoController {
 	/**
 	 * Internal method to persist the current ordering of the model.
 	 * 
-	 * Each item in the list will have it's display order updated according to
-	 * it's position in the provided list. Then the item will be saved() to
-	 * persistant storage.
+	 * Each item in the list will have its display order updated according to
+	 * its position in the provided list. Then the item will be saved() to
+	 * persistent storage.
 	 * 
 	 * @param models
 	 *            A List of ordered models.
@@ -142,7 +142,7 @@ public class SettingsTab extends AbstractVireoController {
 	 * Internal method to resolve the ids from a sortable element.
 	 * 
 	 * The jQuery sortable library expects all ids to be of the format: type_id.
-	 * This method will process a comma sepeareted list of these jquery-based
+	 * This method will process a comma separated list of these jquery-based
 	 * ids, resolving them into their actual model objects according to the ids
 	 * position within the idString.
 	 * 
@@ -226,13 +226,13 @@ public class SettingsTab extends AbstractVireoController {
 	
 	
 	/**
-	 * Internal method to translate the name of a month into it's integer value.
+	 * Internal method to translate the name of a month into its integer value.
 	 * 
 	 * If the month name is invalid then a user displayable message is thrown as
 	 * an IllegalArgumentException.
 	 * 
 	 * @param monthName
-	 *            The name of a month in the default lanugage.
+	 *            The name of a month in the default language.
 	 * @return The integer value of the month, january=0, december=11.
 	 */
 	protected static int monthNameToInt(String monthName) {

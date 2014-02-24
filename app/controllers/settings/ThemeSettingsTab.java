@@ -8,6 +8,7 @@ import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.RoleType;
 import play.Logger;
 import play.mvc.With;
+import sun.awt.image.ImageFormatException;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -15,7 +16,6 @@ import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -129,74 +129,84 @@ public class ThemeSettingsTab extends SettingsTab {
 	@Security(RoleType.MANAGER)
 	public static void uploadLogos(File leftLogo, File rightLogo) throws IOException{
 		File themeDir = new File(THEME_PATH);
-		
+
 		if(!themeDir.exists()){
-			themeDir.mkdir();			
+			if (!themeDir.mkdir()) {
+                Logger.error("tab-settings: failed to create theme directory.");
+                flash.error("The server cannot write new theme settings.");
+                themeSettings();
+                return;
+            }
 		}
 		
-		if(params.get("deleteLeftLogo") != null) {
-			File logoFile = new File(THEME_PATH + "left-logo");
-			
-			if(logoFile.exists()){
-				logoFile.delete();
-			}
-            saveField(LEFT_LOGO_PATH, Configuration.DEFAULTS.get(LEFT_LOGO_PATH));
-            saveField(LEFT_LOGO_HEIGHT, Configuration.DEFAULTS.get(LEFT_LOGO_HEIGHT));
-            saveField(LEFT_LOGO_WIDTH, Configuration.DEFAULTS.get(LEFT_LOGO_WIDTH));
+		try {
+            if (params.get("deleteLeftLogo") != null || leftLogo != null) {
+                updateLogo("left", leftLogo);
+            }
+            if (params.get("deleteRightLogo") != null || rightLogo != null) {
+                updateLogo("right", rightLogo);
+            }
+
+            // If either logo was changed, the pre-calculated main page header height needs updating
             saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(
                     Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)),
                     Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
-		}
-		
-		if(params.get("deleteRightLogo") != null) {
-			File logoFile = new File(THEME_PATH + "right-logo");
-			
-            if(logoFile.exists()){
-				logoFile.delete();
-			}
-            saveField(RIGHT_LOGO_PATH, Configuration.DEFAULTS.get(RIGHT_LOGO_PATH));
-            saveField(RIGHT_LOGO_HEIGHT, Configuration.DEFAULTS.get(RIGHT_LOGO_HEIGHT));
-            saveField(RIGHT_LOGO_WIDTH, Configuration.DEFAULTS.get(RIGHT_LOGO_WIDTH));
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(
-                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)),
-                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
-		}
-		
-		if(leftLogo != null) {
-			File logoFile = new File(THEME_PATH + "left-logo");
-            Dimension dim = getImageDimension(leftLogo);
 
-            if(logoFile.exists()){
-				logoFile.delete();
-			}
-			
-			FileUtils.copyFile(leftLogo, logoFile);
-            saveField(LEFT_LOGO_PATH, String.valueOf("theme/left-logo"));
-            saveField(LEFT_LOGO_HEIGHT, String.valueOf((int)dim.getHeight()));
-            saveField(LEFT_LOGO_WIDTH, String.valueOf((int)dim.getWidth()));
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max((int)dim.getHeight(),
-                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
-		}
+        } catch (IOException e) {
+            Logger.error("tab-settings: could not update logo because "+e.getMessage());
+            flash.error("The server failed to update the image.");
+        } catch (ImageFormatException e) {
+            flash.error("Image format not recognized.");
+        }
 
-		if(rightLogo != null) {
-			File logoFile = new File(THEME_PATH + "right-logo");
-            Dimension dim = getImageDimension(rightLogo);
-
-            if(logoFile.exists()){
-				logoFile.delete();
-			}
-			
-			FileUtils.copyFile(rightLogo, logoFile);
-            saveField(RIGHT_LOGO_PATH, String.valueOf("theme/right-logo"));
-            saveField(RIGHT_LOGO_HEIGHT, String.valueOf((int)dim.getHeight()));
-            saveField(RIGHT_LOGO_WIDTH, String.valueOf((int)dim.getWidth()));
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max((int)dim.getHeight(),
-                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)))));
-		}
-		
 		themeSettings();
 	}
 
+    /**
+     * Updates the files and config settings for one top logo.
+     * @param side either "left" or "right"
+     * @param newLogoFile the new customized logo, or null to delete any previous customization and reset to
+     * default values.
+     * @throws IOException thrown on error storing or deleting image files
+     * @throws ImageFormatException if image format could not be understood
+     */
+    private static void updateLogo (String side, File newLogoFile) throws IOException, ImageFormatException {
+        // get previously stored customized logo file, if present
+        File logoFile = new File(THEME_PATH + side+"-logo");
+
+        if (newLogoFile != null) {
+            // uploading a new file:
+            // check that it's a valid image with known dimensions.
+            Dimension dim = getImageDimension(newLogoFile);
+            if (dim == null) {
+                throw new ImageFormatException("Not a recognized image format");
+            }
+            // it's valid. Save its info.
+            FileUtils.copyFile(newLogoFile, logoFile);
+            saveField(side+"_logo_path", String.valueOf("theme/"+side+"-logo"));
+            saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
+            saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
+        } else {
+            // delete old customized logo file
+            if(logoFile.exists()){
+                if (!logoFile.delete()) {
+                    // Not a real problem until user tries to set another customization. At
+                    // worst, some disk space will be wasted. But do log it.
+                    Logger.error("tab-settings: could not delete existing "+side+"-logo customization "+logoFile.getAbsolutePath());
+                }
+            }
+            // reset to default info
+            saveField(side+"_logo_path", Configuration.DEFAULTS.get(side+"_logo_path"));
+            saveField(side+"_logo_height", Configuration.DEFAULTS.get(side+"_logo_height"));
+            saveField(side+"_logo_width", Configuration.DEFAULTS.get(side+"_logo_width"));
+        }
+    }
+
+    /**
+     * Saves a Configuration value, whether it is new or an overwrite.
+     * @param field field to save to
+     * @param value value to save
+     */
     private static void saveField(String field, String value) {
         Configuration config = settingRepo.findConfigurationByName(field);
 
@@ -211,17 +221,16 @@ public class ThemeSettingsTab extends SettingsTab {
     /**
      * Gets image dimensions for given file
      * @param imgFile image file
-     * @return dimensions of image
-     * @throws IOException if the file is not a known image
+     * @return dimensions of image, or null if it couldn't be read and understood
      */
-    public static Dimension getImageDimension(File imgFile) throws IOException {
+    public static Dimension getImageDimension(File imgFile) {
         // if file extension present, use that
         int pos = imgFile.getName().lastIndexOf(".");
         if (pos > -1) {
             String suffix = imgFile.getName().substring(pos + 1);
-            Iterator<ImageReader> iter = ImageIO.getImageReadersBySuffix(suffix);
-            if (iter.hasNext()) {
-                ImageReader reader = iter.next();
+            Iterator<ImageReader> it = ImageIO.getImageReadersBySuffix(suffix);
+            if (it.hasNext()) {
+                ImageReader reader = it.next();
                 try {
                     ImageInputStream stream = new FileImageInputStream(imgFile);
                     reader.setInput(stream);
@@ -229,7 +238,7 @@ public class ThemeSettingsTab extends SettingsTab {
                     int height = reader.getHeight(reader.getMinIndex());
                     return new Dimension(width, height);
                 } catch (IOException e) {
-                    // we have more things left to try
+                    // we have more things left to try; not a failure yet.
                 } finally {
                     reader.dispose();
                 }
@@ -238,7 +247,11 @@ public class ThemeSettingsTab extends SettingsTab {
 
         // can't use file extension, so try slower generic method
         ImageIcon imageIcon = new ImageIcon(imgFile.getAbsolutePath());
-        BufferedImage readImage = ImageIO.read(imgFile);
-        return new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
+        if (imageIcon.getIconWidth() >= 0) {
+            return new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
+        }
+
+        // nothing worked.
+        return null;
     }
 }

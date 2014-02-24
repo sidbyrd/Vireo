@@ -71,10 +71,10 @@ public class AppConfig {
 	/** Submission Step Button highlight color when in "off" state */
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
 	
-    /** Path to "left-logo" image */
+    /** URL path to "left-logo" image */
     public final static String LEFT_LOGO_PATH = "left_logo_path";
 
-    /** Path to "right-logo" image */
+    /** URL path to "right-logo" image */
     public final static String RIGHT_LOGO_PATH = "right_logo_path";
 
     /** Pixel height of the current "left-logo" image */

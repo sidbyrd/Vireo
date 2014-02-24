@@ -196,7 +196,7 @@ function slideToggleHandler(open,close1,close2,close3) {
  * General function to display an alert message.
  * 
  * If this alert has never been displayed before then a new alert box will be
- * appended to the alert-area. If the alert has been displayed before then it's
+ * appended to the alert-area. If the alert has been displayed before then its
  * contents is replaced with the new error message.
  * 
  * id: Unique identifier for this error message. It will be used later for
@@ -215,7 +215,7 @@ function displayAlert(id, heading, message) {
 		alert.appendTo(jQuery("#alert-area")).fadeIn();
 
 	} else {
-		// An allert of this id already, exists. Replace it.
+		// An alert of this id already, exists. Replace it.
 		jQuery("#alert-area #" + id).replaceWith(alert);
 	}
 }
