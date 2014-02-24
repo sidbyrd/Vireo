@@ -13,6 +13,9 @@
 secret.properties
 certificate.jks
 
+# ignore stuff created by running the app
+conf/theme
+
 # Ignore Play! working directory #
 db
 eclipse
