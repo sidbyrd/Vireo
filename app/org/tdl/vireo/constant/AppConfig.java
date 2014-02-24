@@ -89,9 +89,6 @@ public class AppConfig {
     /** Pixel width of the current "right-logo" image */
     public final static String RIGHT_LOGO_WIDTH = "right_logo_width";
 
-    /** Pixel height of the taller of left-logo and right-logo */
-    public final static String TALLEST_LOGO_HEIGHT_PLUS_45 = "tallest_logo_height_plus_45";
-
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";
 	

@@ -149,7 +149,6 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         assertEquals("theme/left-logo", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
         assertEquals("378", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
         assertEquals("541", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-        assertEquals("423", settingRepo.getConfigValue(TALLEST_LOGO_HEIGHT_PLUS_45));
 		File logoFile = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
 		assertTrue(logoFile.exists());
 

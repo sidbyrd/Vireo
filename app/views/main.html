@@ -74,15 +74,28 @@
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px;
 			}
             #header{
-                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.TALLEST_LOGO_HEIGHT_PLUS_45)}px;
+              %{// tallest of left-logo or right-logo, plus 45px
+                int hh = 45;
+                try{
+                    int llh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT));
+                    int rlh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT));
+                    hh += java.lang.Math.max(llh, rlh)
+                } catch (java.lang.NumberFormatException e) {}}%
+                height:${hh}px;
             }
-			${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CUSTOM_CSS)};
+            #header-home{
+                %{// center at (negative 1/2 tallest logo height)
+                  int hht = 4 + -0.5 * (hh-45);}%
+                top:${hht}px
+            }
+			${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CUSTOM_CSS)}
         </style>
     </head>
     <body>
     	<div class="container">
-	    	<div id="header">	    
+	    	<div id="header">
 	    		<a id="left-logo" href="@{Application.index}" title="Home"></a>
+                <a id="header-home" href="@{Application.index}" title="Home">Thesis and Dissertation Submission</a>
 	    		
 	    		<div id="personal-bar">
 					#{if currentUser != null }

@@ -149,11 +149,6 @@ public class ThemeSettingsTab extends SettingsTab {
                 updateLogo("right", rightLogo);
             }
 
-            // If either logo was changed, the pre-calculated main page header height needs updating
-            saveField(TALLEST_LOGO_HEIGHT_PLUS_45, String.valueOf(45+Math.max(
-                    Integer.parseInt(settingRepo.getConfigValue(LEFT_LOGO_HEIGHT)),
-                    Integer.parseInt(settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT)))));
-
         } catch (IOException e) {
             Logger.error("tab-settings: could not update logo because "+e.getMessage());
             flash.error("The server failed to update the image.");
