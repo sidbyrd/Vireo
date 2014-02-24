@@ -33,6 +33,8 @@ import static org.tdl.vireo.constant.AppConfig.*;
 public class ThemeSettingsTab extends SettingsTab {
 	
 	public static final String THEME_PATH = "conf"+File.separator+"theme"+File.separator;
+    public static final String LEFT_LOGO_PATH = THEME_PATH + "left-logo";
+    public static final String RIGHT_LOGO_PATH = THEME_PATH + "right-logo";
 
 	@Security(RoleType.MANAGER)
 	public static void themeSettings() {
@@ -51,14 +53,14 @@ public class ThemeSettingsTab extends SettingsTab {
 		renderArgs.put("CUSTOM_CSS", settingRepo.getConfigValue(CUSTOM_CSS));
 				
 		// Logos
-        File leftLogo = new File("conf"+File.separator+settingRepo.getConfigValue(LEFT_LOGO_PATH));
-        File rightLogo = new File("conf"+File.separator+settingRepo.getConfigValue(RIGHT_LOGO_PATH));
-		boolean leftLogoIsDefault = settingRepo.getConfigValue(LEFT_LOGO_PATH).equals(Configuration.DEFAULTS.get(LEFT_LOGO_PATH));
-        boolean rightLogoIsDefault = settingRepo.getConfigValue(RIGHT_LOGO_PATH).equals(Configuration.DEFAULTS.get(RIGHT_LOGO_PATH));
-        renderArgs.put("LEFT_LOGO_PATH", settingRepo.getConfigValue(LEFT_LOGO_PATH));
+        File leftLogo = new File("conf"+File.separator+settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
+        File rightLogo = new File("conf"+File.separator+settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
+		boolean leftLogoIsDefault = settingRepo.getConfigValue(LEFT_LOGO_URLPATH).equals(Configuration.DEFAULTS.get(LEFT_LOGO_URLPATH));
+        boolean rightLogoIsDefault = settingRepo.getConfigValue(RIGHT_LOGO_URLPATH).equals(Configuration.DEFAULTS.get(RIGHT_LOGO_URLPATH));
+        renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
         renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
         renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-        renderArgs.put("RIGHT_LOGO_PATH", settingRepo.getConfigValue(RIGHT_LOGO_PATH));
+        renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
         renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
         renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
 		
@@ -183,7 +185,7 @@ public class ThemeSettingsTab extends SettingsTab {
             }
             // it's valid. Save its info.
             FileUtils.copyFile(newLogoFile, logoFile);
-            saveField(side+"_logo_path", String.valueOf("theme/"+side+"-logo"));
+            saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
             saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
             saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
         } else {
@@ -196,9 +198,12 @@ public class ThemeSettingsTab extends SettingsTab {
                 }
             }
             // reset to default info
-            saveField(side+"_logo_path", Configuration.DEFAULTS.get(side+"_logo_path"));
+            settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
+            settingRepo.findConfigurationByName(side+"_logo_height").delete();
+            settingRepo.findConfigurationByName(side+"_logo_width").delete();
+/*            saveField(side+"_logo_urlpath", Configuration.DEFAULTS.get(side+"_logo_urlpath"));
             saveField(side+"_logo_height", Configuration.DEFAULTS.get(side+"_logo_height"));
-            saveField(side+"_logo_width", Configuration.DEFAULTS.get(side+"_logo_width"));
+            saveField(side+"_logo_width", Configuration.DEFAULTS.get(side+"_logo_width"));*/
         }
     }
 

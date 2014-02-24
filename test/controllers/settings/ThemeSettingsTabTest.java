@@ -129,10 +129,11 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	@Test
 	public void testUploadingLogos() throws IOException {
 		LOGIN();
-		
+
 		//Get the url
 		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadLogos").url;
-		
+
+        // upload new left-logo
 		Map<String,String> params = new HashMap<String,String>();
 		params.put("submit_upload", "true");
 		
@@ -142,17 +143,27 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		files.put("leftLogo", file);
 		
 		Response response = POST(URL,params,files);
+
+        // check result
 		assertStatus(302,response);
-		
+        assertEquals("theme/left-logo", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
+        assertEquals("378", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
+        assertEquals("541", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
+        assertEquals("423", settingRepo.getConfigValue(TALLEST_LOGO_HEIGHT_PLUS_45));
 		File logoFile = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
 		assertTrue(logoFile.exists());
-		
-		params.clear();
+
+        // delete left-logo
+        params.clear();
 		params.put("deleteLeftLogo", "true");
 		
 		response = POST(URL,params);
+
+        // check result
 		assertStatus(302,response);
-		
+        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_URLPATH), settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
+        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_HEIGHT), settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
+        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_WIDTH), settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
 		logoFile = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
 		assertFalse(logoFile.exists());
 	}

@@ -72,10 +72,10 @@ public class AppConfig {
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
 	
     /** URL path to "left-logo" image */
-    public final static String LEFT_LOGO_PATH = "left_logo_path";
+    public final static String LEFT_LOGO_URLPATH = "left_logo_urlpath";
 
     /** URL path to "right-logo" image */
-    public final static String RIGHT_LOGO_PATH = "right_logo_path";
+    public final static String RIGHT_LOGO_URLPATH = "right_logo_urlpath";
 
     /** Pixel height of the current "left-logo" image */
     public final static String LEFT_LOGO_HEIGHT = "left_logo_height";
