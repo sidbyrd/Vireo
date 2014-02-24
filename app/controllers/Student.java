@@ -1,10 +1,14 @@
 package controllers;
 
-import static org.tdl.vireo.constant.AppConfig.GRANTOR;
-import static org.tdl.vireo.constant.FieldConfig.ADMINISTRATIVE_ATTACHMENT;
-import static org.tdl.vireo.constant.FieldConfig.PRIMARY_ATTACHMENT;
-import static org.tdl.vireo.constant.FieldConfig.SOURCE_ATTACHMENT;
-import static org.tdl.vireo.constant.FieldConfig.SUPPLEMENTAL_ATTACHMENT;
+import controllers.submit.PersonalInfo;
+import org.tdl.vireo.constant.AppConfig;
+import org.tdl.vireo.constant.FieldConfig;
+import org.tdl.vireo.model.*;
+import org.tdl.vireo.state.State;
+import play.Logger;
+import play.data.validation.Validation;
+import play.libs.MimeTypes;
+import play.mvc.With;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,22 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.tdl.vireo.constant.AppConfig;
-import org.tdl.vireo.constant.FieldConfig;
-import org.tdl.vireo.model.ActionLog;
-import org.tdl.vireo.model.Attachment;
-import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.model.Configuration;
-import org.tdl.vireo.model.NameFormat;
-import org.tdl.vireo.model.Person;
-import org.tdl.vireo.model.RoleType;
-import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.state.State;
-
-import play.Logger;
-import play.libs.MimeTypes;
-import play.mvc.With;
-import controllers.submit.PersonalInfo;
+import static org.tdl.vireo.constant.FieldConfig.*;
 
 /**
  * THIS CONTROLLER IS BEING REFACTORED. 
@@ -74,7 +63,7 @@ public class Student extends AbstractVireoController {
 	 * anything then they will be redirected to start a new submission. However
 	 * if they have other submissions then they will see a list. If the
 	 * configuration is not to have multiple submissions then the student will
-	 * be shutteled either to their inprogress submission, or view the status of
+	 * be shuttled either to their in-progress submission, or view the status of
 	 * the previous submission.
 	 */
 	@Security(RoleType.STUDENT)
@@ -192,7 +181,7 @@ public class Student extends AbstractVireoController {
 			
 			verify(sub);
 			
-			if (params.get("submit_corrections") != null && !validation.hasErrors()) {
+			if (params.get("submit_corrections") != null && !Validation.hasErrors()) {
 				try {
 					context.turnOffAuthorization();
 					State nextState = sub.getState().getTransitions(sub).get(0);
@@ -287,6 +276,7 @@ public class Student extends AbstractVireoController {
 	 * 
 	 * @param sub
 	 *            The submission to add the attachment too.
+     * @return success?
 	 */
 	public static boolean uploadPrimaryDocument(Submission sub) {
 
@@ -296,7 +286,7 @@ public class Student extends AbstractVireoController {
 
 		String mimetype = MimeTypes.getContentType(primaryDocument.getName());
 		if (!"application/pdf".equals(mimetype)) {
-			validation.addError("primaryDocument", "Primary document must be a PDF file.");
+			Validation.addError("primaryDocument", "Primary document must be a PDF file.");
 			return false;
 		}       	
 		
@@ -307,15 +297,15 @@ public class Student extends AbstractVireoController {
 			sub.save();
 		} catch (IOException ioe) {
 			Logger.error(ioe,"Unable to upload primary document");
-			validation.addError("primaryDocument","Error uploading primary document.");
+			Validation.addError("primaryDocument","Error uploading primary document.");
 		
 		} catch (IllegalArgumentException iae) {
 			Logger.error(iae,"Unable to upload primary document");
 			
 			if (iae.getMessage().contains("already exists for this submission"))
-				validation.addError("primaryDocument", "A file with that name already exists; please use a different name or remove the other file.");
+				Validation.addError("primaryDocument", "A file with that name already exists; please use a different name or remove the other file.");
 			else
-				validation.addError("primaryDocument","Error uploading primary document.");
+				Validation.addError("primaryDocument","Error uploading primary document.");
 		
 		}
 		return true;
@@ -326,6 +316,7 @@ public class Student extends AbstractVireoController {
 	 * 
 	 * @param sub
 	 *            The submission to add the attachment too.
+     * @return success?
 	 */
 	public static boolean uploadAdditional(Submission sub) {
 
@@ -348,15 +339,15 @@ public class Student extends AbstractVireoController {
 			sub.save();
 		} catch (IOException ioe) {
 			Logger.error(ioe,"Unable to upload additional document");
-			validation.addError("additionalDocument","Error uploading additional document.");
+			Validation.addError("additionalDocument","Error uploading additional document.");
 		
 		} catch (IllegalArgumentException iae) {
 			Logger.error(iae,"Unable to upload additional document");
 			
 			if (iae.getMessage().contains("already exists for this submission"))
-				validation.addError("additionalDocument", "A file with that name already exists; please use a different name or remove the other file.");
+				Validation.addError("additionalDocument", "A file with that name already exists; please use a different name or remove the other file.");
 			else
-				validation.addError("additionalDocument","Error uploading additional document.");
+				Validation.addError("additionalDocument","Error uploading additional document.");
 		
 		}
 		return true;
@@ -371,6 +362,7 @@ public class Student extends AbstractVireoController {
 	 * 
 	 * @param sub
 	 *            The submission to remove attachments from.
+     * @return success?
 	 */
 	public static boolean removeAdditional(Submission sub) {
 
@@ -443,32 +435,30 @@ public class Student extends AbstractVireoController {
 	/**
 	 * Verify that the user has supplied a primary document. This will be used
 	 * from both the fileUpload form and the confirmation page.
-	 * 
+	 *
+     * @param sub submission to check
 	 * @return True if the primary document exists, otherwise false.
 	 */
 	public static boolean verify(Submission sub) {
 		
-		int numberOfErrorsBefore = validation.errors().size();
+		int numberOfErrorsBefore = Validation.errors().size();
 
 		if (isFieldRequired(PRIMARY_ATTACHMENT) && sub.getPrimaryDocument() == null )
-			validation.addError("primaryDocument", "A manuscript file must be uploaded.");
+			Validation.addError("primaryDocument", "A manuscript file must be uploaded.");
 
 		if (isFieldRequired(SUPPLEMENTAL_ATTACHMENT) && 
 				sub.getAttachmentsByType(AttachmentType.SUPPLEMENTAL).size() == 0)
-			validation.addError("supplementalDocument", "At least one supplemental file is required.");
+			Validation.addError("supplementalDocument", "At least one supplemental file is required.");
 		
 		if (isFieldRequired(SOURCE_ATTACHMENT) && 
 				sub.getAttachmentsByType(AttachmentType.SOURCE).size() == 0)
-			validation.addError("sourceDocument", "At least one source file is required.");
+			Validation.addError("sourceDocument", "At least one source file is required.");
 		
 		if (isFieldRequired(ADMINISTRATIVE_ATTACHMENT) && 
 				sub.getAttachmentsByType(AttachmentType.ADMINISTRATIVE).size() == 0)
-			validation.addError("administrativeDocument", "At least one administrative file is required.");
+			Validation.addError("administrativeDocument", "At least one administrative file is required.");
 		
-		if (numberOfErrorsBefore == validation.errors().size()) 
-			return true;
-		else
-			return false;
+		return (numberOfErrorsBefore == Validation.errors().size());
 	}
 
 }
