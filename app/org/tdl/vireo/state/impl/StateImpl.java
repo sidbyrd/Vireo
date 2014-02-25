@@ -111,7 +111,6 @@ public class StateImpl implements State, BeanNameAware {
 
     @Override
     public boolean isStudentEditRepeatable() {
-        Logger.warn("************ state="+displayName+", repeatable="+((studentEditRepeatable)?"true":"false"));
         return studentEditRepeatable;
     }
 
