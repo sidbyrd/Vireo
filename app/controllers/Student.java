@@ -29,13 +29,13 @@ public class Student extends AbstractVireoController {
 
 	/**
 	 * Retrieve the submission object and make sure it's in a proper state. This
-	 * is slightly different that the version that is in the submission steps
+	 * is slightly different than the version that is in the submission steps
 	 * because it does not restrict the submission to be in an initial state.
 	 * 
 	 * @return The submission object.
 	 */
 	protected static Submission getSubmission() {
-		// We require an sub id.
+		// We require a sub id.
 		Long subId = params.get("subId", Long.class);
 		if (subId == null) {
 		    error("Did not receive the expected submission id.");
@@ -181,7 +181,8 @@ public class Student extends AbstractVireoController {
 			
 			verify(sub);
 			
-			if (params.get("submit_corrections") != null && !Validation.hasErrors()) {
+			if (params.get("submit_corrections") != null && !Validation.hasErrors()
+                    && !sub.getState().isStudentEditRepeatable()) {
 				try {
 					context.turnOffAuthorization();
 					State nextState = sub.getState().getTransitions(sub).get(0);

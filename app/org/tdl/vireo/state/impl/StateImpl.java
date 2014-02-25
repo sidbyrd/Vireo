@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.beans.factory.BeanNameAware;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.state.State;
+import play.Logger;
 
 
 /**
@@ -26,6 +27,7 @@ public class StateImpl implements State, BeanNameAware {
 	public boolean active = false;
 	public boolean archived = false;
 	public boolean editableByStudent = false;
+    public boolean studentEditRepeatable = false;
 	public boolean editableByReviewer = false;
 	public boolean depositable = false;
 	public boolean approved = false;
@@ -106,6 +108,19 @@ public class StateImpl implements State, BeanNameAware {
 	public void setEditableByStudent(boolean editable) {
 		this.editableByStudent = editable;
 	}
+
+    @Override
+    public boolean isStudentEditRepeatable() {
+        Logger.warn("************ state="+displayName+", repeatable="+((studentEditRepeatable)?"true":"false"));
+        return studentEditRepeatable;
+    }
+
+    /**
+     * @param studentEditRepeatable Whether student submitting edits should not cause an advance to the next state
+     */
+    public void setStudentEditRepeatable(boolean studentEditRepeatable) {
+        this.studentEditRepeatable = studentEditRepeatable;
+    }
 
 	@Override
 	public boolean isEditableByReviewer() {

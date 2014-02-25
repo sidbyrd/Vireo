@@ -45,6 +45,11 @@ public interface State {
 	 */
 	public boolean isEditableByStudent();
 
+    /**
+     * @return Whether student submitting edits should not cause an advance to the next state
+     */
+    public boolean isStudentEditRepeatable();
+
 	/**
 	 * @return Whether a reviewer can edit the submission during this state.
 	 */
