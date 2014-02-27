@@ -82,6 +82,8 @@
         <property name="displayName" value="Corrections Received" />
         <property name="active" value="true" />
         <property name="editableByReviewer" value="true" />
+        <property name="editableByStudent" value="true" />
+        <property name="studentEditRepeatable" value="true" />
         <property name="transitions">
             <util:list
                 list-class="java.util.ArrayList" value-type="org.tdl.vireo.state.State">
