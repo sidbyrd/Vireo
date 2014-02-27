@@ -299,7 +299,7 @@ Plus all the FieldConfig objects
     <label class="control-label">Alternative Options:<br/> <em>(not selected)</em></label>
     <div class="controls">
         #{list items:settingRepo.findAllEmbargoTypes(), as:'embargo'}
-            #{if embargo != sub.getEmbargoType()}
+            #{if embargo != sub.getEmbargoType() && embargo.isActive()}
                 <p><strong>${embargo.getName()}</strong> - ${embargo.getDescription()}</p>
             #{/if}
         #{/list}
