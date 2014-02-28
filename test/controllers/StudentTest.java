@@ -25,9 +25,12 @@ import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.model.jpa.JpaAttachmentImpl;
 import org.tdl.vireo.security.SecurityContext;
+import org.tdl.vireo.state.MockState;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
 
+import org.tdl.vireo.state.impl.StateManagerImpl;
+import play.Logger;
 import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
@@ -59,6 +62,16 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	public Person submitter = null;
 	
 	public List<Submission> subs = new ArrayList<Submission>();
+
+    // For mocking states of known configuration.
+    // Simplified a bit from normal default config for testing
+    MockState mockInProgress = new MockState();
+    MockState mockSubmitted = new MockState();
+    MockState mockNeedsCorrection = new MockState();
+    MockState mockCorrectionsReceived = new MockState();
+    MockState mockArchived = new MockState();
+    State originalInitialState;
+    List<State> originalStates;
 	
 	/**
 	 * Setup
@@ -81,6 +94,45 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		JPA.em().getTransaction().commit();
 		JPA.em().clear();
 		JPA.em().getTransaction().begin();
+
+        // make a set of mock states with known configuration
+        // use mocked state with known configuration, in case local
+        // configuration is non-standard.
+        List<State> mockStates = new ArrayList<State>();
+
+        mockStates.add(mockInProgress);
+        mockInProgress.beanName="mockInProgress"; // differing bean names are essential
+        mockInProgress.inProgress=true;
+
+        mockStates.add(mockSubmitted);
+        mockSubmitted.beanName="mockSubmitted";
+        mockSubmitted.isActive=true;
+        mockInProgress.transitions.add(mockSubmitted);
+
+        mockStates.add(mockNeedsCorrection);
+        mockNeedsCorrection.beanName="mockNeedsCorrection";
+        mockNeedsCorrection.isActive=true;
+        mockNeedsCorrection.isEditableByReviewer=true;
+        mockNeedsCorrection.isEditableByStudent=true;
+        mockSubmitted.transitions.add(mockNeedsCorrection);
+
+        mockStates.add(mockCorrectionsReceived);
+        mockCorrectionsReceived.beanName="mockCorrectionsReceived";
+        mockNeedsCorrection.transitions.add(mockCorrectionsReceived);
+
+        mockStates.add(mockArchived);
+        mockArchived.beanName="mockArchived";
+        mockArchived.isArchived=true;
+        mockCorrectionsReceived.transitions.add(mockArchived);
+
+        // This is gross, but it beats making a whole MockStateManager and mock injecting it into
+        // Spring just so everything else that only stores States by beanName, not by an actual
+        // object reference, and therefore has to do Spring.getBeanOfType(StateManager.class).getState(beanName)
+        // type stuff, won't throw NPE's at me.
+        originalStates = stateManager.getAllStates();
+        originalInitialState = stateManager.getInitialState();
+        ((StateManagerImpl) stateManager).setAllStates(mockStates);
+        ((StateManagerImpl) stateManager).setInitialState(mockInProgress);
 	}
 
 	/**
@@ -90,6 +142,9 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	 */
 	@After
 	public void cleanup() {
+        // clean up mock states
+        ((StateManagerImpl) stateManager).setAllStates(originalStates);
+        ((StateManagerImpl) stateManager).setInitialState(originalInitialState);
 
 		// Restore our configuration.
 		Configuration submissionsOpen = settingRepo.findConfigurationByName(SUBMISSIONS_OPEN);
@@ -195,12 +250,12 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		Response response = GET(LIST_URL);
 				
 		assertIsOk(response);
-		assertContentMatch("<title>Submission Status</title>",response);
+		assertContentMatch("<title>Submission Status</title>", response);
 		
 	}
 
 	/**
-	 * Test that when submissons are open, and multiple submissions are
+	 * Test that when submissions are open, and multiple submissions are
 	 * disallowed, the view page is shown for that one submission.
 	 */
 	@Test
@@ -232,7 +287,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	}
 	
 	/**
-	 * Test that when submissons are open, and multiple submissions are
+	 * Test that when submissions are open, and multiple submissions are
 	 * disallowed, and the student has an archived submission that they
 	 * are able to submit a new submission.
 	 */
@@ -242,12 +297,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		configure(true,false);
 		
 		Submission sub = subRepo.createSubmission(submitter);
-		for (State state : stateManager.getAllStates()) {
-			if (state.isArchived()) {
-				sub.setState(state);
-				break;
-			}
-		}
+        sub.setState(mockArchived);
 		sub.save();
 		
 		JPA.em().getTransaction().commit();
@@ -293,12 +343,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		
 		Submission sub = subRepo.createSubmission(submitter);
 		sub.setState(sub.getState().getTransitions(sub).get(0));
-		for (State state : stateManager.getAllStates()) {
-			if (state.isArchived()) {
-				sub.setState(state);
-				break;
-			}
-		}
+        sub.setState(mockArchived);
 		sub.save();
 		subs.add(sub);
 		
@@ -532,15 +577,13 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 
 	/**
 	 * Test replacing the primary document
+     * @throws IOException if resource file not loaded
 	 */
 	@Test
 	public void testManagingPrimaryDocument() throws IOException {
 
 		Submission sub = subRepo.createSubmission(submitter);
-		for(State state : stateManager.getAllStates()) {
-			if (state.isEditableByStudent())
-				sub.setState(state);
-		}
+        sub.setState(mockNeedsCorrection);
 		sub.save();
 		subs.add(sub);
 		
@@ -567,7 +610,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		fileParams.put("primaryDocument",testPDF);
 		params.put("uploadPrimary","Upload");
 		response = POST(VIEW_URL,params,fileParams);
-		
+
 		assertIsOk(response);
 		assertContentMatch("<title>View Application</title>",response);
 		assertContentMatch("PRIMARY-DOCUMENT.pdf",response);
@@ -586,65 +629,70 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	}
 
 	/**
-	 * Test completing corrections.
+	 * Test completing corrections flow, when the relevant state configuration
+     * is like the default config.
+     * @throws IOException if resource file not loaded
 	 */
 	@Test
 	public void testCompletingCorrections() throws IOException {
+        Submission sub = subRepo.createSubmission(submitter);
+        sub.setState(mockNeedsCorrection);
+        sub.save();
+        subs.add(sub);
 
-		Submission sub = subRepo.createSubmission(submitter);
-		for(State state : stateManager.getAllStates()) {
-			if (state.isEditableByStudent())
-				sub.setState(state);
-		}
-		sub.save();
-		subs.add(sub);
-		State needsCorrection = sub.getState();
-		
-		JPA.em().getTransaction().commit();
-		JPA.em().clear();
-		JPA.em().getTransaction().begin();
-		
-		LOGIN("student@tdl.org");
-		
-		Map<String,Object> routeArgs = new HashMap<String,Object>();
-		routeArgs.put("subId",sub.getId());
-		final String VIEW_URL = Router.reverse("Student.submissionView",routeArgs).url;
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
 
-		Response response = GET(VIEW_URL);
-		assertIsOk(response);
-		assertContentMatch("<title>View Application</title>",response);
-		assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
-		
-		Map<String,String> params = new HashMap<String,String>();
-		params.put("submit_corrections","Confirm Corrections");
-		response = POST(VIEW_URL,params);
-		
-		assertIsOk(response);
-		assertContentMatch("<title>View Application</title>",response);
-		assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
+        LOGIN("student@tdl.org");
 
-		File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
-		
-		Map<String,File> fileParams = new HashMap<String,File>();
-		fileParams.put("primaryDocument", primaryFile);
-		
-		response = POST(VIEW_URL,params,fileParams);
-		assertNotNull(response.getHeader("Location"));
+        Map<String,Object> routeArgs = new HashMap<String,Object>();
+        routeArgs.put("subId",sub.getId());
+        final String VIEW_URL = Router.reverse("Student.submissionView",routeArgs).url;
 
-		response = GET(response.getHeader("Location"));
-		assertContentMatch("Corrections Submitted",response);
-		
-		
-		// Verify the submission.
-		JPA.em().getTransaction().commit();
-		JPA.em().clear();
-		JPA.em().getTransaction().begin();
-		
-		sub = subRepo.findSubmission(sub.getId());
-		assertFalse(sub.getState() == needsCorrection);
-		assertNotNull(sub.getPrimaryDocument());
+        Response response = GET(VIEW_URL);
+        assertIsOk(response);
+        assertContentMatch("<title>View Application</title>", response);
+        assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
+
+        Map<String,String> params = new HashMap<String,String>();
+        params.put("submit_corrections","Confirm Corrections");
+        response = POST(VIEW_URL,params);
+
+        assertIsOk(response);
+        assertContentMatch("<title>View Application</title>",response);
+        assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
+
+        File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
+
+        Map<String,File> fileParams = new HashMap<String,File>();
+        fileParams.put("primaryDocument", primaryFile);
+
+        response = POST(VIEW_URL,params,fileParams);
+        assertNotNull(response.getHeader("Location"));
+
+        response = GET(response.getHeader("Location"));
+        assertContentMatch("Corrections Submitted",response);
+
+
+        // Verify the submission.
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
+
+        sub = subRepo.findSubmission(sub.getId());
+        assertEquals(mockCorrectionsReceived, sub.getState());
+        assertNotNull(sub.getPrimaryDocument());
 	}
-	 
+
+
+    // test that a state with editableByStudent and studentEditRepeatable shows the yellow info message and does not show the "Complete corrections" button, and that the state does not advance after an edit, and that "submission_complete" parameter is not accepted.
+
+    // test that a state with editableByStudent and not studentEditRepeatable shows the red alert message and the "Complete corrections" button, and that the state advances after receiving the "submission_complete" parameter.
+
+    // test that a state with !editableByStudent does not show any edit messages or controls.
+
+    // test that the only embargo states shown are the ones marked in the admin interface as "visible".
 
 	/**
 	 * Internal helper method to setup configuration for a test.
@@ -687,6 +735,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	 * @param filePath
 	 *            The path, relative to the classpath, of the file to reference.
 	 * @return A Java File object reference.
+     * @throws IOException if resource file couldn't be loaded
 	 */
 	protected static File getResourceFile(String filePath) throws IOException {
 

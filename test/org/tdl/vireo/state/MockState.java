@@ -22,11 +22,12 @@ public class MockState implements State {
 	public boolean isActive = false;
 	public boolean isArchived = false;
 	public boolean isEditableByStudent = false;
+    public boolean isStudentEditRepeatable = false;
 	public boolean isEditableByReviewer = false;
 	public boolean isDeletable = false;
 	public boolean isDepositable = false;
 	public boolean isApproved = false;
-	public List<MockState> transitions = new ArrayList<MockState>();
+	public List<State> transitions = new ArrayList<State>();
 
 	@Override
 	public String getBeanName() {
@@ -58,6 +59,11 @@ public class MockState implements State {
 		return isEditableByStudent;
 	}
 
+    @Override
+    public boolean isStudentEditRepeatable() {
+        return isStudentEditRepeatable;
+    }
+
 	@Override
 	public boolean isEditableByReviewer() {
 		return isEditableByReviewer;
@@ -80,7 +86,6 @@ public class MockState implements State {
 
 	@Override
 	public List<State> getTransitions(Submission submission) {
-		return (List) transitions;
+		return transitions;
 	}
-
 }

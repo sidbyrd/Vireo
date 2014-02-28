@@ -452,7 +452,7 @@ public class LDAPAuthenticationMethodImpl extends
             Person person = personRepo.findPersonByNetId(netID);
 
             // if no person found based on netID, check if there's one with the same
-            //  email address as what LDAP reported for this netID
+            //  email address as what LDAP reported for this netID (if configured to do this)
             if (person == null && allowNewUserEmailMatch && !StringUtils.isBlank(email)) {
                 person = personRepo.findPersonByEmail(email);
                 if (person != null) {
@@ -547,6 +547,8 @@ public class LDAPAuthenticationMethodImpl extends
             // These are required fields, so any update is necessarily an overwrite, not
             // merely an addition. (For name, only 1 of first,middle,last must be present,
             // but it makes no sense to update one without treating all three together.)
+            // Maybe that's appropriate for Shibboleth and its multi-institution setup,
+            // but it doesn't seem right for the way we use LDAP.
 
             // 7. Log the user in
             context.login(person);

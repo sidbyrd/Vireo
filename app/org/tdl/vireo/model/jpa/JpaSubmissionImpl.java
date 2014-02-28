@@ -1119,8 +1119,11 @@ public class JpaSubmissionImpl extends JpaAbstractModel<JpaSubmissionImpl> imple
 		// The "By whom ever" is duplicating data and just uneeded.
 		//if (actor != null)
 		//	entry += " by " + actor.getFormattedName(NameFormat.FIRST_LAST);
-		
-		ActionLog log = new JpaActionLogImpl(this, this.getState(), actor, new Date(), attachment, entry, false);
+
+        // We were taking the bean name, looking up the StateManager from Spring, asking it for the
+        // State based on the bean name, passing the State to JpaActionLogImpl, all so it could just
+        // extract the beanName, which is what we started with. Oy. Just pass what we actually want.
+		ActionLog log = new JpaActionLogImpl(this, stateName, actor, new Date(), attachment, entry, false);
 		pendingLogs.add(log);
 		return log;
 	}

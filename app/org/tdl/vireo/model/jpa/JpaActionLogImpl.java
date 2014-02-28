@@ -53,8 +53,8 @@ public class JpaActionLogImpl extends JpaAbstractModel<JpaActionLogImpl> impleme
 	 * 
 	 * @param submission
 	 *            The submission this action log affects.
-	 * @param submissionState
-	 *            The state of the submission after the action log.
+	 * @param submissionStateName
+	 *            The bean name of the state of the submission after the action log.
 	 * @param person
 	 *            The person who made the change.
 	 * @param actionDate
@@ -66,7 +66,7 @@ public class JpaActionLogImpl extends JpaAbstractModel<JpaActionLogImpl> impleme
 	 * @param privateFlag
 	 *            Weather the action should be published publicly viewable.
 	 */
-	protected JpaActionLogImpl(Submission submission, State submissionState,
+	protected JpaActionLogImpl(Submission submission, String submissionStateName,
 			Person person, Date actionDate, Attachment attachment, String entry,
 			boolean privateFlag) {
 
@@ -81,7 +81,7 @@ public class JpaActionLogImpl extends JpaAbstractModel<JpaActionLogImpl> impleme
 		
 		
 		this.submission = submission;
-		this.submissionState = submissionState.getBeanName();
+		this.submissionState = submissionStateName;
 		this.person = person;
 		this.actionDate = actionDate;
 		this.attachment = attachment;
