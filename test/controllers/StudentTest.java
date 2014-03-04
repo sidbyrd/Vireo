@@ -1,34 +1,14 @@
 package controllers;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.tdl.vireo.model.ActionLog;
-import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.model.Configuration;
-import org.tdl.vireo.model.Person;
-import org.tdl.vireo.model.PersonRepository;
-import org.tdl.vireo.model.RoleType;
-import org.tdl.vireo.model.SettingsRepository;
-import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.model.SubmissionRepository;
+import org.tdl.vireo.model.*;
 import org.tdl.vireo.model.jpa.JpaAttachmentImpl;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.state.MockState;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
-
 import org.tdl.vireo.state.impl.StateManagerImpl;
 import play.Logger;
 import play.Play;
@@ -37,7 +17,12 @@ import play.modules.spring.Spring;
 import play.mvc.Http.Response;
 import play.mvc.Router;
 
-import static org.tdl.vireo.constant.AppConfig.*;
+import java.io.*;
+import java.util.*;
+import java.util.regex.Pattern;
+
+import static org.tdl.vireo.constant.AppConfig.ALLOW_MULTIPLE_SUBMISSIONS;
+import static org.tdl.vireo.constant.AppConfig.SUBMISSIONS_OPEN;
 
 
 /**
@@ -629,12 +614,16 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 	}
 
 	/**
-	 * Test completing corrections flow, when the relevant state configuration
-     * is like the default config.
+     * Test proper function of a state with editableByStudent and !studentEditRepeatable.
+     * This mimics the default "Needs Correction" state. It should:
+     * - show the alert message with the state name (not the info message)
+     * - show the "Complete corrections" button disabled and enabled to match validation status
+     * - not advance state after receiving a "submission_complete" POST with valid submission
+     * - advance state after receiving a "submission_complete" POST with valid submission
      * @throws IOException if resource file not loaded
 	 */
 	@Test
-	public void testCompletingCorrections() throws IOException {
+	public void testEditableNotRepeatable() throws IOException {
         Submission sub = subRepo.createSubmission(submitter);
         sub.setState(mockNeedsCorrection);
         sub.save();
@@ -653,8 +642,12 @@ public class StudentTest extends AbstractVireoFunctionalTest {
         Response response = GET(VIEW_URL);
         assertIsOk(response);
         assertContentMatch("<title>View Application</title>", response);
+        // red alert box should appear
+        assertContentMatch("<div class=\"alert alert-error\">", response);
+        // submit corrections button should appear (disabled because validation doesn't pass yet)
         assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
 
+        // try submit_corrections before validation passes; should fail to advance state
         Map<String,String> params = new HashMap<String,String>();
         params.put("submit_corrections","Confirm Corrections");
         response = POST(VIEW_URL,params);
@@ -663,8 +656,8 @@ public class StudentTest extends AbstractVireoFunctionalTest {
         assertContentMatch("<title>View Application</title>",response);
         assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
 
+        // add primary document so validation will pass, and submit_corrections again
         File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
-
         Map<String,File> fileParams = new HashMap<String,File>();
         fileParams.put("primaryDocument", primaryFile);
 
@@ -674,8 +667,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
         response = GET(response.getHeader("Location"));
         assertContentMatch("Corrections Submitted",response);
 
-
-        // Verify the submission.
+        // Verify the submission and new state
         JPA.em().getTransaction().commit();
         JPA.em().clear();
         JPA.em().getTransaction().begin();
@@ -685,14 +677,126 @@ public class StudentTest extends AbstractVireoFunctionalTest {
         assertNotNull(sub.getPrimaryDocument());
 	}
 
+    /**
+     * Test proper function of a state with editableByStudent and studentEditRepeatable. It should:
+     * - show the info message with the state name (not the warning message)
+     * - not show the "Complete corrections" button
+     * - not advance state after an edit
+     * - ignore a "submission_complete" POST
+     * @throws IOException if resource file not loaded
+     */
+    @Test
+    public void testEditableAndRepeatable() throws IOException{
+        // set up needed state
+        mockCorrectionsReceived.isEditableByStudent = true;
+        mockCorrectionsReceived.isStudentEditRepeatable = true;
+        mockCorrectionsReceived.displayName = "falafel";
 
-    // test that a state with editableByStudent and studentEditRepeatable shows the yellow info message and does not show the "Complete corrections" button, and that the state does not advance after an edit, and that "submission_complete" parameter is not accepted.
+        Submission sub = subRepo.createSubmission(submitter);
+        sub.setState(mockCorrectionsReceived);
+        sub.save();
+        subs.add(sub);
 
-    // test that a state with editableByStudent and not studentEditRepeatable shows the red alert message and the "Complete corrections" button, and that the state advances after receiving the "submission_complete" parameter.
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
 
-    // test that a state with !editableByStudent does not show any edit messages or controls.
+        LOGIN("student@tdl.org");
 
-    // test that the only embargo states shown are the ones marked in the admin interface as "visible".
+        Map<String,Object> routeArgs = new HashMap<String,Object>();
+        routeArgs.put("subId",sub.getId());
+        final String VIEW_URL = Router.reverse("Student.submissionView",routeArgs).url;
+
+        Response response = GET(VIEW_URL);
+        assertIsOk(response);
+        assertContentMatch("<title>View Application</title>", response);
+        // yellow warning info box should apper
+        assertContentMatch("<div class=\"alert\">", response);
+        assertContentMatch("<p><strong>falafel</strong>", response);
+        // "complete corrections" button should not appear
+        assertFalse(response.out.toString().contains("class=\"btn btn-primary disabled\" name=\"submit_corrections\""));
+
+        // submit primary doc, which should make validation pass
+        Map<String,String> params = new HashMap<String,String>();
+        File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
+        Map<String,File> fileParams = new HashMap<String,File>();
+        fileParams.put("primaryDocument", primaryFile);
+        response = POST(VIEW_URL,params,fileParams);
+        assertNull(response.getHeader("Location"));
+
+        // try to confirm corrections, which should change nothing
+        params.put("submit_corrections","Confirm Corrections");
+        response = POST(VIEW_URL,params);
+        assertContentMatch("<title>View Application</title>", response);
+
+        // Verify the submission.
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
+
+        sub = subRepo.findSubmission(sub.getId());
+        assertEquals(mockCorrectionsReceived, sub.getState());
+        assertNotNull(sub.getPrimaryDocument());
+
+        // clean up
+        mockCorrectionsReceived.isEditableByStudent = false;
+        mockCorrectionsReceived.isStudentEditRepeatable = false;
+    }
+
+    /**
+     * test that a state without editableByStudent:
+     * - shows no edit controls and doesn't act on edits POSTed.
+     * - lists configured active embargoes, but not ones unchecked for "display" in the admin interface.
+     */
+    @Test
+    public void testNotEditable() {
+        Submission sub = subRepo.createSubmission(submitter);
+        sub.setState(mockSubmitted);
+        sub.save();
+        subs.add(sub);
+
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
+
+        LOGIN("student@tdl.org");
+
+        Map<String,Object> routeArgs = new HashMap<String,Object>();
+        routeArgs.put("subId",sub.getId());
+        final String VIEW_URL = Router.reverse("Student.submissionView",routeArgs).url;
+
+        Response response = GET(VIEW_URL);
+        assertIsOk(response);
+        assertContentMatch("<title>View Application</title>", response);
+        // no alert box should appear
+        assertFalse(response.out.toString().contains("<div class=\"alert"));
+        // file upload buttons and "complete corrections" button should not appear
+        assertFalse(response.out.toString().contains("class=\"btn btn-primary disabled\" name=\"submit_corrections\""));
+        assertFalse(response.out.toString().contains("<input type=\"submit"));
+        
+        // make sure active embargoes appear and undisplayed ones don't.
+        assertContentMatch("<strong>None</strong>", response);
+        assertContentMatch("<strong>Journal Hold</strong>", response);
+        assertContentMatch("<strong>Patent Hold</strong>", response);
+        assertFalse(response.out.toString().contains("<strong>Other Embargo Period</strong>"));
+
+        // try submit_corrections; should fail to do anything
+        Map<String,String> params = new HashMap<String,String>();
+        params.put("submit_corrections","Confirm Corrections");
+        response = POST(VIEW_URL,params);
+
+        assertIsOk(response);
+        assertContentMatch("<title>View Application</title>",response);
+
+        // Verify the unchanged submission and state
+        JPA.em().getTransaction().commit();
+        JPA.em().clear();
+        JPA.em().getTransaction().begin();
+
+        sub = subRepo.findSubmission(sub.getId());
+        assertEquals(mockSubmitted, sub.getState());
+        assertNull(sub.getPrimaryDocument());
+    }
 
 	/**
 	 * Internal helper method to setup configuration for a test.

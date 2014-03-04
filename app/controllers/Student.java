@@ -170,7 +170,7 @@ public class Student extends AbstractVireoController {
 			
 			// Handle the remove supplementary document button 
 			if (params.get("removeAdditional") != null) {
-				removeAdditional(sub);           	            	
+				removeAdditional(sub);
 			}
 			
 			if(params.get("primaryDocument",File.class) != null) 
