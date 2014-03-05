@@ -7,9 +7,9 @@ import play.libs.F.Promise;
  * 
  * This is used by the export service (or someone else if needed) to stream an
  * export file directly to the client. We are generating a file dynamically and
- * as we the content is being built it is streamed to this chunkStream which is
- * then transmitted to the browser. This gets around the problem of where to do
- * store this file while it's being generated, with this interface you don't.
+ * as the content is being built it is streamed to this chunkStream which is
+ * then transmitted to the browser. This gets around the problem of where to
+ * store this file while it's being generated--with this interface you don't.
  * The user's browser will save it to their disk.
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
@@ -17,7 +17,7 @@ import play.libs.F.Promise;
 public interface ChunkStream {
 
 	/**
-	 * The "Content-Type" header both helps the webserver and the browser
+	 * The "Content-Type" header both helps the web server and the browser
 	 * understand the material being streamed. Typically the mimetype of
 	 * "application/zip" will be used.
 	 * 

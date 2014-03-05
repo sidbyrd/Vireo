@@ -2,7 +2,7 @@
 *{
     The Proquest/UMI export format. Use this format when publishing records to
     Proquest for inclusion in their database of Thesis and Dissertations. There 
-    are a mirad of options at the top of this fale that you can use to 
+    are a mirad of options at the top of this file that you can use to
     customise the export generated metadata. This ranges from embargo settings,
     publication identifiers, and whether to release contact information for the
     student.
@@ -23,13 +23,13 @@
     boolean third_party_sales = false;
     
     // #### Release Student Contact
-    // In addition to the student's name should their phone, mailing address,
+    // In addition to the student's name, should their phone, mailing address,
     // and email address be released to ProQuest. Turning this on may violate
     // FERPA regulations.
     boolean release_student_contact_information = true;
 
     // #### Apply for Copyright
-    // Indicate if the author wants us proquest to apply for copyright. There 
+    // Indicate if the author wants proquest to apply for copyright. There
     // is an additional $65 fee for copyright registration, and for FTP sites,
     // the author must submit a signed paper form with the additional payment.
     boolean apply_for_copyright = false;
