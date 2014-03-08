@@ -4,6 +4,8 @@ import controllers.Authentication;
 import controllers.Security;
 import controllers.SettingsTab;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.RoleType;
 import play.Logger;
@@ -33,8 +35,8 @@ import static org.tdl.vireo.constant.AppConfig.*;
 public class ThemeSettingsTab extends SettingsTab {
 	
 	public static final String THEME_PATH = "conf"+File.separator+"theme"+File.separator;
-    public static final String LEFT_LOGO_PATH = THEME_PATH + "left-logo";
-    public static final String RIGHT_LOGO_PATH = THEME_PATH + "right-logo";
+	public static final String LEFT_LOGO_PATH = THEME_PATH + "left-logo";
+	public static final String RIGHT_LOGO_PATH = THEME_PATH + "right-logo";
 
 	@Security(RoleType.MANAGER)
 	public static void themeSettings() {
@@ -60,23 +62,26 @@ public class ThemeSettingsTab extends SettingsTab {
         renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
         renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
         renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
+        renderArgs.put("LEFT_LOGO_HAS_RETINA", settingRepo.getConfigValue(LEFT_LOGO_HAS_RETINA));
         renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
         renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
         renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
+        renderArgs.put("RIGHT_LOGO_HAS_RETINA", settingRepo.getConfigValue(RIGHT_LOGO_HAS_RETINA));
 		
 		String nav = "settings";
 		String subNav = "theme";
 		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogo, rightLogo, leftLogoIsDefault, rightLogoIsDefault);
 	}
 	
-	
+    @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
 	public static void updateThemeSettingsJSON(String field, String value) {
 
 		try {
-			List<String> booleanFields = new ArrayList<String>();
-			// None at the moment but we expect some in the future.
-			
+            // None at the moment but we expect some in the future.
+			@SuppressWarnings({"MismatchedQueryAndUpdateOfCollection"})
+            List<String> booleanFields = new ArrayList<String>();
+
 			List<String> textFields = new ArrayList<String>();
 			textFields.add(FRONT_PAGE_INSTRUCTIONS);
 			textFields.add(SUBMIT_INSTRUCTIONS);
@@ -127,9 +132,10 @@ public class ThemeSettingsTab extends SettingsTab {
 			renderJSON("{ \"failure\": \"true\", \"message\": \""+message+"\" }");
 		}
 	}
-	
+
+    @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
-	public static void uploadLogos(File leftLogo, File rightLogo) throws IOException{
+	public static void uploadLogos(File leftLogo, File rightLogo) {
 		File themeDir = new File(THEME_PATH);
 
 		if(!themeDir.exists()){
@@ -160,49 +166,6 @@ public class ThemeSettingsTab extends SettingsTab {
 	}
 
     /**
-     * Updates the files and config settings for one top logo.
-     * @param side either "left" or "right"
-     * @param newLogoFile the new customized logo, or null to delete any previous customization and reset to
-     * default values.
-     * @throws IOException thrown on error storing or deleting image files
-     * @throws ImageFormatException if image format could not be understood
-     */
-    private static void updateLogo (String side, File newLogoFile) throws IOException, ImageFormatException {
-        // get previously stored customized logo file, if present
-        File logoFile = new File(THEME_PATH + side+"-logo");
-
-        if (newLogoFile != null) {
-            // uploading a new file:
-            // check that it's a valid image with known dimensions.
-            Dimension dim = getImageDimension(newLogoFile);
-            if (dim == null) {
-                throw new ImageFormatException("Not a recognized image format");
-            }
-            // it's valid. Save its info.
-            FileUtils.copyFile(newLogoFile, logoFile);
-            saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
-            saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
-            saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
-        } else {
-            // delete old customized logo file
-            if(logoFile.exists()){
-                if (!logoFile.delete()) {
-                    // Not a real problem until user tries to set another customization. At
-                    // worst, some disk space will be wasted. But do log it.
-                    Logger.error("tab-settings: could not delete existing "+side+"-logo customization "+logoFile.getAbsolutePath());
-                }
-            }
-            // reset to default info
-            settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
-            settingRepo.findConfigurationByName(side+"_logo_height").delete();
-            settingRepo.findConfigurationByName(side+"_logo_width").delete();
-/*            saveField(side+"_logo_urlpath", Configuration.DEFAULTS.get(side+"_logo_urlpath"));
-            saveField(side+"_logo_height", Configuration.DEFAULTS.get(side+"_logo_height"));
-            saveField(side+"_logo_width", Configuration.DEFAULTS.get(side+"_logo_width"));*/
-        }
-    }
-
-    /**
      * Saves a Configuration value, whether it is new or an overwrite.
      * @param field field to save to
      * @param value value to save
@@ -219,20 +182,65 @@ public class ThemeSettingsTab extends SettingsTab {
     }
 
     /**
+     * Updates the files and config settings for one top logo.
+     * @param side either the string "left" or "right"
+     * @param logo the new customized logo, or null to delete any previous customization and reset to
+     * default values.
+     * @throws IOException thrown on error storing or deleting image files
+     * @throws ImageFormatException if image format could not be understood
+     */
+    private static void updateLogo (String side, File logo) throws IOException, ImageFormatException {
+        if (logo != null) {
+            // Uploading a new file.
+            // Check that it's a valid image with known dimensions.
+            String extension = FilenameUtils.getExtension(logo.getName());
+            Dimension dim = getImageDimension(logo, extension);
+            if (dim == null) {
+                throw new ImageFormatException("Not a recognized image format");
+            }
+
+            // Put it in the theme directory with a standardized name for organization, but
+            // keep its original file extension so web servers get the mimetype right.
+            File newFile = new File(THEME_PATH + side + "-logo" + "." + extension);
+            FileUtils.copyFile(logo, newFile);
+
+            // Save image metadata.
+            saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
+            saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
+            saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
+        } else {
+            // Delete old customized logo file.
+            File oldFile = new File("conf"+File.separator+settingRepo.getConfigValue(side+"_logo_urlpath"));
+            if(oldFile.exists()){
+                if (!oldFile.delete()) {
+                    // Not a real problem except for some wasted disk space--at least not yet--but do log it.
+                    Logger.error("tab-settings: could not delete existing "+side+" logo customization "+oldFile.getAbsolutePath());
+                }
+            }
+            // Reset to default image metadata.
+            settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
+            settingRepo.findConfigurationByName(side+"_logo_height").delete();
+            settingRepo.findConfigurationByName(side+"_logo_width").delete();
+            settingRepo.findConfigurationByName(side+"_logo_has_retina").delete();
+            /* nicer than saveField(side+"_logo_urlpath", Configuration.DEFAULTS.get(side+"_logo_urlpath"));*/
+        }
+    }
+
+    /**
      * Gets image dimensions for given file
-     * @param imgFile image file
+     * @param image image file
+     * @param extension optionally, a file type extension to indicate image's format
      * @return dimensions of image, or null if it couldn't be read and understood
      */
-    public static Dimension getImageDimension(File imgFile) {
-        // if file extension present, use that
-        int pos = imgFile.getName().lastIndexOf(".");
-        if (pos > -1) {
-            String suffix = imgFile.getName().substring(pos + 1);
-            Iterator<ImageReader> it = ImageIO.getImageReadersBySuffix(suffix);
+    private static Dimension getImageDimension(File image, String extension) {
+        // if file extension present, sometimes we can use that to read height and width without
+        //  loading the whole image
+        if (!StringUtils.isBlank(extension)) {
+            Iterator<ImageReader> it = ImageIO.getImageReadersBySuffix(extension);
             if (it.hasNext()) {
                 ImageReader reader = it.next();
                 try {
-                    ImageInputStream stream = new FileImageInputStream(imgFile);
+                    ImageInputStream stream = new FileImageInputStream(image);
                     reader.setInput(stream);
                     int width = reader.getWidth(reader.getMinIndex());
                     int height = reader.getHeight(reader.getMinIndex());
@@ -246,7 +254,7 @@ public class ThemeSettingsTab extends SettingsTab {
         }
 
         // can't use file extension, so try slower generic method
-        ImageIcon imageIcon = new ImageIcon(imgFile.getAbsolutePath());
+        ImageIcon imageIcon = new ImageIcon(image.getAbsolutePath());
         if (imageIcon.getIconWidth() >= 0) {
             return new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
         }

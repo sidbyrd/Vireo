@@ -95,41 +95,88 @@ jQuery(document).ready(function(){
 
 <div class="well">
 <h4 style="display:inline;">Logos</h4>
-<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logos located on the student side in the top left and top right corners. The recommended size is approximately 50 x 150 pixels."><i class="icon-info-sign"></i></a>
+<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logos located on the student side in the top left and top right corners. The page layout is designed for images approximately 150×50 pixels."><i class="icon-info-sign"></i></a>
     <form method="post"  enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadLogos()}">
 	<table class="logo-options">
 		<tr>
 			<td>
-			<p>Left Logo<br />
-				<input type="file" name="leftLogo" />
-			</p>
+                <p>Left Logo—1x resolution<br />
+                    <input type="file" name="leftLogo" />
+                </p>
 			</td>
 			<td>
-			<div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH}'); height:${LEFT_LOGO_HEIGHT}px; width:${LEFT_LOGO_WIDTH}px;"></div>
+			    <div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH}'); height:${LEFT_LOGO_HEIGHT}px; width:${LEFT_LOGO_WIDTH}px;"></div>
 			</td>
 			<td>
-                <p>#{if leftLogoIsDefault}Default left logo<br />#{/if}Size: ${LEFT_LOGO_HEIGHT} × ${LEFT_LOGO_WIDTH}</p>
+                <p>#{if leftLogoIsDefault}Default #{/if}Left Logo 1x<br />Size: ${LEFT_LOGO_HEIGHT} × ${LEFT_LOGO_WIDTH}</p>
                 #{if !leftLogoIsDefault}
-				</p><button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Remove</button>
+				</p><button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Reset</button>
                 #{/if}
 			</td>
 		</tr>
+        <tr>
+            <td>
+                <p>Left Logo—2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. This should be the same image as the 1x version, but twice as high and wide. Users with high resolution screens will see the 2x version. If you only upload a 2x version (and not a 1x), then all users will be sent the 2x version even if they have a low-res screen, which works but wastes bandwidth."><i class="icon-info-sign"></i></a><br />
+                    <input type="file" name="leftLogoRetina" />
+                </p>
+            </td>
+            <td>
+                <div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}');%{
+                int lh2x, lw2x;
+                try{
+                    lh2x = 2 * java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT));
+                    lw2x = 2 * java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH));
+                } catch (java.lang.NumberFormatException e) {}}%
+                height:${lh2x}px;
+                width:${lw2x}px;}"></div>
+            </td>
+            <td>
+                <p>#{if leftLogoIsDefault}Default #{/if}Left Logo 2x<br />Shown at twice actual size</p>
+                #{if !leftLogoIsDefault}
+                </p><button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Reset</button>
+                #{/if}
+            </td>
+        </tr>
+        <tr><td colspan="4"><hr /></td></tr>
 		<tr>
 			<td>
-			<p>Right Logo<br />
-				<input type="file" name="rightLogo" />
-			</p>
+                <p>Right Logo—1x resolution<br />
+                    <input type="file" name="rightLogo" />
+                </p>
 			</td>
 			<td>
                 <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH}'); height:${RIGHT_LOGO_HEIGHT}px; width:${RIGHT_LOGO_WIDTH}px;"></div>
 			</td>
 			<td>
-                <p>#{if rightLogoIsDefault}Default right logo<br />#{/if}Size: ${RIGHT_LOGO_HEIGHT} × ${RIGHT_LOGO_WIDTH}</p>
+                <p>#{if rightLogoIsDefault}Default #{/if}Right Logo 1x<br />Size: ${RIGHT_LOGO_HEIGHT} × ${RIGHT_LOGO_WIDTH}</p>
                 #{if !rightLogoIsDefault}
-				</p><button class="confirm btn btn-small" type="submit" name="deleteRightLogo">Remove</button>
+				</p><button class="confirm btn btn-small" type="submit" name="deleteRightLogo">Reset</button>
                 #{/if}
 			</td>
 		</tr>
+        <tr>
+            <td>
+                <p>Right Logo—2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. This should be the same image as the 1x version, but twice as high and wide. Users with high resolution screens will see the 2x version. If you only upload a 2x version (and not a 1x), then all users will be sent the 2x version even if they have a low-res screen, which works but wastes bandwidth."><i class="icon-info-sign"></i></a><br />
+                    <input type="file" name="rightLogoRetina" />
+                </p>
+            </td>
+            <td>
+                <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}');%{
+                int rh2x, rw2x;
+                try{
+                    rh2x = 2 * java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT));
+                    rw2x = 2 * java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH));
+                } catch (java.lang.NumberFormatException e) {}}%
+                height:${rh2x}px;
+                width:${rw2x}px;}"></div>
+            </td>
+            <td>
+                <p>#{if rightLogoIsDefault}Default #{/if}Right Logo 2x<br />Shown at twice actual size</p>
+                #{if !rightLogoIsDefault}
+                </p><button class="confirm btn btn-small" type="submit" name="deleteLeftLogo">Reset</button>
+                #{/if}
+            </td>
+        </tr>
 	</table>
 	<p><input class="btn" type="submit" name="submit_upload" value="Upload" /></p>
 </form>
