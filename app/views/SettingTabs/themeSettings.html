@@ -36,7 +36,7 @@ jQuery(document).ready(function(){
     displayAlert("application-setting-logo","Unable to update setting","${flash.error}");
     #{/if}
 
-    // buttons to zoom/unzoom retina logo graphics
+    // buttons to zoom/unzoom 2x logo graphics
     jQuery('#leftZoomToggle').click(function() {zoom('left'); return false;});
     jQuery('#rightZoomToggle').click(function() {zoom('right'); return false;});
 
@@ -123,16 +123,16 @@ jQuery(document).ready(function(){
         <tr>
             <td>
                 <p>Left Logo—2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. This should be the same image as the 1x version, but twice as tall and wide. Users with high resolution screens will see the 2x version. If you only upload a 2x version (and not a 1x), then all users will be sent the 2x version even if they have a low-res screen, which works but wastes bandwidth."><i class="icon-info-sign"></i></a><br />
-                    <input type="file" name="leftLogoRetina" />
+                    <input type="file" name="leftLogo2x" />
                 </p>
             </td>
-            #{if LEFT_LOGO_HAS_RETINA}
+            #{if LEFT_LOGO_HAS_2X}
             <td>
-                <div class="preview" id="leftRetPreview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+                <div class="preview" id="left2xPreview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
             </td>
             <td>
                 #{if !leftLogoIsDefault}
-                <button class="confirm btn btn-small" type="submit" name="deleteLeftLogoRetina">Delete</button>
+                <button class="confirm btn btn-small" type="submit" name="deleteLeftLogo2x">Delete</button>
                 #{/if}
             </td>
             <td>
@@ -161,16 +161,16 @@ jQuery(document).ready(function(){
         <tr>
             <td>
                 <p>Right Logo—2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. This should be the same image as the 1x version, but twice as tall and wide. Users with high resolution screens will see the 2x version. If you only upload a 2x version (and not a 1x), then all users will be sent the 2x version even if they have a low-res screen, which works but wastes bandwidth."><i class="icon-info-sign"></i></a><br />
-                    <input type="file" name="rightLogoRetina" />
+                    <input type="file" name="rightLogo2x" />
                 </p>
             </td>
-            #{if RIGHT_LOGO_HAS_RETINA}
+            #{if RIGHT_LOGO_HAS_2X}
             <td>
-                <div class="preview" id="rightRetPreview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
+                <div class="preview" id="right2xPreview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
             </td>
             <td>
                 #{if !rightLogoIsDefault}
-                <button class="confirm btn btn-small" type="submit" name="deleteRightLogoRetina">Delete</button>
+                <button class="confirm btn btn-small" type="submit" name="deleteRightLogo2x">Delete</button>
                 #{/if}
             </td>
             <td>

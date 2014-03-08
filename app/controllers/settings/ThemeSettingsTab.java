@@ -62,11 +62,11 @@ public class ThemeSettingsTab extends SettingsTab {
         renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
         renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
         renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-        renderArgs.put("LEFT_LOGO_HAS_RETINA", settingRepo.getConfigValue(LEFT_LOGO_HAS_RETINA));
+        renderArgs.put("LEFT_LOGO_HAS_2X", settingRepo.getConfigValue(LEFT_LOGO_HAS_2X));
         renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
         renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
         renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
-        renderArgs.put("RIGHT_LOGO_HAS_RETINA", settingRepo.getConfigValue(RIGHT_LOGO_HAS_RETINA));
+        renderArgs.put("RIGHT_LOGO_HAS_2X", settingRepo.getConfigValue(RIGHT_LOGO_HAS_2X));
 		
 		String nav = "settings";
 		String subNav = "theme";
@@ -135,7 +135,7 @@ public class ThemeSettingsTab extends SettingsTab {
 
     @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
-	public static void uploadLogos(File leftLogo, File rightLogo) {
+	public static void uploadLogos(File leftLogo, File leftLogo2x, File rightLogo, File rightLogo2x) {
 		File themeDir = new File(THEME_PATH);
 
 		if(!themeDir.exists()){
@@ -221,7 +221,7 @@ public class ThemeSettingsTab extends SettingsTab {
             settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
             settingRepo.findConfigurationByName(side+"_logo_height").delete();
             settingRepo.findConfigurationByName(side+"_logo_width").delete();
-            settingRepo.findConfigurationByName(side+"_logo_has_retina").delete();
+            settingRepo.findConfigurationByName(side+"_logo_has_2x").delete();
             /* nicer than saveField(side+"_logo_urlpath", Configuration.DEFAULTS.get(side+"_logo_urlpath"));*/
         }
     }

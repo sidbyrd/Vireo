@@ -1197,8 +1197,12 @@ function memberUpdateHandler(htmlURL) {
  * Theme Settings Tab
  **********************************************************/
 
+/**
+ * Button click function to toggle zoom on 2x logo preview in themeSettings.html
+ * @param side "left" or "right"
+ */
 function zoom(side) {
-    var image = jQuery('#'+side+'RetPreview');
+    var image = jQuery('#'+side+'2xPreview');
     var button = jQuery('#'+side+'ZoomToggle');
     var w = image.width();
     var h = image.height();
