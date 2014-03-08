@@ -83,11 +83,17 @@ public class AppConfig {
     /** Pixel width of the current "left-logo" image */
     public final static String LEFT_LOGO_WIDTH = "left_logo_width";
 
+    /** Does the left-logo image have a corresponding @2x version? */
+    public final static String LEFT_LOGO_HAS_RETINA = "left_logo_has_retina";
+
     /** Pixel height of the current "right-logo" image */
     public final static String RIGHT_LOGO_HEIGHT = "right_logo_height";
 
     /** Pixel width of the current "right-logo" image */
     public final static String RIGHT_LOGO_WIDTH = "right_logo_width";
+
+    /** Does the right-logo image have a corresponding @2x version? */
+    public final static String RIGHT_LOGO_HAS_RETINA = "right_logo_has_retina";
 
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";

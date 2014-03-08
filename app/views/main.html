@@ -68,11 +68,33 @@
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px;
 			}
+            #{if settingRepo.getConfigBoolean(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HAS_RETINA)}
+            @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
+                   only screen and (min--moz-device-pixel-ratio: 1.5),
+                   only screen and (-o-min-device-pixel-ratio: 3/2),
+                   only screen and (min-resolution: 1.5dppx) {
+                #left-logo {
+                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
+                    background-size: ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
+                }
+            }
+            #{/if}
 			#right-logo{
                 background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_URLPATH)}');
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px;
 			}
+            #{if settingRepo.getConfigBoolean(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HAS_RETINA)}
+            @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
+                   only screen and (min--moz-device-pixel-ratio: 1.5),
+                   only screen and (-o-min-device-pixel-ratio: 3/2),
+                   only screen and (min-resolution: 1.5dppx) {
+                #right-logo {
+                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
+                    background-size: ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
+                }
+            }
+            #{/if}
             #header{
               %{// tallest of left-logo or right-logo, plus 45px
                 int hh = 45;

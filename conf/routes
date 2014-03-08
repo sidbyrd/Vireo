@@ -218,6 +218,5 @@ GET     /system/errors/?                        System.errorPanel
 GET     /favicon.ico                            404
 
 # Map static resources from the /app/public folder to the /public path
-GET		/theme/left-logo						staticFile:conf/theme/left-logo
-GET		/theme/right-logo				    	staticFile:conf/theme/right-logo
+GET		/theme/         						staticDir:conf/theme
 GET     /public/                                staticDir:public
