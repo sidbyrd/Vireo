@@ -1194,6 +1194,35 @@ function memberUpdateHandler(htmlURL) {
 
 
 /**********************************************************
+ * Theme Settings Tab
+ **********************************************************/
+
+function zoom(side) {
+    var image = jQuery('#'+side+'RetPreview');
+    var button = jQuery('#'+side+'ZoomToggle');
+    var w = image.width();
+    var h = image.height();
+
+    if (image.hasClass("zoomed")) {
+        // zoom out
+        image.removeClass("zoomed");
+        button.text("Zoom");
+        image.animate({
+            "width"  : 0.5*w,
+            "height" : 0.5*h
+        }, 150);
+    } else {
+        // zoom in
+        image.addClass("zoomed");
+        button.text("View Normal");
+        image.animate({
+            "width"  : 2*w,
+            "height" : 2*h
+        }, 150);
+    }
+}
+
+/**********************************************************
  * Email Settings Tab
  **********************************************************/
 
