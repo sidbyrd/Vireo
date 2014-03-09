@@ -126,7 +126,7 @@ jQuery(document).ready(function(){
                     <input type="file" name="leftLogo2x" />
                 </p>
             </td>
-            #{if LEFT_LOGO_HAS_2X}
+            #{if LEFT_LOGO_2X.equals("2x")}
             <td>
                 <div class="preview" id="left2xPreview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
             </td>
@@ -164,7 +164,7 @@ jQuery(document).ready(function(){
                     <input type="file" name="rightLogo2x" />
                 </p>
             </td>
-            #{if RIGHT_LOGO_HAS_2X}
+            #{if RIGHT_LOGO_2X.equals("2x")}
             <td>
                 <div class="preview" id="right2xPreview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
             </td>

@@ -68,7 +68,7 @@
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px;
 			}
-            #{if settingRepo.getConfigBoolean(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HAS_2X)}
+            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_2X).equals("2x")}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),
@@ -84,7 +84,7 @@
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px;
 			}
-            #{if settingRepo.getConfigBoolean(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HAS_2X)}
+            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_2X).equals("2x")}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),

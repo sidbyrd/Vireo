@@ -70,6 +70,15 @@ public class AppConfig {
 	
 	/** Submission Step Button highlight color when in "off" state */
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
+
+    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate no 2x image was uploaded */
+    public final static String LOGO_2X_NONE = "none";
+
+    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate a separate 2x image was uploaded */
+    public final static String LOGO_2X_SEPARATE = "2x";
+
+    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate that the 1x image is already high-res */
+    public final static String LOGO_2X_SAME_AS_1X = "1x";
 	
     /** URL path to "left-logo" image */
     public final static String LEFT_LOGO_URLPATH = "left_logo_urlpath";
@@ -83,8 +92,8 @@ public class AppConfig {
     /** Pixel width of the current "left-logo" image */
     public final static String LEFT_LOGO_WIDTH = "left_logo_width";
 
-    /** Does the left-logo image have a corresponding @2x version? */
-    public final static String LEFT_LOGO_HAS_2X = "left_logo_has_2x";
+    /** What kind of 2x left-logo image do we have? */
+    public final static String LEFT_LOGO_2X = "left_logo_2x";
 
     /** Pixel height of the current "right-logo" image */
     public final static String RIGHT_LOGO_HEIGHT = "right_logo_height";
@@ -92,8 +101,8 @@ public class AppConfig {
     /** Pixel width of the current "right-logo" image */
     public final static String RIGHT_LOGO_WIDTH = "right_logo_width";
 
-    /** Does the right-logo image have a corresponding @2x version? */
-    public final static String RIGHT_LOGO_HAS_2X = "right_logo_has_2x";
+    /** What kind of 2x right-logo image do we have? */
+    public final static String RIGHT_LOGO_2X = "right_logo_2x";
 
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";

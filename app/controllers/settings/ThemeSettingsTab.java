@@ -6,6 +6,7 @@ import controllers.SettingsTab;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.RoleType;
 import play.Logger;
@@ -55,18 +56,18 @@ public class ThemeSettingsTab extends SettingsTab {
 		renderArgs.put("CUSTOM_CSS", settingRepo.getConfigValue(CUSTOM_CSS));
 				
 		// Logos
-        File leftLogo = new File("conf"+File.separator+settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
-        File rightLogo = new File("conf"+File.separator+settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
-		boolean leftLogoIsDefault = settingRepo.getConfigValue(LEFT_LOGO_URLPATH).equals(Configuration.DEFAULTS.get(LEFT_LOGO_URLPATH));
-        boolean rightLogoIsDefault = settingRepo.getConfigValue(RIGHT_LOGO_URLPATH).equals(Configuration.DEFAULTS.get(RIGHT_LOGO_URLPATH));
+        File leftLogo = fileForLogo("left", false);
+        File rightLogo = fileForLogo("right", false);
+		boolean leftLogoIsDefault = isLogoDefault("left");
+        boolean rightLogoIsDefault = isLogoDefault("right");
         renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
         renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
         renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-        renderArgs.put("LEFT_LOGO_HAS_2X", settingRepo.getConfigValue(LEFT_LOGO_HAS_2X));
+        renderArgs.put("LEFT_LOGO_2X", settingRepo.getConfigValue(LEFT_LOGO_2X));
         renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
         renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
         renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
-        renderArgs.put("RIGHT_LOGO_HAS_2X", settingRepo.getConfigValue(RIGHT_LOGO_HAS_2X));
+        renderArgs.put("RIGHT_LOGO_2X", settingRepo.getConfigValue(RIGHT_LOGO_2X));
 		
 		String nav = "settings";
 		String subNav = "theme";
@@ -149,17 +150,19 @@ public class ThemeSettingsTab extends SettingsTab {
 		
 		try {
             if (params.get("deleteLeftLogo") != null || leftLogo != null) {
-                updateLogo("left", leftLogo);
+                updateLogo("left", false, leftLogo);
             }
             if (params.get("deleteRightLogo") != null || rightLogo != null) {
-                updateLogo("right", rightLogo);
+                updateLogo("right", false, rightLogo);
             }
 
         } catch (IOException e) {
             Logger.error("tab-settings: could not update logo because "+e.getMessage());
             flash.error("The server failed to update the image.");
         } catch (ImageFormatException e) {
-            flash.error("Image format not recognized.");
+            flash.error(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            flash.error(e.getMessage());
         }
 
 		themeSettings();
@@ -183,47 +186,104 @@ public class ThemeSettingsTab extends SettingsTab {
 
     /**
      * Updates the files and config settings for one top logo.
-     * @param side either the string "left" or "right"
+     * @param side pick which logo: either "left" or "right"
      * @param logo the new customized logo, or null to delete any previous customization and reset to
      * default values.
      * @throws IOException thrown on error storing or deleting image files
      * @throws ImageFormatException if image format could not be understood
+     * @throws IllegalArgumentException if 2x uploaded but format extension doesn't match corresponding 1x
      */
-    private static void updateLogo (String side, File logo) throws IOException, ImageFormatException {
+    private static void replaceLogo (String side, boolean is2x, File logo) throws IOException, ImageFormatException, IllegalArgumentException {
         if (logo != null) {
             // Uploading a new file.
             // Check that it's a valid image with known dimensions.
             String extension = FilenameUtils.getExtension(logo.getName());
             Dimension dim = getImageDimension(logo, extension);
             if (dim == null) {
-                throw new ImageFormatException("Not a recognized image format");
+                throw new ImageFormatException("Image format not recognized");
+            }
+
+            if (is2x) {
+                if (!isLogoDefault(side)) {
+                    // If it's a 2x image and the 1x image is set, they need to be the same file format extension.
+                    String extension1x = FilenameUtils.getExtension(fileForLogo(side, false).getName());
+                    if (!extension.equals(extension1x)) {
+                        throw new IllegalArgumentException("2x logo file format extension must match 1x");
+                    }
+                } else {
+                    // This is tricky. Setting a 2x image with no 1x image means to actually save it
+                    //  as 1x, but save halved dimensions. That way everyone everyone just gets the 2x file
+                    //  at the correct size, although 1x browsers will waste bandwidth.
+                    //  Remember to delete any 2x image that existed before.
+                    deleteLogo(side, true);
+                    saveField(side+"_logo_2x", AppConfig.LOGO_2X_SAME_AS_1X);
+                    is2x = false;
+                    dim.setSize(0.5*dim.getWidth(), 0.5*dim.getHeight());
+                }
             }
 
             // Put it in the theme directory with a standardized name for organization, but
             // keep its original file extension so web servers get the mimetype right.
-            File newFile = new File(THEME_PATH + side + "-logo" + "." + extension);
+            File newFile = new File(THEME_PATH + side + "-logo" + "." + ((is2x)? "@2x":"") + extension);
             FileUtils.copyFile(logo, newFile);
 
-            // Save image metadata.
-            saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
-            saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
-            saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
-        } else {
-            // Delete old customized logo file.
-            File oldFile = new File("conf"+File.separator+settingRepo.getConfigValue(side+"_logo_urlpath"));
-            if(oldFile.exists()){
-                if (!oldFile.delete()) {
-                    // Not a real problem except for some wasted disk space--at least not yet--but do log it.
-                    Logger.error("tab-settings: could not delete existing "+side+" logo customization "+oldFile.getAbsolutePath());
-                }
+            if (!is2x) {
+                // 1x: Save image metadata.
+                saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
+                saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
+                saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
+            } else {
+                // 2x: Just note that we have it.
+                saveField(side+"_logo_2x", AppConfig.LOGO_2X_SEPARATE);
             }
-            // Reset to default image metadata.
+        }
+    }
+
+    private static void deleteLogo (String side, boolean is2x) throws IOException {
+        // Delete old customized logo file if present.
+        File oldFile = fileForLogo(side, is2x);
+        if(oldFile.exists() // TODO make sure it's in theme dir){
+            if (!oldFile.delete()) {
+                // Can't delete. Not a real problem except for some wasted disk space--at least not yet--but do log it.
+                Logger.error("tab-settings: could not delete existing "+side+" logo customization "+oldFile.getAbsolutePath());
+            }
+        }
+
+        if (!is2x) {
+            // 1x: Reset to default image metadata.
             settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
             settingRepo.findConfigurationByName(side+"_logo_height").delete();
             settingRepo.findConfigurationByName(side+"_logo_width").delete();
-            settingRepo.findConfigurationByName(side+"_logo_has_2x").delete();
-            /* nicer than saveField(side+"_logo_urlpath", Configuration.DEFAULTS.get(side+"_logo_urlpath"));*/
+        } else {
+            // 2x: note that we have no 2x anymore.
+            settingRepo.findConfigurationByName(side+"_logo_2x").delete();
         }
+    }
+
+    /**
+     * Is the logo image set to the built-in default image?
+     * @param side pick which logo: either "left" or "right"
+     * @return true if there is no custom 1x logo set for the selected side
+     */
+    private static boolean isLogoDefault(String side) {
+        return settingRepo.getConfigValue(side+"_logo_urlpath").equals(Configuration.DEFAULTS.get(side+"_logo_urlpath"));
+    }
+
+    /**
+     * Makes a File pointing to the location where the specified logo file is,
+     * or would be if it had been stored.
+     * @param side either "left" or "right"
+     * @param get2x if false, the 1x file specified by the current configuration, which could
+     *              be either a file in the theme directory or a default file built into the app.
+     *              If true, put "@2x" in the filename, regardless of whether that file exists.
+     * @return
+     */
+    private static File customLogoFile (String side, boolean get2x) {
+        String urlPath = settingRepo.getConfigValue(side+"_logo_urlpath");
+        if (get2x) {
+            urlPath = urlPath.replaceFirst("\\.\\w+$", "@2x$0");
+        }
+        return new File("conf"+File.separator+urlPath);
     }
 
     /**
