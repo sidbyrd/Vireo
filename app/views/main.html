@@ -64,34 +64,34 @@
 				filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)}', endColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_HIGHLIGHT_COLOR_ON)}');
 			}			
 			#left-logo{
-                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_URLPATH)}');
-                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
-                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px;
+                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH)}');
+                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
+                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
 			}
-            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_2X).equals("2x")}
+            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_2X).equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_SEPARATE)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),
                    only screen and (min-resolution: 1.5dppx) {
                 #left-logo {
-                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
-                    background-size: ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_WIDTH)}px ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT)}px;
+                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
+                    background-size: 100%;
                 }
             }
             #{/if}
 			#right-logo{
-                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_URLPATH)}');
-                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
-                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px;
+                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH)}');
+                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
+                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
 			}
-            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_2X).equals("2x")}
+            #{if settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_2X).equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_SEPARATE)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),
                    only screen and (min-resolution: 1.5dppx) {
                 #right-logo {
-                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
-                    background-size: ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_WIDTH)}px ${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT)}px;
+                    background-image: url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH).replaceFirst("\\.\\w+\$", "@2x\$0")}');
+                    background-size: 100%;
                 }
             }
             #{/if}
@@ -99,8 +99,8 @@
               %{// tallest of left-logo or right-logo, plus 45px
                 int hh = 45;
                 try{
-                    int llh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.LEFT_LOGO_HEIGHT));
-                    int rlh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.RIGHT_LOGO_HEIGHT));
+                    int llh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT));
+                    int rlh = java.lang.Integer.parseInt(settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CustomImage.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT));
                     hh += java.lang.Math.max(llh, rlh)
                 } catch (java.lang.NumberFormatException e) {}}%
                 height:${hh}px;

@@ -71,38 +71,39 @@ public class AppConfig {
 	/** Submission Step Button highlight color when in "off" state */
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
 
-    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate no 2x image was uploaded */
-    public final static String LOGO_2X_NONE = "none";
+    /** Names of customizable images, used as prefix on multiple connected settings names */
+    public enum CustomImage {
+        /** Prefix for the top left logo in main.html */
+        LEFT_LOGO("left_logo"),
 
-    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate a separate 2x image was uploaded */
-    public final static String LOGO_2X_SEPARATE = "2x";
+        /** Prefix for the top right logo in main.html */
+        RIGHT_LOGO("right_logo");
 
-    /** Stored value for LEFT/RIGHT_LOGO_2X to indicate that the 1x image is already high-res */
-    public final static String LOGO_2X_SAME_AS_1X = "1x";
-	
-    /** URL path to "left-logo" image */
-    public final static String LEFT_LOGO_URLPATH = "left_logo_urlpath";
+        private CustomImage(final String text) { this.text = text; }
+        private final String text;
+        public String toString() { return text; }
+    }
 
-    /** URL path to "right-logo" image */
-    public final static String RIGHT_LOGO_URLPATH = "right_logo_urlpath";
+    /** Suffix for customizable image name to create key for URL path to the image */
+    public final static String CI_URLPATH = "_urlpath";
 
-    /** Pixel height of the current "left-logo" image */
-    public final static String LEFT_LOGO_HEIGHT = "left_logo_height";
+    /** Suffix for customizable image name to create key for pixel height of the image */
+    public final static String CI_HEIGHT = "_height";
 
-    /** Pixel width of the current "left-logo" image */
-    public final static String LEFT_LOGO_WIDTH = "left_logo_width";
+    /** Suffix for customizable image name to create key for pixel width of the image */
+    public final static String CI_WIDTH = "_width";
 
-    /** What kind of 2x left-logo image do we have? */
-    public final static String LEFT_LOGO_2X = "left_logo_2x";
+    /** Suffix for customizable image name to create key for asking what kind of 2x image exists */
+    public final static String CI_2X = "_2x";
 
-    /** Pixel height of the current "right-logo" image */
-    public final static String RIGHT_LOGO_HEIGHT = "right_logo_height";
+    /** value for LogoName+CI_2X that indicates no 2x image was uploaded */
+    public final static String CI_2XVAL_NONE = "none";
 
-    /** Pixel width of the current "right-logo" image */
-    public final static String RIGHT_LOGO_WIDTH = "right_logo_width";
+    /** value for LogoName+CI_2X that indicates a separate 2x image was uploaded */
+    public final static String CI_2XVAL_SEPARATE = "2x";
 
-    /** What kind of 2x right-logo image do we have? */
-    public final static String RIGHT_LOGO_2X = "right_logo_2x";
+    /** value for LogoName+CI_2X that indicates the 2x image is the same as the 1x image */
+    public final static String CI_2XVAL_SAME = "1x";
 
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";

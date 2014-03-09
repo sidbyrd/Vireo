@@ -10,6 +10,7 @@ import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.RoleType;
 import play.Logger;
+import play.mvc.Router;
 import play.mvc.With;
 import sun.awt.image.ImageFormatException;
 
@@ -56,18 +57,18 @@ public class ThemeSettingsTab extends SettingsTab {
 		renderArgs.put("CUSTOM_CSS", settingRepo.getConfigValue(CUSTOM_CSS));
 				
 		// Logos
-        File leftLogo = fileForLogo("left", false);
-        File rightLogo = fileForLogo("right", false);
-		boolean leftLogoIsDefault = isLogoDefault("left");
-        boolean rightLogoIsDefault = isLogoDefault("right");
-        renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
-        renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
-        renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-        renderArgs.put("LEFT_LOGO_2X", settingRepo.getConfigValue(LEFT_LOGO_2X));
-        renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(RIGHT_LOGO_URLPATH));
-        renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(RIGHT_LOGO_HEIGHT));
-        renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(RIGHT_LOGO_WIDTH));
-        renderArgs.put("RIGHT_LOGO_2X", settingRepo.getConfigValue(RIGHT_LOGO_2X));
+        File leftLogo = fileForLogo(CustomImage.LEFT_LOGO, false);
+        File rightLogo = fileForLogo(CustomImage.RIGHT_LOGO, false);
+		boolean leftLogoIsDefault = isLogoDefault(CustomImage.LEFT_LOGO);
+        boolean rightLogoIsDefault = isLogoDefault(CustomImage.RIGHT_LOGO);
+        renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(CustomImage.LEFT_LOGO+CI_URLPATH));
+        renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(CustomImage.LEFT_LOGO+CI_HEIGHT));
+        renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(CustomImage.LEFT_LOGO+CI_WIDTH));
+        renderArgs.put("LEFT_LOGO_2X", settingRepo.getConfigValue(CustomImage.LEFT_LOGO+CI_2X));
+        renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(CustomImage.RIGHT_LOGO+CI_URLPATH));
+        renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(CustomImage.RIGHT_LOGO+CI_HEIGHT));
+        renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(CustomImage.RIGHT_LOGO+CI_WIDTH));
+        renderArgs.put("RIGHT_LOGO_2X", settingRepo.getConfigValue(CustomImage.RIGHT_LOGO+CI_2X));
 		
 		String nav = "settings";
 		String subNav = "theme";
@@ -150,10 +151,10 @@ public class ThemeSettingsTab extends SettingsTab {
 		
 		try {
             if (params.get("deleteLeftLogo") != null || leftLogo != null) {
-                updateLogo("left", false, leftLogo);
+                replaceLogo(CustomImage.LEFT_LOGO, false, leftLogo);
             }
             if (params.get("deleteRightLogo") != null || rightLogo != null) {
-                updateLogo("right", false, rightLogo);
+                replaceLogo(CustomImage.RIGHT_LOGO, false, rightLogo);
             }
 
         } catch (IOException e) {
@@ -186,14 +187,14 @@ public class ThemeSettingsTab extends SettingsTab {
 
     /**
      * Updates the files and config settings for one top logo.
-     * @param side pick which logo: either "left" or "right"
+     * @param ci constant identifying which logo
      * @param logo the new customized logo, or null to delete any previous customization and reset to
      * default values.
      * @throws IOException thrown on error storing or deleting image files
      * @throws ImageFormatException if image format could not be understood
      * @throws IllegalArgumentException if 2x uploaded but format extension doesn't match corresponding 1x
      */
-    private static void replaceLogo (String side, boolean is2x, File logo) throws IOException, ImageFormatException, IllegalArgumentException {
+    private static void replaceLogo (CustomImage ci, boolean is2x, File logo) throws IOException, ImageFormatException, IllegalArgumentException {
         if (logo != null) {
             // Uploading a new file.
             // Check that it's a valid image with known dimensions.
@@ -204,9 +205,9 @@ public class ThemeSettingsTab extends SettingsTab {
             }
 
             if (is2x) {
-                if (!isLogoDefault(side)) {
+                if (!isLogoDefault(ci)) {
                     // If it's a 2x image and the 1x image is set, they need to be the same file format extension.
-                    String extension1x = FilenameUtils.getExtension(fileForLogo(side, false).getName());
+                    String extension1x = FilenameUtils.getExtension(fileForLogo(ci, false).getName());
                     if (!extension.equals(extension1x)) {
                         throw new IllegalArgumentException("2x logo file format extension must match 1x");
                     }
@@ -215,8 +216,8 @@ public class ThemeSettingsTab extends SettingsTab {
                     //  as 1x, but save halved dimensions. That way everyone everyone just gets the 2x file
                     //  at the correct size, although 1x browsers will waste bandwidth.
                     //  Remember to delete any 2x image that existed before.
-                    deleteLogo(side, true);
-                    saveField(side+"_logo_2x", AppConfig.LOGO_2X_SAME_AS_1X);
+                    deleteLogo(ci, true);
+                    saveField(ci+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
                     is2x = false;
                     dim.setSize(0.5*dim.getWidth(), 0.5*dim.getHeight());
                 }
@@ -224,66 +225,66 @@ public class ThemeSettingsTab extends SettingsTab {
 
             // Put it in the theme directory with a standardized name for organization, but
             // keep its original file extension so web servers get the mimetype right.
-            File newFile = new File(THEME_PATH + side + "-logo" + "." + ((is2x)? "@2x":"") + extension);
+            File newFile = new File(THEME_PATH + ci.toString().replace('_', '-') + "." + ((is2x)? "@2x":"") + extension);
             FileUtils.copyFile(logo, newFile);
 
             if (!is2x) {
                 // 1x: Save image metadata.
-                saveField(side+"_logo_urlpath", String.valueOf("theme/"+side+"-logo"));
-                saveField(side+"_logo_height", String.valueOf((int)dim.getHeight()));
-                saveField(side+"_logo_width", String.valueOf((int)dim.getWidth()));
+                saveField(ci+AppConfig.CI_URLPATH, Router.reverse(newFile.getPath()).url); // String.valueOf("theme/"+side+"-logo"));
+                saveField(ci+AppConfig.CI_HEIGHT, String.valueOf((int)dim.getHeight()));
+                saveField(ci+AppConfig.CI_WIDTH, String.valueOf((int)dim.getWidth()));
             } else {
                 // 2x: Just note that we have it.
-                saveField(side+"_logo_2x", AppConfig.LOGO_2X_SEPARATE);
+                saveField(ci+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
             }
         }
     }
 
-    private static void deleteLogo (String side, boolean is2x) throws IOException {
+    private static void deleteLogo (CustomImage ci, boolean is2x) throws IOException {
         // Delete old customized logo file if present.
-        File oldFile = fileForLogo(side, is2x);
-        if(oldFile.exists() // TODO make sure it's in theme dir){
+        File oldFile = fileForLogo(ci, is2x);
+        if(oldFile.exists()){
             if (!oldFile.delete()) {
                 // Can't delete. Not a real problem except for some wasted disk space--at least not yet--but do log it.
-                Logger.error("tab-settings: could not delete existing "+side+" logo customization "+oldFile.getAbsolutePath());
+                Logger.error("tab-settings: could not delete existing "+ci+" image customization "+oldFile.getAbsolutePath());
             }
         }
 
         if (!is2x) {
             // 1x: Reset to default image metadata.
-            settingRepo.findConfigurationByName(side+"_logo_urlpath").delete();
-            settingRepo.findConfigurationByName(side+"_logo_height").delete();
-            settingRepo.findConfigurationByName(side+"_logo_width").delete();
+            settingRepo.findConfigurationByName(ci+AppConfig.CI_URLPATH).delete();
+            settingRepo.findConfigurationByName(ci+AppConfig.CI_HEIGHT).delete();
+            settingRepo.findConfigurationByName(ci+AppConfig.CI_WIDTH).delete();
         } else {
             // 2x: note that we have no 2x anymore.
-            settingRepo.findConfigurationByName(side+"_logo_2x").delete();
+            settingRepo.findConfigurationByName(ci+AppConfig.CI_2X).delete();
         }
     }
 
     /**
      * Is the logo image set to the built-in default image?
-     * @param side pick which logo: either "left" or "right"
+     * @param ci constant identifying which logo
      * @return true if there is no custom 1x logo set for the selected side
      */
-    private static boolean isLogoDefault(String side) {
-        return settingRepo.getConfigValue(side+"_logo_urlpath").equals(Configuration.DEFAULTS.get(side+"_logo_urlpath"));
+    private static boolean isLogoDefault(CustomImage ci) {
+        return settingRepo.getConfigValue(ci+AppConfig.CI_URLPATH).equals(Configuration.DEFAULTS.get(ci+AppConfig.CI_URLPATH));
     }
 
     /**
      * Makes a File pointing to the location where the specified logo file is,
      * or would be if it had been stored.
-     * @param side either "left" or "right"
+     * @param ci constant identifying which logo
      * @param get2x if false, the 1x file specified by the current configuration, which could
      *              be either a file in the theme directory or a default file built into the app.
      *              If true, put "@2x" in the filename, regardless of whether that file exists.
      * @return
      */
-    private static File customLogoFile (String side, boolean get2x) {
-        String urlPath = settingRepo.getConfigValue(side+"_logo_urlpath");
+    private static File fileForLogo (CustomImage ci, boolean get2x) {
+        String urlPath = settingRepo.getConfigValue(ci+AppConfig.CI_URLPATH);
         if (get2x) {
             urlPath = urlPath.replaceFirst("\\.\\w+$", "@2x$0");
         }
-        return new File("conf"+File.separator+urlPath);
+        return new File("conf"+File.separator+urlPath); // TODO
     }
 
     /**
