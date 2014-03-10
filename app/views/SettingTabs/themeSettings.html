@@ -139,12 +139,12 @@ jQuery(document).ready(function(){
             </td>
             <td>
                 <p>Low-res preview<br />Size: ${LEFT_LOGO_WIDTH} × ${LEFT_LOGO_HEIGHT}</p>
-                <div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH}'); width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+                <div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
             </td>
-            #{if LEFT_LOGO_2X.equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_SEPARATE)}
+            #{if !LEFT_LOGO_2X.equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_NONE)}
             <td>
                 <p>High-res preview<br />Touch to zoom</p>
-                <div class="preview" id="left2xPreview" style="background-image:url('@{Application.index()}${LEFT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+                <div class="preview" id="left2xPreview" style="background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO,true)}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
             </td>
             #{/if}
 		</tr>
@@ -166,13 +166,13 @@ jQuery(document).ready(function(){
                 </div>
             </td>
             <td>
-                <p>Regular (${RIGHT_LOGO_WIDTH} × ${RIGHT_LOGO_HEIGHT})</p>
+                <p>Low-res preview<br />Size: ${RIGHT_LOGO_WIDTH} × ${RIGHT_LOGO_HEIGHT}</p>
                 <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH}'); width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
             </td>
-            #{if RIGHT_LOGO_2X.equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_SEPARATE)}
+            #{if !RIGHT_LOGO_2X.equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_NONE)}
             <td>
-                <p>High-res (touch to zoom)</p>
-                <div class="preview" id="right2xPreview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH.replaceFirst("\\.\\w+\$", "@2x\$0")}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
+                <p>High-res preview<br />Touch to zoom</p>
+                <div class="preview" id="right2xPreview" style="background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO,true)}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
             </td>
             #{/if}
         </tr>

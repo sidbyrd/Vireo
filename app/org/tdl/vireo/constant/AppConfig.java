@@ -72,14 +72,14 @@ public class AppConfig {
 	public final static String BUTTON_HIGHLIGHT_COLOR_OFF = "button_highlight_color_off";
 
     /** Names of customizable images, used as prefix on multiple connected settings names */
-    public enum CustomImage {
+    public enum CIName {
         /** Prefix for the top left logo in main.html */
         LEFT_LOGO("left_logo"),
 
         /** Prefix for the top right logo in main.html */
         RIGHT_LOGO("right_logo");
 
-        private CustomImage(final String text) { this.text = text; }
+        private CIName(final String text) { this.text = text; }
         private final String text;
         public String toString() { return text; }
     }
@@ -100,10 +100,10 @@ public class AppConfig {
     public final static String CI_2XVAL_NONE = "none";
 
     /** value for LogoName+CI_2X that indicates a separate 2x image was uploaded */
-    public final static String CI_2XVAL_SEPARATE = "2x";
+    public final static String CI_2XVAL_SEPARATE = "separate";
 
     /** value for LogoName+CI_2X that indicates the 2x image is the same as the 1x image */
-    public final static String CI_2XVAL_SAME = "1x";
+    public final static String CI_2XVAL_SAME = "same";
 
 	/** Custom CSS */
 	public final static String CUSTOM_CSS = "custom_css";

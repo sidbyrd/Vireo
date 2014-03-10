@@ -1,21 +1,19 @@
 package controllers;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.junit.Test;
-import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.constant.AppPref;
 import org.tdl.vireo.model.NameFormat;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.Preference;
 import org.tdl.vireo.security.SecurityContext;
-
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
 import play.mvc.Http.Response;
 import play.mvc.Router;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Test the functions common to all the settings tabs. This basically means the
