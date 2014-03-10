@@ -1198,33 +1198,75 @@ function memberUpdateHandler(htmlURL) {
  **********************************************************/
 
 /**
- * Button click function to toggle zoom on 2x logo preview in themeSettings.html
- * @param side "left" or "right"
+ * loupe - an image magnifier for jQuery
+ * (C) 2010 jdbartlett, MIT license
+ * http://github.com/jdbartlett/loupe
+ * modified a bit
  */
-function zoom(side) {
-    var image = jQuery('#'+side+'2xPreview');
-    var button = jQuery('#'+side+'ZoomToggle');
-    var w = image.width();
-    var h = image.height();
+(function ($) {
+	$.fn.loupe = function (arg) {
+		var options = $.extend({
+			loupe: 'loupe',
+			width: 200,
+			height: 150
+		}, arg || {});
 
-    if (image.hasClass("zoomed")) {
-        // zoom out
-        image.removeClass("zoomed");
-        button.text("Zoom");
-        image.animate({
-            "width"  : 0.5*w,
-            "height" : 0.5*h
-        }, 150);
-    } else {
-        // zoom in
-        image.addClass("zoomed");
-        button.text("View Normal");
-        image.animate({
-            "width"  : 2*w,
-            "height" : 2*h
-        }, 150);
-    }
-}
+		return this.length ? this.each(function () {
+			var $this = $(this), $big, $loupe,
+				$small = $this.is('div') ? $this : $this.find('div:first'),
+				move, hide = function () { $loupe.hide(); },
+				time;
+
+			if ($this.data('loupe') != null) {
+				return $this.data('loupe', arg);
+			}
+
+			move = function (e) {
+				var os = $small.offset(),
+					sW = $small.outerWidth(),
+					sH = $small.outerHeight(),
+					oW = options.width / 2,
+					oH = options.height / 2;
+
+				if (!$this.data('loupe') ||
+					e.pageX > sW + os.left + 10 || e.pageX < os.left - 10 ||
+					e.pageY > sH + os.top + 10 || e.pageY < os.top - 10) {
+					return hide();
+				}
+
+				time = time ? clearTimeout(time) : 0;
+
+				$loupe.show().css({
+					left: e.pageX - oW,
+					top: e.pageY - oH
+				});
+				$big.css({
+					left: -(((e.pageX - os.left) / sW) * $big.width() - oW)|0,
+					top: -(((e.pageY - os.top) / sH) * $big.height() - oH)|0
+				});
+			};
+
+			$loupe = $('<div />')
+				.addClass(options.loupe)
+				.css({
+					width: options.width,
+					height: options.height,
+					position: 'absolute',
+					overflow: 'hidden'
+				})
+				.append($big = $('<img />').attr('src', $this.css('background-image').slice(4,-1)).css('position', 'absolute'))
+				.mousemove(move)
+				.hide()
+				.appendTo('body');
+
+			$this.data('loupe', true)
+				.mouseenter(move)
+				.mouseout(function () {
+					time = setTimeout(hide, 10);
+				});
+		}) : this;
+	};
+}(jQuery));
 
 /**********************************************************
  * Email Settings Tab
