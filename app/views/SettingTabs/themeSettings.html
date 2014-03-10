@@ -41,7 +41,7 @@ jQuery(document).ready(function(){
     jQuery('#right2xPreview').loupe({length:${RIGHT_LOGO_HEIGHT}*3, width:${RIGHT_LOGO_WIDTH}*3});
 
     // highlight upload button when user adds a file
-    jQuery('input[type="file"]').change(function(e) {
+    jQuery('.logo-options input[type="file"]').change(function(e) {
         var oldSubBtn=jQuery('#logoUploadSubmit');
         // Browsers can't animate properties on a Bootstrap gradient button: instead, make a new one and fade it in.
         // It has to be animated because the whole point is to catch the eye.
@@ -53,6 +53,9 @@ jQuery(document).ready(function(){
                 })
 				.addClass('btn btn-success'));
         oldSubBtn.fadeTo(500, 0);
+
+        // remove this function so it doesn't get run again
+        jQuery('.logo-options input[type="file"]').change(function(){return true;});
         return true;
     });
 }); // document ready
@@ -123,13 +126,13 @@ jQuery(document).ready(function(){
                 <div class="well">
                     <label for="leftLogo">1x resolution</label>
                     <input type="file" name="leftLogo" id="leftLogo" />
-                    #{if 1 ||!leftLogoIsDefault}
+                    #{if !leftLogoIsDefault}
                     <button class="btn btn-small" type="submit" name="deleteLeftLogo">Delete</button>
                     #{/if}
                     <p> </p>
                     <label for="leftLogo2x">2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. The 2x image should be a more detailed version of the 1x version, with double the pixel dimensions. Users with high resolution screens will see the 2x version. If you upload a 2x and no 1x, all users will get the 2x file, but low-res screen users will only see half the detail."><i class="icon-info-sign"></i></a></label>
                     <input type="file" name="leftLogo2x" id="leftLogo2x" />
-                    #{if 1 ||!leftLogoIsDefault}
+                    #{if !leftLogoIsDefault}
                     <button class="btn btn-small" type="submit" name="deleteLeftLogo2x">Delete</button>
                     #{/if}
                 </div>
