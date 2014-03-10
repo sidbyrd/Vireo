@@ -64,6 +64,7 @@ public class ThemeSettingsTab extends SettingsTab {
 		
 		String nav = "settings";
 		String subNav = "theme";
+        flash.keep(); // TODO: figure out why flash errors don't appear
 		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogoIsDefault, rightLogoIsDefault);
 	}
 	
@@ -133,7 +134,7 @@ public class ThemeSettingsTab extends SettingsTab {
 		try {
             checkThemeDir();
 
-            if (leftLogo != null) {
+            if (leftLogo2x != null) {
                 replaceLogo(CIName.LEFT_LOGO, false, leftLogo);
             }
             if (params.get("deleteLeftLogo") != null || leftLogo != null) {
@@ -159,7 +160,7 @@ public class ThemeSettingsTab extends SettingsTab {
      * Make sure the theme directory exists.
      * @throws IOException if dir doesn't exist and couldn't be created
      */
-    public static void checkThemeDir() throws IOException {
+    private static void checkThemeDir() throws IOException {
         File themeDir = new File(THEME_PATH);
         if(!themeDir.exists()){
             if (!themeDir.mkdir()) {
