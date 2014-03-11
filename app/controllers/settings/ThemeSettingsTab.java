@@ -51,12 +51,12 @@ public class ThemeSettingsTab extends SettingsTab {
 				
 		// Logos
 		boolean leftLogoIsDefault = CustomImage.isDefault(CIName.LEFT_LOGO);
-        boolean rightLogoIsDefault = CustomImage.isDefault(CIName.RIGHT_LOGO);
         renderArgs.put("LEFT_LOGO_1X", CustomImage.url(CIName.LEFT_LOGO, false));
         renderArgs.put("LEFT_LOGO_2X", CustomImage.url(CIName.LEFT_LOGO, true));
         renderArgs.put("LEFT_LOGO_HEIGHT", CustomImage.displayHeight(CIName.LEFT_LOGO));
         renderArgs.put("LEFT_LOGO_WIDTH", CustomImage.displayWidth(CIName.LEFT_LOGO));
         renderArgs.put("LEFT_LOGO_EXT", CustomImage.extension(CIName.LEFT_LOGO));
+        boolean rightLogoIsDefault = CustomImage.isDefault(CIName.RIGHT_LOGO);
         renderArgs.put("RIGHT_LOGO_1X", CustomImage.url(CIName.RIGHT_LOGO, false));
         renderArgs.put("RIGHT_LOGO_2X", CustomImage.url(CIName.RIGHT_LOGO, true));
         renderArgs.put("RIGHT_LOGO_HEIGHT", CustomImage.displayHeight(CIName.RIGHT_LOGO));
@@ -128,6 +128,17 @@ public class ThemeSettingsTab extends SettingsTab {
 		}
 	}
 
+    /**
+     * Upload and delete files for a customized image. Sets all configuration values
+     * as needed. Rejects bad inputs and saves a flash.error.
+     * unlisted params:
+     * delete1x set to delete the existing low-res version of the image
+     * delete2x set to delete the existing high-res version of the image
+     * @param name The value of a AppConfig.CIName constant identifying which custom image.
+     *             If no constant matches, nothing will happen.
+     * @param image1x the low-res version of the image
+     * @param image2x the high-res version of the image
+     */
     @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
 	public static void uploadImage(String name, File image1x, File image2x) {
@@ -136,7 +147,8 @@ public class ThemeSettingsTab extends SettingsTab {
 
             for (CIName cn : CIName.values()) {
                 if (cn.toString().equals(name)) {
-                    // found correct image name
+
+                    // Found correct image name.
                     if (params.get("delete1x") != null) {
                         deleteImage(cn, false);
                     }
@@ -163,9 +175,15 @@ public class ThemeSettingsTab extends SettingsTab {
 		themeSettings();
 	}
 
+    //TODO
+    // make reset button replace delete button on file choice
+    // make table same size whether or not there's a delete button
+    // add retina image for stickies
+    // test for new ThemeSettingsTab behavior
+
     /**
      * Make sure the theme directory exists.
-     * @throws IOException if dir doesn't exist and couldn't be created
+     * @throws IOException if theme dir doesn't exist and couldn't be created
      */
     private static void checkThemeDir() throws IOException {
         File themeDir = new File(THEME_PATH);
@@ -179,6 +197,7 @@ public class ThemeSettingsTab extends SettingsTab {
     /**
      * Given a URL for an resource being served from the theme directory, return the corresponding File
      * (without checking whether it actually exists).
+     * Simpler than using play.mvc.Router if the relevant constants are correct.
      * @param url url for the resource
      * @return File for the resource
      */
@@ -187,14 +206,29 @@ public class ThemeSettingsTab extends SettingsTab {
     }
 
     /**
-     * Given a
-     * @param file
-     * @return
+     * Given a File representing a file in the theme directory, return the URL where that file would
+     * be served from (without checking whether it actually exists).
+     * Simpler than using play.mvc.Router if the relevant constants are correct.
+     * @param file a file in the theme directory
+     * @return the URL for the file
      */
     private static String urlForThemeFile(File file) {
         return THEME_URL_PREFIX +StringUtils.substringAfter(file.getPath(), THEME_PATH);
     }
 
+    /**
+     * Deletes a file from the theme directory, if it exists.
+     * @param filename the name of the file, with no path component
+     */
+    private static void deleteThemeFile(String filename) {
+        File file = new File(THEME_PATH+filename);
+        if(file.exists()){
+            if (!file.delete()) {
+                // Can't delete. Not a real problem except for some wasted disk space--at least not yet--but do log it.
+                Logger.error("tab-settings: could not delete existing file "+file.getAbsolutePath());
+            }
+        }
+    }
 
     /**
      * Saves a Configuration value, whether it is new or an overwrite.
@@ -226,10 +260,11 @@ public class ThemeSettingsTab extends SettingsTab {
     }
 
     /**
-     * Updates the files and config settings for one custom image.
-     * @param name constant identifying which file
-     * @param file the new customized file, or null to delete any previous customization and reset to
-     * default values.
+     * Saves the file for one resolution of a custom image (either new or replacing a
+     * previous customization), and sets all relevant config settings appropriately.
+     * @param name constant identifying which custom image
+     * @param is2x whether to save the file as the high-resolution version
+     * @param file the new customized file to save
      * @throws IOException thrown on error storing or deleting image files
      * @throws ImageFormatException if image format could not be understood
      * @throws IllegalArgumentException if 2x uploaded but format extension doesn't match corresponding 1x
@@ -300,6 +335,13 @@ public class ThemeSettingsTab extends SettingsTab {
         }
     }
 
+    /**
+     * Deletes the customized file for one resolution of a custom image, if present, and sets all
+     * relevant config settings to values appropriate for the customization being gone, which will
+     * be default values if both resolutions are now gone.
+     * @param name constant identifying which custom image
+     * @param is2x whether to delete the file for the high-resolution version
+    */    
     private static void deleteImage (CIName name, boolean is2x) throws IOException {
         if (CustomImage.isDefault(name)) {
             return;
@@ -316,7 +358,7 @@ public class ThemeSettingsTab extends SettingsTab {
                 // urlpath=urlpath+@2x
                 // 2x=same
                 deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-                saveField(name+AppConfig.CI_URLPATH, CustomImage.url(name, true));
+                saveField(name + AppConfig.CI_URLPATH, CustomImage.url(name, true));
                 saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
             }
         } else {
@@ -329,29 +371,19 @@ public class ThemeSettingsTab extends SettingsTab {
                 // delete file+@2x
                 // 2x=none
                 deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
+                saveField(name + AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
             }
         }
     }
 
+    /**
+     * Sets all config values for a custom image back to their defaults.
+     * @param name constant identifying which custom image
+     */
     private static void resetImageMetadata (CIName name) {
         settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
         settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
         settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
         settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
-    }
-
-    /**
-     * Deletes a file from the theme directory, if it exists.
-     * @param filename the name of the file, with no path component
-     */
-    private static void deleteThemeFile(String filename) {
-        File file = new File(THEME_PATH+filename);
-        if(file.exists()){
-            if (!file.delete()) {
-                // Can't delete. Not a real problem except for some wasted disk space--at least not yet--but do log it.
-                Logger.error("tab-settings: could not delete existing file "+file.getAbsolutePath());
-            }
-        }
     }
 }

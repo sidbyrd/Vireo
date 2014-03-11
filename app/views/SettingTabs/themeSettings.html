@@ -58,8 +58,13 @@ jQuery(document).ready(function(){
         $this.data('filestyle').$elementFilestyle.find(':text').val($this.data('input-value'));
     });
 
-    // highlight upload button when user adds a file
+    // actions when user selects a file
     jQuery('.logo-options input[type="file"]').change(function(e) {
+
+        // Disable the Delete button corresponding to the same file that was just selected (if present)
+        jQuery(this).parent().find("[name^=delete]").parent().prop('disabled', true).hide();
+        
+        // Highlight the Upload button (if it isn't already).
         var oldSubBtn=jQuery(this).closest('.logo-options').find('[name=submit_upload]:disabled');
         if (oldSubBtn.length > 0) {
             // Browsers can't animate properties on a Bootstrap gradient button: instead, make a new one and fade it in.
