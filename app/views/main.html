@@ -66,8 +66,8 @@
 			#left-logo{
                 background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}');
                 background-size: 100%;
-                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
-                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
+                height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
+                width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
 			}
             #{if org.tdl.vireo.constant.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
@@ -82,8 +82,8 @@
             #{/if}
 			#right-logo{
                 background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}');
-                height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
-                width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
+                height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
+                width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
 			}
             #{if org.tdl.vireo.constant.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),

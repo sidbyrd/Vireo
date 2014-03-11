@@ -45,6 +45,14 @@ public class CustomImage {
         return url;
     }
 
+    public static String displayWidth(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_WIDTH);
+    }
+
+    public static String displayHeight(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_HEIGHT);
+    }
+
     /**
      * For an image, resolution, and file type, make a standardized filename
      * (The extension is there so web servers get the mimetype right.)
