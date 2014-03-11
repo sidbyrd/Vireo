@@ -302,6 +302,7 @@ public class ThemeSettingsTab extends SettingsTab {
             File newFile = new File(THEME_PATH+CustomImage.standardFilename(name, is2x, extension));
             FileUtils.copyFile(file, newFile);
 
+            // Set 2x metadata
             if (CustomImage.hasCustomFile(name, !is2x)) {
                 // added file to existing counterpart customization
                 saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
@@ -319,7 +320,7 @@ public class ThemeSettingsTab extends SettingsTab {
                 dim.setSize(0.5*dim.getWidth(), 0.5*dim.getHeight());
             }
 
-            // Save basic image metadata.
+            // Set basic image metadata.
             saveField(name+AppConfig.CI_URLPATH, urlForThemeFile(newFile));
             saveField(name+AppConfig.CI_HEIGHT, String.valueOf((int)dim.getHeight()));
             saveField(name+AppConfig.CI_WIDTH, String.valueOf((int)dim.getWidth()));
@@ -337,10 +338,10 @@ public class ThemeSettingsTab extends SettingsTab {
         if (!CustomImage.isDefault(name)) {
             deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
             if (CustomImage.hasFile(name, !is2x)) {
-                // no counterpart exists
+                // No counterpart exists - switch to defaults
                 resetImageMetadata(name);
             } else {
-                // switch counterpart image to primary (if it isn't already)
+                // Counterpart exists - switch to it (if it isn't already)
                 saveField(name + AppConfig.CI_URLPATH, CustomImage.url(name, !is2x));
                 saveField(name+AppConfig.CI_2X, (is2x)? AppConfig.CI_2XVAL_NONE : AppConfig.CI_2XVAL_SAME);
             }
