@@ -337,7 +337,7 @@ public class ThemeSettingsTab extends SettingsTab {
     private static void deleteImage (CIName name, boolean is2x) {
         if (!CustomImage.isDefault(name)) {
             deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-            if (CustomImage.hasFile(name, !is2x)) {
+            if (!CustomImage.hasFile(name, !is2x)) {
                 // No counterpart exists - switch to defaults
                 resetImageMetadata(name);
             } else {
