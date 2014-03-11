@@ -302,30 +302,21 @@ public class ThemeSettingsTab extends SettingsTab {
             File newFile = new File(THEME_PATH+CustomImage.standardFilename(name, is2x, extension));
             FileUtils.copyFile(file, newFile);
 
-            // Determine proper 2x settings
-            if (is2x) {
-                if (!CustomImage.isDefault(name) && !CustomImage.is2xSame(name)) {
-                    // Adding customized 2x image to existing real customized 1x image.
-                    // Dimensions and basic urlpath stay the same.
-                    saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
+            if (CustomImage.hasCustomFile(name, !is2x)) {
+                // added file to existing counterpart customization
+                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
+                if (is2x) {
+                    // keep existing name and size of 1x
                     return;
-                } else {
-                    // Setting a customized 2x image with no customized 1x image means that the 2x image is used for both roles.
-                    saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
-                    // Dimensions should describe the display size, not the hi-res doubled size.
-                    dim.setSize(0.5*dim.getWidth(), 0.5*dim.getHeight());
                 }
+            } else if (!is2x) {
+                // 1x added as standalone
+                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
             } else {
-                if (CustomImage.isDefault(name)) {
-                    // If adding a custom image to a default setup, we override the default 2x setting, too.
-                    saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
-                }
-                if (!CustomImage.isDefault(name) && CustomImage.is2xSame(name)) {
-                    // If adding a customized 1x to an existing customized 2x that used to be shared for both resolutions, separate them.
-                    saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
-                }
-                // If adding a customized 1x to an existing 2x that was separate already, or if there was no 2x already,
-                // the 2x setting is correct already and doesn't need changing.
+                // 2x added as standalone
+                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
+                // use 2x name and display at half size
+                dim.setSize(0.5*dim.getWidth(), 0.5*dim.getHeight());
             }
 
             // Save basic image metadata.
@@ -341,37 +332,17 @@ public class ThemeSettingsTab extends SettingsTab {
      * be default values if both resolutions are now gone.
      * @param name constant identifying which custom image
      * @param is2x whether to delete the file for the high-resolution version
-    */    
-    private static void deleteImage (CIName name, boolean is2x) throws IOException {
-        if (CustomImage.isDefault(name)) {
-            return;
-        }
-
-        if (!is2x) {
-            if (CustomImage.is2xNone(name)) {
-                // delete file
-                // reset metadata to default
-                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+    */
+    private static void deleteImage (CIName name, boolean is2x) {
+        if (!CustomImage.isDefault(name)) {
+            deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+            if (CustomImage.hasFile(name, !is2x)) {
+                // no counterpart exists
                 resetImageMetadata(name);
-            } else if (CustomImage.is2xSeparate(name)) {
-                // delete file
-                // urlpath=urlpath+@2x
-                // 2x=same
-                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-                saveField(name + AppConfig.CI_URLPATH, CustomImage.url(name, true));
-                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
-            }
-        } else {
-            if (CustomImage.is2xSame(name)) {
-                // delete file+@2x
-                // reset metadata to default
-                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-                resetImageMetadata(name);
-            } else if (CustomImage.is2xSeparate(name)) {
-                // delete file+@2x
-                // 2x=none
-                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
-                saveField(name + AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
+            } else {
+                // switch counterpart image to primary (if it isn't already)
+                saveField(name + AppConfig.CI_URLPATH, CustomImage.url(name, !is2x));
+                saveField(name+AppConfig.CI_2X, (is2x)? AppConfig.CI_2XVAL_NONE : AppConfig.CI_2XVAL_SAME);
             }
         }
     }
