@@ -156,7 +156,7 @@ div.btn-group[data-toggle=buttons-radio] button.active {
 }
 
 .logo-options{
-	margin:0 0 7px;
+	margin-bottom:7px;
 }
 .logo-options td{
 	padding-right:25px;
@@ -170,16 +170,19 @@ div.btn-group[data-toggle=buttons-radio] button.active {
 .logo-options .right-logo{
 	background:top right no-repeat #ffffff;
 }
-.logo-options h5 {
-    margin-top: 0;
+.logo-options input, .logo-options label.btn {
+    margin-bottom: 9px;
+    margin-top: 4px;
 }
-
-.logo-options label {
-    margin: 0;
+.logo-options input[type=file] {
+    height:auto;
+    line-height:normal;
 }
-
-#logoUploadSubmitHighlight {
-    box-shadow: 0 0 6px green;
+.logo-options input[disabled] {
+    background-color: white;
+}
+.logo-options [name=submit_upload]  {
+    margin-top: 9px;
 }
 
 /*****************

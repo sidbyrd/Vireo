@@ -1,5 +1,6 @@
 package org.tdl.vireo.constant;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.SettingsRepository;
@@ -53,7 +54,16 @@ public class CustomImage {
      * @return Name where in theme directory this image should be stored.
      */
     public static String standardFilename(AppConfig.CIName name, boolean is2x, String extension) {
-        return name.toString().replace('_', '-') + "." + ((is2x)? "@2x":"") + extension;
+        return name.toString().replace('_', '-') + ((is2x)? "@2x.":".") + extension;
+    }
+
+    /**
+     * Looks up the file extension of the current image (either customized or default)
+     * @param name constant identifying the image in app settings
+     * @return the extension of the file or an empty string if none exists
+     */
+    public static String extension(AppConfig.CIName name) {
+        return FilenameUtils.getExtension(settingRepo.getConfigValue(name + AppConfig.CI_URLPATH));
     }
 
     /**
@@ -63,6 +73,14 @@ public class CustomImage {
      */
     public static boolean isDefault(AppConfig.CIName name) {
         return settingRepo.getConfigValue(name+AppConfig.CI_URLPATH).equals(Configuration.DEFAULTS.get(name+AppConfig.CI_URLPATH));
+    }
+
+    public static boolean hasFile(AppConfig.CIName name, boolean is2x) {
+        return (!is2x && !is2xSame(name)) || (is2x && !is2xNone(name));
+    }
+
+    public static boolean hasCustomFile(AppConfig.CIName name, boolean is2x) {
+        return  !isDefault(name) && hasFile(name, is2x);
     }
 
     /**

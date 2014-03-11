@@ -64,7 +64,6 @@ public class ThemeSettingsTab extends SettingsTab {
 		
 		String nav = "settings";
 		String subNav = "theme";
-        flash.keep(); // TODO: figure out why flash errors don't appear
 		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogoIsDefault, rightLogoIsDefault);
 	}
 	
@@ -130,20 +129,26 @@ public class ThemeSettingsTab extends SettingsTab {
 
     @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
-	public static void uploadLogos(File leftLogo, File leftLogo2x, File rightLogo, File rightLogo2x) {
+	public static void uploadImage(File image1x, File image2x) {
 		try {
             checkThemeDir();
 
-            if (leftLogo2x != null) {
-                replaceLogo(CIName.LEFT_LOGO, false, leftLogo);
+            CIName name;
+            for (CIName cn : CIName.values()) {
+                if (cn.toString().equals(params.get("image-name"))) {
+                    // found correct image name
+                    if (params.get("reset") != null) {
+                        resetImage(CIName.LEFT_LOGO, false);
+                    }
+                    if (image1x != null) {
+                        replaceImage(CIName.LEFT_LOGO, true, image1x);
+                    }
+                    if (image2x != null) {
+                        replaceImage(CIName.RIGHT_LOGO, true, image2x);
+                    }
+                    break;
+                }
             }
-            if (params.get("deleteLeftLogo") != null || leftLogo != null) {
-                replaceLogo(CIName.LEFT_LOGO, false, leftLogo);
-            }
-            if (params.get("deleteRightLogo") != null || rightLogo != null) {
-                replaceLogo(CIName.RIGHT_LOGO, false, rightLogo);
-            }
-
         } catch (IOException e) {
             Logger.error("tab-settings: could not update logo because "+e.getMessage());
             flash.error("The server failed to update the image.");
@@ -152,7 +157,6 @@ public class ThemeSettingsTab extends SettingsTab {
         } catch (IllegalArgumentException e) {
             flash.error(e.getMessage());
         }
-
 		themeSettings();
 	}
 
@@ -206,66 +210,59 @@ public class ThemeSettingsTab extends SettingsTab {
     }
 
     /**
-     * Updates the files and config settings for one top logo.
-     * @param name constant identifying which logo
-     * @param logo the new customized logo, or null to delete any previous customization and reset to
+     * Convenience method to interpret a stored Configuration value as an int, not a String.
+     * @param field the Configuration field to look up
+     * @return the value of the field as an integer, or 0 if not an int.
+     */
+    private static int getIntValue(String field) {
+        try {
+            return Integer.parseInt(settingRepo.getConfigValue(field));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Updates the files and config settings for one custom image.
+     * @param name constant identifying which file
+     * @param file the new customized file, or null to delete any previous customization and reset to
      * default values.
      * @throws IOException thrown on error storing or deleting image files
      * @throws ImageFormatException if image format could not be understood
      * @throws IllegalArgumentException if 2x uploaded but format extension doesn't match corresponding 1x
      */
-    private static void replaceLogo (CIName name, boolean is2x, File logo) throws IOException, ImageFormatException, IllegalArgumentException {
-        if (logo != null) {
+    private static void replaceImage (CIName name, boolean is2x, File file) throws IOException, ImageFormatException, IllegalArgumentException {
+        if (file != null) {
             // Uploading a new file.
             // Check that it's a valid image with known dimensions.
-            String extension = FilenameUtils.getExtension(logo.getName());
-            Dimension dim = CustomImage.verifyAndGetDimensions(logo, extension);
+            String extension = FilenameUtils.getExtension(file.getName());
+            Dimension dim = CustomImage.verifyAndGetDimensions(file, extension);
             if (dim == null) {
                 throw new ImageFormatException("Image format not recognized");
             }
 
-            // If we need to reject, do it before copying the file.
-            if (is2x) {
-                if (!CustomImage.isDefault(name) && !CustomImage.is2xSame(name)) {
-                    // If adding a customized 2x image to an existing real 1x customized image, they need to share a file extension.
-                    String extension1x = FilenameUtils.getExtension(CustomImage.url(name, false));
-                    if (!extension.equals(extension1x)) {
-                        throw new IllegalArgumentException("2x file extension must match existing 1x extension \"."+extension1x+"\". Try deleting the 1x file first.");
-                    }
-                    // They should also have the correct dimensions relationship
-                    try {
-                        int displayH = Integer.parseInt(settingRepo.getConfigValue(name+AppConfig.CI_HEIGHT));
-                        int displayW = Integer.parseInt(settingRepo.getConfigValue(name+AppConfig.CI_WIDTH));
-                        if (dim.getHeight() != 2*displayH || dim.getWidth() != 2*displayW) {
-                            throw new IllegalArgumentException("2x logo file must be twice the dimensions of existing 1x file. Try deleting the 1x file first.");
-                        }
-                    } catch (NumberFormatException e) {/**/}
-                }
-            } else {
-                if (!CustomImage.isDefault(name) && !CustomImage.is2xNone(name)) {
-                    // If adding a customized 1x image and there's already a 2x, they need to share a file extension.
-                    String extension2x = FilenameUtils.getExtension(CustomImage.url(name, true));
-                    if (!extension.equals(extension2x)) {
-                        throw new IllegalArgumentException("1x file extension must match existing 2x extension \"."+extension2x+"\". Try deleting the 2x file first.");
-                    }
-                    // The new 1x also has to match the stored display dimensions of the 2x image.
-                    try {
-                        int displayH = Integer.parseInt(settingRepo.getConfigValue(name+AppConfig.CI_HEIGHT));
-                        int displayW = Integer.parseInt(settingRepo.getConfigValue(name+AppConfig.CI_WIDTH));
-                        if (dim.getHeight() != displayH || dim.getWidth() != displayW) {
-                            throw new IllegalArgumentException("1x logo file must be half the dimensions of existing 2x file. Try deleting the 2x file first.");
-                        }
-                    } catch (NumberFormatException e) {/**/}
-                }
-            }
-
-            // Save file. Explicitly delete previous if present--filenames may differ due to extension.
+            // If there are existing customization files, deal with it.
             if (!CustomImage.isDefault(name)) {
-                String extensionOld = FilenameUtils.getExtension(settingRepo.getConfigValue(name + AppConfig.CI_URLPATH));
+                String extensionOld = CustomImage.extension(name);
+
+                // If we need to reject a file that mismatches its customized counterpart, do it before copying the file.
+                if (CustomImage.hasFile(name, !is2x)) {
+                    if (!extension.equals(extensionOld)) {
+                        throw new IllegalArgumentException("The new file extension must match the existing file extension \"."+extensionOld+"\". Try deleting the other file first.");
+                    }
+                    int factorOfDisplayDims = (is2x)? 2 : 1;
+                    if (dim.getHeight() != factorOfDisplayDims*getIntValue(name+AppConfig.CI_HEIGHT) || dim.getWidth() != factorOfDisplayDims*getIntValue(name+AppConfig.CI_WIDTH)) {
+                        throw new IllegalArgumentException("The 2x file dimensions must be exactly double the 1x file dimensions. Try deleting the other file first.");
+                    }
+                }
+
+                // Explicitly delete previous if present--the new standardized filename may differ due to extension.
                 deleteThemeFile(CustomImage.standardFilename(name, is2x, extensionOld));
             }
+
+            // Save file.
             File newFile = new File(THEME_PATH+CustomImage.standardFilename(name, is2x, extension));
-            FileUtils.copyFile(logo, newFile);
+            FileUtils.copyFile(file, newFile);
 
             // Determine proper 2x settings
             if (is2x) {
@@ -300,7 +297,10 @@ public class ThemeSettingsTab extends SettingsTab {
         }
     }
 
-    private static void resetLogo (CustomImage name, boolean is2x) throws IOException {
+    private static void resetImage (CIName name, boolean is2x) throws IOException {
+        if (CustomImage.isDefault(name)) {
+            return;
+        }
         // if 1x
             // if 2x==none
                 // reset metadata to default

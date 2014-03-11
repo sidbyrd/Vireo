@@ -64,7 +64,7 @@
 				filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)}', endColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_HIGHLIGHT_COLOR_ON)}');
 			}			
 			#left-logo{
-                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH)}');
+                background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}');
                 background-size: 100%;
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
@@ -81,7 +81,7 @@
             }
             #{/if}
 			#right-logo{
-                background-image:url('@{Application.index()}${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_URLPATH)}');
+                background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}');
                 height:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_HEIGHT)}px;
                 width:${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO.toString()+org.tdl.vireo.constant.AppConfig.CI_WIDTH)}px;
 			}
