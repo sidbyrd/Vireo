@@ -11,25 +11,25 @@ jQuery(document).ready(function(){
      jQuery(".theme-input").blur(applicationSettingsHandler('@{settings.ThemeSettingsTab.updateThemeSettingsJSON()}'));
 
      // Reset Theme Color
-     jQuery(".color-reset").click(function(){    	
+     jQuery(".color-reset").click(function(){
     	var $this = jQuery(this);
-    	var id = $this.attr('id');    	
+    	var id = $this.attr('id');
     	var value = $this.text();
     	jQuery('.'+id).val(value);
     	jQuery('.'+id).colorpicker('setValue',value);
     	jQuery('.'+id).blur();
      });
-     
+
      // Lock the big text areas
      jQuery(".theme-protected .lock-control a").click(applicationUnlockField);
-     
+
      //Set Colorpicker
      jQuery(".theme-color").colorpicker();
-     
+
      /*
  	 * Initiate tooltip.
  	 */
- 	 
+
  	jQuery('.tooltip-icon').tooltip();
 
     #{if flash.error}
@@ -38,9 +38,14 @@ jQuery(document).ready(function(){
     #{/if}
 
     // zoomed view of 2x logo graphics
-    jQuery('#left2xPreview').loupe({length:${LEFT_LOGO_HEIGHT}*3, width:${LEFT_LOGO_WIDTH}*3});
-    jQuery('#right2xPreview').loupe({length:${RIGHT_LOGO_HEIGHT}*3, width:${RIGHT_LOGO_WIDTH}*3});
+    jQuery('.preview.2x').each(function(){
+        jQuery(this).loupe({
+            length:jQuery(this).height()*3,
+            width:jQuery(this).width()*3
+        })
+    });
 
+    // enable filestyle on file inputs
     $('.filestyle').each(function () {
         var $this = jQuery(this),
             options = {
@@ -52,6 +57,7 @@ jQuery(document).ready(function(){
         // set initial value text
         $this.data('filestyle').$elementFilestyle.find(':text').val($this.data('input-value'));
     });
+
     // highlight upload button when user adds a file
     jQuery('.logo-options input[type="file"]').change(function(e) {
         var oldSubBtn=jQuery(this).closest('.logo-options').find('[name=submit_upload]:disabled');
@@ -92,7 +98,7 @@ jQuery(document).ready(function(){
 		</td>
 	</tr>
 </table>
-	
+
 <h4 style="display:inline;">Submission Step Button (On)</h4>
 <a href="#" class="tooltip-icon" rel="tooltip" title="Use hex color values to change the look of the submission step buttons when on the current step or on hover. The main color (default #1B333F) fades into the highlight color (default #43606E) and then back to the main color."><i class="icon-info-sign"></i></a>
 <table class="gradient-options">
@@ -128,88 +134,105 @@ jQuery(document).ready(function(){
 </table>
 
 <h4 style="display:inline;">Left Logo</h4>
-<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logos located on the student side in the top left corners. The page layout is designed for images approximately 150×50 pixels."><i class="icon-info-sign"></i></a>
-    <form method="post" enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadImage()}">
-        <table class="logo-options">
-            <tr>
-                <td class="well">
-                    <p>
-                        1x resolution<br />
-                        <input type="file" class="filestyle" name="image1x"
-                            #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}
-                                #{if leftLogoIsDefault}data-input-value="[default image]"#{/if}
-                                #{else}data-input-value="[existing custom image]"#{/else}
-                            #{/if}
-                            #{else}data-input-value="[none]"#{/else}"
-                        />
-                        #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}
-                        <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete1x"></label>
+<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logos located on the student side in the top left corner. The page layout is designed for images approximately 150×50 pixels."><i class="icon-info-sign"></i></a>
+<form method="post" enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadImage(name:org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}">
+    <table class="logo-options">
+        <tr>
+            <td class="well">
+                <p>
+                    1x resolution<br />
+                    <input type="file" class="filestyle" name="image1x"
+                        #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}
+                            #{if leftLogoIsDefault}data-input-value="default image"#{/if}
+                            #{else}data-input-value="existing custom .${LEFT_LOGO_EXT} image"#{/else}
                         #{/if}
-                    </p>
-                    <p>
-                        2x resolution
-                        <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. The 2x image should be a more detailed version of the 1x version, with double the pixel dimensions. Users with high resolution screens will see the 2x version. If you upload a 2x and no 1x, all users will get the 2x file, but low-res screen users will only see half the detail."><i class="icon-info-sign"></i></a><br />
-                        <input type="file" class="filestyle" name="image2x"
-                            #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}
-                                #{if leftLogoIsDefault}data-input-value="[default image]"#{/if}
-                                #{else}data-input-value="[existing custom image]"#{/else}
-                            #{/if}
-                            #{else}data-input-value="[none]"#{/else}"
-                        />
-                        #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}
-                        <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete2x"></label>
+                        #{else}data-input-value="[using scaled-down 2x image]"#{/else}
+                    />
+                    #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}
+                    <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete1x"></label>
+                    #{/if}
+                </p>
+                <p>
+                    2x resolution
+                    <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. The 2x image should be a more detailed version of the 1x version, with double the pixel dimensions. Users with high resolution screens will see the 2x version. If you upload a 2x and no 1x, all users will get the 2x file, but low-res screen users will only see half the detail."><i class="icon-info-sign"></i></a><br />
+                    <input type="file" class="filestyle" name="image2x"
+                        #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}
+                            #{if leftLogoIsDefault}data-input-value="default image"#{/if}
+                            #{else}data-input-value="existing custom .${LEFT_LOGO_EXT} image"#{/else}
                         #{/if}
-                    </p>
-                    <input class="btn disabled" disabled="true" type="submit" name="submit_upload" value="Upload" />
-                </td>
-                <td> </td>
-                <td>
-                    <p>Low-res preview<br />Size: ${LEFT_LOGO_WIDTH} × ${LEFT_LOGO_HEIGHT}</p>
-                    <div class="preview" style="background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO,false)}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
-                </td>
-                #{if !org.tdl.vireo.constant.CustomImage.is2xNone(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
-                <td>
-                    <p>High-res preview<br />(zoomable)</p>
-                    <div class="preview" id="left2xPreview" style="background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO,true)}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
-                </td>
-                #{/if}
-            </tr>
-        </table>
-    </form>
+                        #{else}data-input-value="[none]"#{/else}"
+                    />
+                    #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}
+                    <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete2x"></label>
+                    #{/if}
+                </p>
+                <input class="btn disabled" disabled="true" type="submit" name="submit_upload" value="Upload" />
+            </td>
+            <td> </td>
+            <td>
+                <p>Low-res preview<br />Size: ${LEFT_LOGO_WIDTH} × ${LEFT_LOGO_HEIGHT}</p>
+                <div class="preview" style="background-image:url('@{Application.index()}${LEFT_LOGO_1X}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+            </td>
+            #{if LEFT_LOGO_2X != null}
+            <td>
+                <p>High-res preview<br />(zoomable)</p>
+                <div class="preview 2x" style="background-image:url('@{Application.index()}${LEFT_LOGO_2X}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+            </td>
+            #{/if}
+        </tr>
+    </table>
+</form>
 
 <h4 style="display:inline;">Right Logo</h4>
-<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logo located on the student side in the top right corners. The page layout is designed for images approximately 150×50 pixels."><i class="icon-info-sign"></i></a>
-<table class="well logo-options">
-    <tr>
-        <td>
-            <h5>Right Logo</h5>
-            <form class="well" method="post" enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadImage()}">
-                <label for="rightLogo">1x resolution</label>
-                <input type="file" name="rightLogo" id="rightLogo" />
-                #{if !rightLogoIsDefault}
-                <button class="confirm btn btn-small" type="submit" name="deleteRightLogo">Delete</button>
-                #{/if}
-                <p> </p>
-                <label for="rightLogo2x">2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. The 2x image should be a more detailed version of the 1x version, with double the pixel dimensions. Users with high resolution screens will see the 2x version. If you upload a 2x and no 1x, all users will get the 2x file, but low-res screen users will only see half the detail."><i class="icon-info-sign"></i></a></label>
-                <input type="file" name="rightLogo2x" id="rightLogo2x" />
-                #{if !rightLogoIsDefault}
-                <button class="confirm btn btn-small" type="submit" name="deleteRightLogo2x">Delete</button>
-                #{/if}
-                <p><input class="btn disabled" type="submit" name="submit_upload" value="Upload" id="logoUploadSubmit2" /></p>
-            </form>
-        </td>
-        <td>
-            <p>Low-res preview<br />Size: ${RIGHT_LOGO_WIDTH} × ${RIGHT_LOGO_HEIGHT}</p>
-            <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_URLPATH}'); width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
-        </td>
-        #{if !RIGHT_LOGO_2X.equals(org.tdl.vireo.constant.AppConfig.CI_2XVAL_NONE)}
-        <td>
-            <p>High-res preview<br />Touch to zoom</p>
-            <div class="preview" id="right2xPreview" style="background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO,true)}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
-        </td>
-        #{/if}
-    </tr>
-</table>
+<a href="#" class="tooltip-icon" rel="tooltip" title="Change the logo located on the student side in the top right corner. The page layout is designed for images approximately 150×50 pixels."><i class="icon-info-sign"></i></a>
+<form method="post" enctype="multipart/form-data" action="@{settings.ThemeSettingsTab.uploadImage(name:org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}">
+    <table class="logo-options">
+        <tr>
+            <td class="well">
+                <p>
+                    1x resolution<br />
+                    <input type="file" class="filestyle" name="image1x"
+                        #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}
+                            #{if rightLogoIsDefault}data-input-value="default image"#{/if}
+                            #{else}data-input-value="existing custom .${RIGHT_LOGO_EXT} image"#{/else}
+                        #{/if}
+                        #{else}data-input-value="[using scaled-down 2x image]"#{/else}
+                    />
+                    #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}
+                    <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete1x"></label>
+                    #{/if}
+                </p>
+                <p>
+                    2x resolution
+                    <a href="#" class="tooltip-icon" rel="tooltip" title="Optional. The 2x image should be a more detailed version of the 1x version, with double the pixel dimensions. Users with high resolution screens will see the 2x version. If you upload a 2x and no 1x, all users will get the 2x file, but low-res screen users will only see half the detail."><i class="icon-info-sign"></i></a><br />
+                    <input type="file" class="filestyle" name="image2x"
+                        #{if org.tdl.vireo.constant.CustomImage.hasFile(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, true)}
+                            #{if rightLogoIsDefault}data-input-value="default image"#{/if}
+                            #{else}data-input-value="existing custom .${RIGHT_LOGO_EXT} image"#{/else}
+                        #{/if}
+                        #{else}data-input-value="[none]"#{/else}"
+                    />
+                    #{if org.tdl.vireo.constant.CustomImage.hasCustomFile(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, true)}
+                    <label class="btn btn-small"><i class="icon-remove"></i><input class="hidden" type="submit" name="delete2x"></label>
+                    #{/if}
+                </p>
+                <input class="btn disabled" disabled="true" type="submit" name="submit_upload" value="Upload" />
+            </td>
+            <td> </td>
+            <td>
+                <p>Low-res preview<br />Size: ${RIGHT_LOGO_WIDTH} × ${RIGHT_LOGO_HEIGHT}</p>
+                <div class="preview" style="background-image:url('@{Application.index()}${RIGHT_LOGO_1X}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
+            </td>
+            #{if RIGHT_LOGO_2X != null}
+            <td>
+                <p>High-res preview<br />(zoomable)</p>
+                <div class="preview 2x" style="background-image:url('@{Application.index()}${RIGHT_LOGO_2X}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
+            </td>
+            #{/if}
+        </tr>
+    </table>
+</form>
+
 
 <h4 style="display:inline;">Custom CSS</h4>
 <a href="#" class="tooltip-icon" rel="tooltip" title="Customize any styling on the student side using CSS."><i class="icon-info-sign"></i></a>

@@ -40,7 +40,7 @@ public class EmailSettingsTab extends SettingsTab {
 	
 	
 	/**
-	 * Receive updates for email configuration (the checkboxs at the top of the page, not the templates)
+	 * Receive updates for email configuration (the checkboxes at the top of the page, not the templates)
 	 * 
 	 * @param field
 	 *            The field being updated.

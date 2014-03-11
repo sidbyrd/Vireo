@@ -50,21 +50,22 @@ public class ThemeSettingsTab extends SettingsTab {
 		renderArgs.put("CUSTOM_CSS", settingRepo.getConfigValue(CUSTOM_CSS));
 				
 		// Logos
-        // TODO put files back here, so I can pre-populate pickers with them.
 		boolean leftLogoIsDefault = CustomImage.isDefault(CIName.LEFT_LOGO);
         boolean rightLogoIsDefault = CustomImage.isDefault(CIName.RIGHT_LOGO);
-        renderArgs.put("LEFT_LOGO_URLPATH", settingRepo.getConfigValue(CIName.LEFT_LOGO+CI_URLPATH));
-        renderArgs.put("LEFT_LOGO_HEIGHT", settingRepo.getConfigValue(CIName.LEFT_LOGO+CI_HEIGHT));
-        renderArgs.put("LEFT_LOGO_WIDTH", settingRepo.getConfigValue(CIName.LEFT_LOGO+CI_WIDTH));
-        renderArgs.put("LEFT_LOGO_2X", settingRepo.getConfigValue(CIName.LEFT_LOGO+CI_2X));
-        renderArgs.put("RIGHT_LOGO_URLPATH", settingRepo.getConfigValue(CIName.RIGHT_LOGO+CI_URLPATH));
-        renderArgs.put("RIGHT_LOGO_HEIGHT", settingRepo.getConfigValue(CIName.RIGHT_LOGO+CI_HEIGHT));
-        renderArgs.put("RIGHT_LOGO_WIDTH", settingRepo.getConfigValue(CIName.RIGHT_LOGO+CI_WIDTH));
-        renderArgs.put("RIGHT_LOGO_2X", settingRepo.getConfigValue(CIName.RIGHT_LOGO+CI_2X));
-		
+        renderArgs.put("LEFT_LOGO_1X", CustomImage.url(CIName.LEFT_LOGO, false));
+        renderArgs.put("LEFT_LOGO_2X", CustomImage.url(CIName.LEFT_LOGO, true));
+        renderArgs.put("LEFT_LOGO_HEIGHT", CustomImage.displayHeight(CIName.LEFT_LOGO));
+        renderArgs.put("LEFT_LOGO_WIDTH", CustomImage.displayWidth(CIName.LEFT_LOGO));
+        renderArgs.put("LEFT_LOGO_EXT", CustomImage.extension(CIName.LEFT_LOGO));
+        renderArgs.put("RIGHT_LOGO_1X", CustomImage.url(CIName.RIGHT_LOGO, false));
+        renderArgs.put("RIGHT_LOGO_2X", CustomImage.url(CIName.RIGHT_LOGO, true));
+        renderArgs.put("RIGHT_LOGO_HEIGHT", CustomImage.displayHeight(CIName.RIGHT_LOGO));
+        renderArgs.put("RIGHT_LOGO_WIDTH", CustomImage.displayWidth(CIName.RIGHT_LOGO));
+        renderArgs.put("RIGHT_LOGO_EXT", CustomImage.extension(CIName.RIGHT_LOGO));
+
 		String nav = "settings";
 		String subNav = "theme";
-		renderTemplate("SettingTabs/themeSettings.html",nav, subNav, leftLogoIsDefault, rightLogoIsDefault);
+		renderTemplate("SettingTabs/themeSettings.html", nav, subNav, leftLogoIsDefault, rightLogoIsDefault);
 	}
 	
     @SuppressWarnings({"UnusedDeclaration"})
@@ -129,28 +130,30 @@ public class ThemeSettingsTab extends SettingsTab {
 
     @SuppressWarnings({"UnusedDeclaration"})
 	@Security(RoleType.MANAGER)
-	public static void uploadImage(File image1x, File image2x) {
+	public static void uploadImage(String name, File image1x, File image2x) {
 		try {
             checkThemeDir();
 
-            CIName name;
             for (CIName cn : CIName.values()) {
-                if (cn.toString().equals(params.get("image-name"))) {
+                if (cn.toString().equals(name)) {
                     // found correct image name
-                    if (params.get("reset") != null) {
-                        resetImage(CIName.LEFT_LOGO, false);
+                    if (params.get("delete1x") != null) {
+                        deleteImage(cn, false);
+                    }
+                    if (params.get("delete2x") != null) {
+                        deleteImage(cn, true);
                     }
                     if (image1x != null) {
-                        replaceImage(CIName.LEFT_LOGO, true, image1x);
+                        replaceImage(cn, false, image1x);
                     }
                     if (image2x != null) {
-                        replaceImage(CIName.RIGHT_LOGO, true, image2x);
+                        replaceImage(cn, true, image2x);
                     }
                     break;
                 }
             }
         } catch (IOException e) {
-            Logger.error("tab-settings: could not update logo because "+e.getMessage());
+            Logger.error("tab-settings: could not update custom image because "+e.getMessage());
             flash.error("The server failed to update the image.");
         } catch (ImageFormatException e) {
             flash.error(e.getMessage());
@@ -214,7 +217,7 @@ public class ThemeSettingsTab extends SettingsTab {
      * @param field the Configuration field to look up
      * @return the value of the field as an integer, or 0 if not an int.
      */
-    private static int getIntValue(String field) {
+    private static int getIntConfig(String field) {
         try {
             return Integer.parseInt(settingRepo.getConfigValue(field));
         } catch (NumberFormatException e) {
@@ -246,12 +249,12 @@ public class ThemeSettingsTab extends SettingsTab {
                 String extensionOld = CustomImage.extension(name);
 
                 // If we need to reject a file that mismatches its customized counterpart, do it before copying the file.
-                if (CustomImage.hasFile(name, !is2x)) {
+                if (CustomImage.hasCustomFile(name, !is2x)) {
                     if (!extension.equals(extensionOld)) {
                         throw new IllegalArgumentException("The new file extension must match the existing file extension \"."+extensionOld+"\". Try deleting the other file first.");
                     }
                     int factorOfDisplayDims = (is2x)? 2 : 1;
-                    if (dim.getHeight() != factorOfDisplayDims*getIntValue(name+AppConfig.CI_HEIGHT) || dim.getWidth() != factorOfDisplayDims*getIntValue(name+AppConfig.CI_WIDTH)) {
+                    if (dim.getHeight() != factorOfDisplayDims* getIntConfig(name+AppConfig.CI_HEIGHT) || dim.getWidth() != factorOfDisplayDims* getIntConfig(name+AppConfig.CI_WIDTH)) {
                         throw new IllegalArgumentException("The 2x file dimensions must be exactly double the 1x file dimensions. Try deleting the other file first.");
                     }
                 }
@@ -297,40 +300,45 @@ public class ThemeSettingsTab extends SettingsTab {
         }
     }
 
-    private static void resetImage (CIName name, boolean is2x) throws IOException {
+    private static void deleteImage (CIName name, boolean is2x) throws IOException {
         if (CustomImage.isDefault(name)) {
             return;
         }
-        // if 1x
-            // if 2x==none
-                // reset metadata to default
-                // delete urlpath
-            // if 2x==same
-                // nothing
-            // if 2x==separate
-                // 2x=same
-                // delete urlpath
-        // if 2x
-            // if 2x==none
-                // nothing
-            // if 2x==same
-                // reset metadata to default
-                // delete urlpath+@2x
-            // if 2x==separate
-                // delete urlpath+@2x
-
-
-        // Delete old customized logo file if present
 
         if (!is2x) {
-            // 1x: Reset to default image metadata.
-            settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
-            settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
-            settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
+            if (CustomImage.is2xNone(name)) {
+                // delete file
+                // reset metadata to default
+                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+                resetImageMetadata(name);
+            } else if (CustomImage.is2xSeparate(name)) {
+                // delete file
+                // urlpath=urlpath+@2x
+                // 2x=same
+                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+                saveField(name+AppConfig.CI_URLPATH, CustomImage.url(name, true));
+                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
+            }
         } else {
-            // 2x: note that we have no 2x anymore.
-            settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
+            if (CustomImage.is2xSame(name)) {
+                // delete file+@2x
+                // reset metadata to default
+                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+                resetImageMetadata(name);
+            } else if (CustomImage.is2xSeparate(name)) {
+                // delete file+@2x
+                // 2x=none
+                deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
+                saveField(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
+            }
         }
+    }
+
+    private static void resetImageMetadata (CIName name) {
+        settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
+        settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
+        settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
+        settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
     }
 
     /**
