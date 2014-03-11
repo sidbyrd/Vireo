@@ -1201,14 +1201,16 @@ function memberUpdateHandler(htmlURL) {
  * loupe - an image magnifier for jQuery
  * (C) 2010 jdbartlett, MIT license
  * http://github.com/jdbartlett/loupe
- * modified a bit
+ * modified a bit for Vireo
  */
 (function ($) {
 	$.fn.loupe = function (arg) {
 		var options = $.extend({
 			loupe: 'loupe',
 			width: 200,
-			height: 150
+			height: 150,
+            strayDist: 10,
+            move: true
 		}, arg || {});
 
 		return this.length ? this.each(function () {
@@ -1226,23 +1228,25 @@ function memberUpdateHandler(htmlURL) {
 					sW = $small.outerWidth(),
 					sH = $small.outerHeight(),
 					oW = options.width / 2,
-					oH = options.height / 2;
+					oH = options.height / 2,
+                    x = options.move? e.pageX : os.left + .5*sW,
+                    y = options.move? e.pageY : os.top + .5*sH;
 
 				if (!$this.data('loupe') ||
-					e.pageX > sW + os.left + 10 || e.pageX < os.left - 10 ||
-					e.pageY > sH + os.top + 10 || e.pageY < os.top - 10) {
+					x > sW + os.left + options.strayDist || x < os.left - options.strayDist ||
+					y > sH + os.top + options.strayDist || y < os.top - options.strayDist) {
 					return hide();
 				}
 
 				time = time ? clearTimeout(time) : 0;
 
 				$loupe.show().css({
-					left: e.pageX - oW,
-					top: e.pageY - oH
+					left: x - oW,
+					top: y - oH
 				});
 				$big.css({
-					left: -(((e.pageX - os.left) / sW) * $big.width() - oW)|0,
-					top: -(((e.pageY - os.top) / sH) * $big.height() - oH)|0
+					left: -(((x - os.left) / sW) * $big.width() - oW)|0,
+					top: -(((y - os.top) / sH) * $big.height() - oH)|0
 				});
 			};
 
@@ -1254,15 +1258,17 @@ function memberUpdateHandler(htmlURL) {
 					position: 'absolute',
 					overflow: 'hidden'
 				})
-				.append($big = $('<img />').attr('src', $this.css('background-image').slice(4,-1)).css('position', 'absolute'))
-				.mousemove(move)
+				.append($big = $('<img />').attr('src', $this.css('background-image').replace(/url\("?([^"]+)"?\)/,'$1')).css({'position':'absolute'}))
+                .mouseout(hide)
 				.hide()
 				.appendTo('body');
+
+            options.move && $loupe.mousemove(move);
 
 			$this.data('loupe', true)
 				.mouseenter(move)
 				.mouseout(function () {
-					time = setTimeout(hide, 10);
+					if (options.move) time = setTimeout(hide, 10);
 				});
 		}) : this;
 	};

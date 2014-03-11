@@ -39,14 +39,19 @@ jQuery(document).ready(function(){
 
     // zoomed view of 2x logo graphics
     jQuery('.preview.2x').each(function(){
-        jQuery(this).loupe({
-            length:jQuery(this).height()*3,
-            width:jQuery(this).width()*3
+        var maxLoupeDim = 400
+        var $this = jQuery(this);
+        var move = $this.width() > 0.5*maxLoupeDim || $this.height() > 0.5*maxLoupeDim;
+        $this.loupe({
+            width:move? maxLoupeDim : $this.width()*2,
+            height:move? maxLoupeDim : $this.height()*2,
+            strayDist:10,
+            move:move
         })
     });
 
     // enable filestyle on file inputs
-    $('.filestyle').each(function () {
+    jQuery('.filestyle').each(function () {
         var $this = jQuery(this),
             options = {
                 'buttonText': '',
