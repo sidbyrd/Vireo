@@ -176,10 +176,11 @@ public class ThemeSettingsTab extends SettingsTab {
 	}
 
     //TODO
-    // make reset button replace delete button on file choice
+    // make reset button replace delete button on file choice, or make input autosubmit on choice
     // make table same size whether or not there's a delete button
     // add retina image for stickies
     // test for new ThemeSettingsTab behavior
+    // make file input selection display dark text—don't use an input?
 
     /**
      * Make sure the theme directory exists.
