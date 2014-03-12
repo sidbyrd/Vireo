@@ -54,6 +54,19 @@ public class CustomImage {
     }
 
     /**
+     * Find the height of the taller of two images
+     * @param name1 constant identifying the first image to compare
+     * @param name2 constant identifying the second image to compare
+     * @return the taller height (or 0 if something was invalid)
+     */
+    public static int tallerHeight(AppConfig.CIName name1, AppConfig.CIName name2) {
+        try{
+            return Math.max(Integer.parseInt(displayHeight(name1)), Integer.parseInt(displayHeight(name2)));
+        } catch (NumberFormatException e) {}
+        return 0;
+    }
+
+    /**
      * For an image, resolution, and file type, make a standardized filename
      * (The extension is there so web servers get the mimetype right.)
      * @param name constant identifying the image in app settings
