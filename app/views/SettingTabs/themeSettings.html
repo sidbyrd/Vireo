@@ -186,7 +186,23 @@ jQuery(document).ready(function(){
             #{if LEFT_LOGO_2X != null}
             <td>
                 <p>High-res appearance<br />(zoomable preview)</p>
-                <div class="preview 2x" style="background-image:url('@{Application.index()}${LEFT_LOGO_2X}'); background-size: 100%; width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;"></div>
+                <div class="preview 2x" style="
+                    width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;
+                    /* This is the only place a scaled background image is displayed without CSS 2x @media queries and needs to work with old browsers */
+                    background-image:url('@{Application.index()}${LEFT_LOGO_2X}');
+                    -webkit-background-size: 100%;
+                    -moz-background-size: 100%;
+                    -o-background-size: 100%;
+                    background-size: 100%;
+                    /* Non-MS and IE9+ ignores this. IE7/8 won't scale the background image. So hide it (blank.gif renders as opaque white here, yay IE)… */
+                    filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale'">
+                    <div style="
+                        width: 100%; height: 100%;
+                        /* …and use the proprietary MS scaling thing instead (which does respect transparency on .png, hence the need for the white bg). */
+                        filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${LEFT_LOGO_2X}', sizingMethod='scale');
+                        -ms-interpolation-mode: bicubic;">
+                    </div>
+                </div>
             </td>
             #{/if}
         </tr>
@@ -236,7 +252,23 @@ jQuery(document).ready(function(){
             #{if RIGHT_LOGO_2X != null}
             <td>
                 <p>High-res appearance<br />(zoomable preview)</p>
-                <div class="preview 2x" style="background-image:url('@{Application.index()}${RIGHT_LOGO_2X}'); background-size: 100%; width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;"></div>
+                <div class="preview 2x" style="
+                    width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;
+                    /* This is the only place a scaled background image is displayed without CSS 2x @media queries and needs to work with old browsers */
+                    background-image:url('@{Application.index()}${RIGHT_LOGO_2X}');
+                    -webkit-background-size: 100%;
+                    -moz-background-size: 100%;
+                    -o-background-size: 100%;
+                    background-size: 100%;
+                    /* Non-MS and IE9+ ignores this. IE7/8 won't scale the background image. So hide it (blank.gif renders as opaque white here, yay IE)… */
+                    filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale'">
+                    <div style="
+                        width: 100%; height: 100%;
+                        /* …and use the proprietary MS scaling thing instead (which does respect transparency on .png, hence the need for the white bg). */
+                        filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${RIGHT_LOGO_2X}', sizingMethod='scale');
+                        -ms-interpolation-mode: bicubic;">
+                    </div>
+                </div>
             </td>
             #{/if}
         </tr>
