@@ -177,10 +177,7 @@ public class ThemeSettingsTab extends SettingsTab {
 
     //TODO
     // make reset button replace delete button on file choice, or make input autosubmit on choice
-    // make table same size whether or not there's a delete button
-    // add retina image for stickies
     // test for new ThemeSettingsTab behavior
-    // make file input selection display dark text—don't use an input?
 
     /**
      * Make sure the theme directory exists.
@@ -340,23 +337,15 @@ public class ThemeSettingsTab extends SettingsTab {
             deleteThemeFile(CustomImage.standardFilename(name, is2x, CustomImage.extension(name)));
             if (!CustomImage.hasFile(name, !is2x)) {
                 // No counterpart exists - switch to defaults
-                resetImageMetadata(name);
+                settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
+                settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
+                settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
+                settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
             } else {
                 // Counterpart exists - switch to it (if it isn't already)
                 saveField(name + AppConfig.CI_URLPATH, CustomImage.url(name, !is2x));
                 saveField(name+AppConfig.CI_2X, (is2x)? AppConfig.CI_2XVAL_NONE : AppConfig.CI_2XVAL_SAME);
             }
         }
-    }
-
-    /**
-     * Sets all config values for a custom image back to their defaults.
-     * @param name constant identifying which custom image
-     */
-    private static void resetImageMetadata (CIName name) {
-        settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
-        settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
-        settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
-        settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
     }
 }
