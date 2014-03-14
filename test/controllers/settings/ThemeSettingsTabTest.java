@@ -1,21 +1,8 @@
 package controllers.settings;
 
-import static org.tdl.vireo.constant.AppConfig.*;
-
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.io.FileUtils;
+import controllers.AbstractVireoFunctionalTest;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.ivy.util.FileUtil;
+import org.apache.tools.ant.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,14 +12,19 @@ import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
-
 import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
 import play.mvc.Http.Response;
 import play.mvc.Router;
-import controllers.AbstractVireoFunctionalTest;
-import sun.security.x509.Extension;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.tdl.vireo.constant.AppConfig.*;
 
 /**
  * Test for the theme setting tab. 
@@ -86,7 +78,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		// Get our urls and a list of fields.
 		final String URL = Router.reverse("settings.ThemeSettingsTab.updateThemeSettingsJSON").url;
 
-		List<String> fields = new ArrayList<String>();
+		Collection<String> fields = new ArrayList<String>(10);
 		fields.add(FRONT_PAGE_INSTRUCTIONS);
 		fields.add(SUBMIT_INSTRUCTIONS);
 		fields.add(CORRECTION_INSTRUCTIONS);
@@ -103,7 +95,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 			Configuration originalValue = settingRepo.findConfigurationByName(field);
 			
 			// change the current semester
-			Map<String,String> params = new HashMap<String,String>();
+			Map<String,String> params = new HashMap<String,String>(2);
 			params.put("field", field);
 			params.put("value","changed \"by test\"");
 			Response response = POST(URL,params);
@@ -128,7 +120,42 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		
 		}
 	}
-	
+
+    /**
+     * Helper for testUploadingImage() that checks pretty much everything about the state of a custom image.
+     * for code2x: 0==none, 1==separate, 2==same.
+     */
+    private static void checkUploadedImage(String nameBase, String name1x, String name2x,
+                                           String width, String height,
+                                           File custom1x, File custom2x, int code2x) throws IOException {
+        // check image metadata
+        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+nameBase, settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
+        assertEquals((name1x==null)?null:ThemeSettingsTab.THEME_URL_PREFIX + name1x, CustomImage.url(CIName.TEST_LOGO, false));
+        assertEquals((name2x==null)?null:ThemeSettingsTab.THEME_URL_PREFIX+name2x, CustomImage.url(CIName.TEST_LOGO, true));
+        assertEquals(width, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_WIDTH));
+        assertEquals(height, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_HEIGHT));
+        assertEquals(!(custom1x!=null || custom2x!=null), CustomImage.isDefault(CIName.TEST_LOGO));
+        assertEquals(custom1x != null, CustomImage.hasCustomFile(CIName.TEST_LOGO, false));
+        assertEquals(custom2x != null, CustomImage.hasCustomFile(CIName.TEST_LOGO, true));
+        assertEquals(code2x == 0, CustomImage.is2xNone(CIName.TEST_LOGO));
+        assertEquals(code2x == 1, CustomImage.is2xSeparate(CIName.TEST_LOGO));
+        assertEquals(code2x == 2, CustomImage.is1xScaled(CIName.TEST_LOGO));
+
+        // check custom file existence and contents
+        final String ext = FilenameUtils.getExtension(nameBase);
+        assertEquals(ext, CustomImage.extension(CIName.TEST_LOGO));
+        File file = new File(ThemeSettingsTab.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, false, ext));
+        assertEquals(custom1x!=null, file.exists());
+        if (custom1x!=null) {
+            assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom1x, file));
+        }
+        file = new File(ThemeSettingsTab.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, true, ext));
+        assertEquals(custom2x!=null, file.exists());
+        if (custom2x!=null) {
+            assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom2x, file));
+        }
+    }
+
 	/**
 	 * Test various cases and orderings of uploading and deleting custom images, both the 1x
      * and 2x versions.
@@ -136,123 +163,152 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	 */
 	@Test
 	public void testUploadingImage() throws IOException {
-		LOGIN();
+        final String png1x="test-logo.png";
+        final String png2x="test-logo@2x.png";
+        final String default1x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-sm.png";
+        final String default2x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-sm@2x.png";
+        final Map<String,String> params = new HashMap<String,String>(4);
+        final Map<String,File> files = new HashMap<String,File>(2);
+        final File pngSmall = getResourceFile("SampleFeedbackDocumentSmall.png");
+        final File pngLarge = getResourceFile("SampleFeedbackDocument.png");
+        final File jpgLarge = getResourceFile("SampleFeedbackDocument.jpg");
+
+        LOGIN();
 
 		//Get the url
 		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
 
-        // upload new 1x
-        // -- upload regular size here --
-
-        // upload a different 1x
-		Map<String,String> params = new HashMap<String,String>();
-		params.put("submit_upload", "true");
+        // upload 1x onto default
+        params.put("submit_upload", "true");
         params.put("name", CIName.TEST_LOGO.toString());
-		File file = getResourceFile("SampleFeedbackDocumentSmall.png");
-		Map<String,File> files = new HashMap<String,File>();
-		files.put("image1x", file);
-		Response response = POST(URL,params,files);
+        files.put("image1x", pngLarge);
+        // should be accepted and set as standalone 1x image with no 2x
+        Response response = POST(URL,params,files);
+        assertStatus(302, response);
+        checkUploadedImage(png1x, png1x, null, "541", "378", pngLarge, null, 0);
 
-        // check result -- should be set for 1x image only
-		assertStatus(302,response);
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo.png", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo.png",CustomImage.url(CIName.TEST_LOGO, false));
-        assertNull(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo.png",CustomImage.url(CIName.TEST_LOGO, true));
-        assertEquals("189", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_HEIGHT));
-        assertEquals("271", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_WIDTH));
-		File logoFile = new File(ThemeSettingsTab.THEME_PATH+"test-logo.png");
-		assertTrue(logoFile.exists());
-        assertEquals(CustomImage.extension(CIName.TEST_LOGO), "png");
-        assertFalse(CustomImage.isDefault(CIName.TEST_LOGO));
-        assertTrue(CustomImage.hasCustomFile(CIName.TEST_LOGO, false));
-        assertFalse(CustomImage.hasCustomFile(CIName.TEST_LOGO, true));
-        assertFalse(CustomImage.is1xScaled(CIName.TEST_LOGO));
-        assertTrue(CustomImage.is2xNone(CIName.TEST_LOGO));
-        assertFalse(CustomImage.is2xSeparate(CIName.TEST_LOGO));
+        // upload a different (smaller) 1x onto existing 1x
+        files.clear();
+		files.put("image1x", pngSmall);
+		response = POST(URL,params,files);
+        // should be accepted and replace the previous 1x
+		assertStatus(302, response);
+        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
 
         // upload invalid image (format PNG but extension GIF)
-
-        // upload invalid 2x (same format, not double the size)
-
-        // upload invalid 2x (different format, double the size)
-
-        // upload valid new 2x (same format, double the size)
-		params.clear();
-		params.put("submit_upload", "true");
-        params.put("name", CIName.TEST_LOGO.toString());
-		file = getResourceFile("SampleFeedbackDocument.png");
-		files.clear();
-		files.put("image2x", file);
+        files.clear();
+		files.put("image1x", getResourceFileWithExtension("SampleFeedbackDocumentSmall.png", "gif"));
 		response = POST(URL,params,files);
+        // should be rejected, and image data should stay the same
+		assertStatus(200,response); // in test, a page describing the error appears
+        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
 
-        // check result -- should be set for separate 1x and 2x
+        // upload invalid 2x (same format as 1x, not double the size)
+        files.clear();
+		files.put("image2x", pngSmall);
+		response = POST(URL,params,files);
+        // should be rejected, and image data should stay the same
+		assertStatus(200,response);
+        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+
+        // upload invalid 2x (different format from 2x, double the size)
+        files.clear();
+		files.put("image2x", jpgLarge);
+		response = POST(URL,params,files);
+        // should be rejected, and image data should stay the same
+		assertStatus(200,response);
+        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+
+        // upload valid new 2x (same format as 1x, double the size)
+		files.clear();
+		files.put("image2x", pngLarge);
+		response = POST(URL,params,files);
+        // should be accepted and image data set for separate 1x and 2x
 		assertStatus(302,response);
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo.png", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo.png",CustomImage.url(CIName.TEST_LOGO, false));
-        assertNull(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo@2x.png",CustomImage.url(CIName.TEST_LOGO, true));
-        assertEquals("189", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_HEIGHT));
-        assertEquals("271", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_WIDTH));
-		logoFile = new File(ThemeSettingsTab.THEME_PATH+"test-logo@2x.png");
-		assertTrue(logoFile.exists());
-        assertFalse(CustomImage.isDefault(CIName.TEST_LOGO));
-        assertTrue(CustomImage.hasCustomFile(CIName.TEST_LOGO, false));
-        assertTrue(CustomImage.hasCustomFile(CIName.TEST_LOGO, true));
-        assertFalse(CustomImage.is1xScaled(CIName.TEST_LOGO));
-        assertFalse(CustomImage.is2xNone(CIName.TEST_LOGO));
-        assertTrue(CustomImage.is2xSeparate(CIName.TEST_LOGO));
+        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
 
-        // delete 1x
+        // delete 1x, leaving 2x in place
         params.clear();
 		params.put("delete1x", "true");
         params.put("name", CIName.TEST_LOGO.toString());
-		response = POST(URL,params);
-
-        // delete 1x again -- should not cause error
-
-        // check result -- should be set for 2x, scaled down to 1x on low-res devices
+        files.clear();
+        response = POST(URL,params,files);
+        // should be accepted and image data set for remaining image to be standalone 2x
 		assertStatus(302,response);
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo@2x.png", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo@2x.png",CustomImage.url(CIName.TEST_LOGO, false));
-        assertNull(ThemeSettingsTab.THEME_URL_PREFIX+"test-logo@2x.png",CustomImage.url(CIName.TEST_LOGO, true));
-        assertEquals("189", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_HEIGHT));
-        assertEquals("271", settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_WIDTH));
-		logoFile = new File(ThemeSettingsTab.THEME_PATH+"test-logo.png");
-		assertFalse(logoFile.exists());
-        assertFalse(CustomImage.isDefault(CIName.TEST_LOGO));
-        assertFalse(CustomImage.hasCustomFile(CIName.TEST_LOGO, false));
-        assertTrue(CustomImage.hasCustomFile(CIName.TEST_LOGO, true));
-        assertTrue(CustomImage.is1xScaled(CIName.TEST_LOGO));
-        assertFalse(CustomImage.is2xNone(CIName.TEST_LOGO));
-        assertFalse(CustomImage.is2xSeparate(CIName.TEST_LOGO));
+        checkUploadedImage(png2x, null, png2x, "271", "189", null, pngLarge, 2);
 
-        // upload invalid 1x (same extension, not half the size)
+        // upload invalid 1x (same extension as 2x, not half the size)
+        params.clear();
+        params.put("submit_upload", "true");
+        params.put("name", CIName.TEST_LOGO.toString());
+        files.clear();
+        files.put("image1x", pngLarge);
+        response = POST(URL,params,files);
+        // should be accepted and image data set for remaining image to be standalone 2x
+		assertStatus(302,response);
+        checkUploadedImage(png2x, null, png2x, "271", "189", null, pngLarge, 2);
 
-        // delete 2x
+        // upload 1x onto existing 2x
+        files.clear();
+        files.put("image1x", pngSmall);
+        response = POST(URL,params,files);
+        // should be accepted and image data set for separate 1x and 2x
+		assertStatus(302,response);
+        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
+
+        // delete 2x, leaving 1x in place
         params.clear();
 		params.put("delete2x", "true");
         params.put("name", CIName.TEST_LOGO.toString());
-		response = POST(URL,params);
+        files.clear();
+        response = POST(URL,params,files);
+        // should be accepted and data set for standalone 1x image
+        assertStatus(302,response);
+        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
 
-        // check result -- should be default values
+        // delete 1x with no existing 2x, resulting in default state
+        params.clear();
+		params.put("delete1x", "true");
+        params.put("name", CIName.TEST_LOGO.toString());
+        files.clear();
+        response = POST(URL,params,files);
+        // should be accepted and image data set for remaining image to be standalone 2x
 		assertStatus(302,response);
-        assertEquals(Configuration.DEFAULTS.get(CIName.TEST_LOGO+AppConfig.CI_URLPATH), settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals(Configuration.DEFAULTS.get(CIName.TEST_LOGO+AppConfig.CI_HEIGHT), settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_HEIGHT));
-        assertEquals(Configuration.DEFAULTS.get(CIName.TEST_LOGO+AppConfig.CI_WIDTH), settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_WIDTH));
-		assertFalse(logoFile.exists());
+        checkUploadedImage(default1x, default1x, default2x, "150", "50", null, null, 1);
 
-        // delete 2x again -- should not cause error.
+        // upload 1x, upload 2x (valid combination)
+        params.clear();
+        params.put("submit_upload", "true");
+        params.put("name", CIName.TEST_LOGO.toString());
+        files.clear();
+        files.put("image1x", pngSmall);
+        files.put("image2x", pngLarge);
+        response = POST(URL,params,files);
+        // should be accepted and data set for separate 1x and 2x
+        assertStatus(302,response);
+        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
 
-        // upload valid 1x and 2x together
-
-        // quickly check result -- changed correctly to be set for separate images
-
-        // delete 2x
-
-        // quickly check result -- changed to be set for 1x only
+        // delete2x, upload different 1x (JPEG), upload different 2x that's an invalid combination
+        params.clear();
+        params.put("delete2x", "true");
+        params.put("submit_upload", "true");
+        params.put("name", CIName.TEST_LOGO.toString());
+        files.clear();
+        files.put("image1x", pngLarge);
+        files.put("image2x", pngSmall);
+        response = POST(URL,params,files);
+        // should be rejected ultimately, but not until 2x deleted, and 1x updated and data set for standalone 1x
+        assertStatus(200,response);
+        checkUploadedImage(png1x, png1x, null, "271", "189", jpgLarge, null, 0);
 
         // clean up : here or somewhere else? delete files, reset config values.
+        params.clear();
+		params.put("delete1x", "true");
+        params.put("name", CIName.TEST_LOGO.toString());
+        files.clear();
+        POST(URL,params,files);
 
-        // not tested: JPG and GIF formats, deleting and uploading different combinations in the same request, proper HTML interface function
+        // not tested: GIF format acceptance, all possible combinations of upload+delete in same request, proper HTML interface function
 	}
 
 	/**
@@ -264,8 +320,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
      */
     protected static File getResourceFile(String filePath) throws IOException {
         // use the original file's correct extension
-        String extension = FilenameUtils.getExtension(filePath);
-        return getResourceFileWithExtension(filePath, extension);
+        return getResourceFileWithExtension(filePath, FilenameUtils.getExtension(filePath));
     }
 	
     /**
@@ -278,22 +333,24 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
      * @throws IOException
      */
     protected static File getResourceFileWithExtension(String filePath, String extension) throws IOException {
-        File file = File.createTempFile("ingest-import-test", "."+extension);
+        File file = File.createTempFile("ingest-import-test", '.'+extension);
 
         // While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
         //InputStream is = DSpaceCSVIngestServiceImplTests.class
         //		.getResourceAsStream(filePath);
         InputStream is = Play.classloader.getResourceAsStream(filePath);
         OutputStream os = new FileOutputStream(file);
-
-        // Copy the file out of the jar into a temporary space.
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = is.read(buffer)) > 0) {
-            os.write(buffer, 0, len);
+        try {
+            // Copy the file out of the jar into a temporary space.
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) > 0) {
+                os.write(buffer, 0, len);
+            }
+        } finally {
+            is.close();
+            os.close();
         }
-        is.close();
-        os.close();
 
         return file;
     }

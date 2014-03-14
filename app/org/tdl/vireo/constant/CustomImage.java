@@ -4,16 +4,19 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.SettingsRepository;
+import play.i18n.Messages;
 import play.modules.spring.Spring;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
-import java.awt.Dimension;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Static utility methods for dealing with the configuration values
@@ -24,12 +27,6 @@ import java.util.*;
 public class CustomImage {
 
     private static SettingsRepository settingRepo = Spring.getBeanOfType(SettingsRepository.class);
-
-    // Text returned by fileDescription().
-    private static final String DESC_DEFAULT = "default image"; // special: "EXT" (if present) gets replaced with file extension
-    private static final String DESC_CUSTOM = "uploaded .EXT image"; // special: "EXT" (if present) gets replaced with file extension
-    private static final String DESC_NONE = "[none]";
-    private static final String DESC_SCALED = "[using scaled-down 2x image]";
 
     /**
      * Get the url for serving the specified image and resolution, according to
@@ -147,15 +144,15 @@ public class CustomImage {
     public static String fileDescription(AppConfig.CIName name, boolean is2x) {
         if (hasFile(name, is2x)) {
             if (isDefault(name)) {
-                return DESC_DEFAULT.replace("EXT", extension(name));
+                return Messages.get("CI_FILE_DESC_DEFAULT").replace("EXT", extension(name));
             } else {
-                return DESC_CUSTOM.replace("EXT", extension(name));
+                return Messages.get("CI_FILE_DESC_CUSTOM").replace("EXT", extension(name));
             }
         } else {
             if (is2x) {
-                return DESC_NONE;
+                return Messages.get("CI_FILE_DESC_NONE");
             } else {
-                return DESC_SCALED;
+                return Messages.get("CI_FILE_DESC_SCALED");
             }
         }
     }
@@ -169,7 +166,7 @@ public class CustomImage {
      * @return base URL path, relative to application base
      */
     private static String baseUrl(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(name+AppConfig.CI_URLPATH);
+        return settingRepo.getConfigValue(name + AppConfig.CI_URLPATH);
     }
 
     /**

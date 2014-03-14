@@ -270,14 +270,14 @@ public class ThemeSettingsTab extends SettingsTab {
             String extension = FilenameUtils.getExtension(file.getName());
             Dimension dim = CustomImage.verifyFormatAndGetDimensions(file, extension);
             if (dim == null) {
-                throw new ImageFormatException("Image format not recognized. Please use a valid JPEG, PNG, or GIF file.");
+                throw new ImageFormatException("Image format not recognized. Please use a valid JPEG, PNG, or GIF file with the proper file extension.");
             }
 
             // If there are existing customization files, deal with it.
             if (!CustomImage.isDefault(name)) {
                 String extensionOld = CustomImage.extension(name);
 
-                // If we need to reject a file that mismatches its customized counterpart, do it before copying the file.
+                // If we need to reject a file that mismatches its customized counterpart, do it before modifying anything else.
                 if (CustomImage.hasCustomFile(name, !is2x)) {
                     if (!extension.equals(extensionOld)) {
                         throw new IllegalArgumentException("The new file extension must match the existing file extension \"."+extensionOld+"\". Try deleting the other file first.");

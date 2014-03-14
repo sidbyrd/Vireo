@@ -553,7 +553,7 @@ public class TestDataLoader extends Job {
                         FileFilter imageFilter = new WildcardFileFilter(imageName.toString()+"*");
                         File[] imageFiles = themeDir.listFiles(imageFilter);
                         for (File imageFile : imageFiles) {
-                            imageFile.delete();
+                            FileUtils.deleteQuietly(imageFile);
                         }
                     }
                 }

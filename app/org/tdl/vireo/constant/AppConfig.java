@@ -120,11 +120,11 @@ public class AppConfig {
 	/** Instructions to show after submitting corrections */
 	public final static String CORRECTION_INSTRUCTIONS = "correction_instructions";
 	
-	//Proquest settings
-	/** The proquest institution code visible during export. */
+	//ProQuest settings
+	/** The ProQuest institution code visible during export. */
 	public final static String PROQUEST_INSTITUTION_CODE = "proquest_institution_code";	
 	
-	/** Allow proquest indexing by search engines. */
+	/** Allow ProQuest indexing by search engines. */
 	public final static String PROQUEST_INDEXING = "proquest_indexing";
 
 	/** The ProQuest license students may have to agree to during submission */
@@ -137,7 +137,7 @@ public class AppConfig {
 	
 	
 	// Degree code mapping
-	/** The prefix underwhich all degree codes are stored under. Use the getDegreeCodeConfig() method to resolve the name for each degree */
+	/** The prefix under which all degree codes are stored. Use the getDegreeCodeConfig() method to resolve the name for each degree */
 	public final static String DEGREE_CODE_PREFIX = "degree_code";
 	
 	/**
@@ -146,11 +146,11 @@ public class AppConfig {
 	 * @param degree The full name of the degree (i.e. "Doctor of Philosophy")
 	 * @return The configuration name of the code.
 	 */
-	public final static String getDegreeCodeConfig(String degree) {
+	public static String getDegreeCodeConfig(String degree) {
 		if (degree == null)
 			return null;
 		
-		return DEGREE_CODE_PREFIX + "_" + degree.replaceAll(" ", "_").toLowerCase();
+		return DEGREE_CODE_PREFIX + '_' + degree.replaceAll(" ", "_").toLowerCase();
 	}
 	
 }

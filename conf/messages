@@ -115,3 +115,10 @@ LOG_FACET_UMI_RELEASE=UMI RELEASE
 LOG_FACET_DATE_CHOOSE=ACTION DATE (CHOOSE)
 LOG_FACET_DATE_RANGE=ACTION DATE (RANGE)
 LOG_FACET_DATE=ACTION DATE
+
+# CustomImage file descriptions
+# In the first 2, "EXT" gets replaced with a file extension, if present.
+CI_FILE_DESC_DEFAULT=default image
+CI_FILE_DESC_CUSTOM=uploaded .EXT image
+CI_FILE_DESC_NONE=[none]
+CI_FILE_DESC_SCALED=[using scaled-down 2x image]
