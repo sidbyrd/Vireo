@@ -16,6 +16,7 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
@@ -123,47 +124,48 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	}
 	
 	/**
-	 * Test uploading a logo
+	 * Test uploading a custom image
 	 * @throws IOException 
 	 */
 	@Test
-	public void testUploadingLogos() throws IOException {
+	public void testUploadingImage() throws IOException {
 		LOGIN();
 
 		//Get the url
-		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadLogos").url;
+		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
 
         // upload new left-logo
 		Map<String,String> params = new HashMap<String,String>();
 		params.put("submit_upload", "true");
-		
+        params.put("name", CIName.LEFT_LOGO.toString());
+
 		File file = getResourceFile("SampleFeedbackDocument.png");
 		
 		Map<String,File> files = new HashMap<String,File>();
-		files.put("leftLogo", file);
+		files.put("image1x", file);
 		
 		Response response = POST(URL,params,files);
 
         // check result
 		assertStatus(302,response);
-        assertEquals("theme/left-logo", settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
-        assertEquals("378", settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
-        assertEquals("541", settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-		File logoFile = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
+        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+"left-logo.pdf", settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_URLPATH));
+        assertEquals("378", settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_HEIGHT));
+        assertEquals("541", settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_WIDTH));
+		File logoFile = new File(ThemeSettingsTab.THEME_PATH+"left-logo.pdf");
 		assertTrue(logoFile.exists());
 
         // delete left-logo
         params.clear();
-		params.put("deleteLeftLogo", "true");
-		
+		params.put("delete1x", "true");
+        params.put("name", CIName.LEFT_LOGO.toString());
+
 		response = POST(URL,params);
 
         // check result
 		assertStatus(302,response);
-        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_URLPATH), settingRepo.getConfigValue(LEFT_LOGO_URLPATH));
-        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_HEIGHT), settingRepo.getConfigValue(LEFT_LOGO_HEIGHT));
-        assertEquals(Configuration.DEFAULTS.get(LEFT_LOGO_WIDTH), settingRepo.getConfigValue(LEFT_LOGO_WIDTH));
-		logoFile = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
+        assertEquals(Configuration.DEFAULTS.get(CIName.LEFT_LOGO+AppConfig.CI_URLPATH), settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_URLPATH));
+        assertEquals(Configuration.DEFAULTS.get(CIName.LEFT_LOGO+AppConfig.CI_HEIGHT), settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_HEIGHT));
+        assertEquals(Configuration.DEFAULTS.get(CIName.LEFT_LOGO+AppConfig.CI_WIDTH), settingRepo.getConfigValue(CIName.LEFT_LOGO+AppConfig.CI_WIDTH));
 		assertFalse(logoFile.exists());
 	}
 	

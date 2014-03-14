@@ -76,6 +76,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         instance.setSearchUser(null);
         instance.setSearchPassword(null);
         instance.setNetIDEmailDomain(null);
+        instance.setAllowNetIdAsMissingName(false);
         instance.setAllowNewUserEmailMatch(true);
         instance.setValueInstitutionalIdentifier("My University");
         instance.setValueUserStatusActive("active");

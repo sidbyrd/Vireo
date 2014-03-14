@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -9,7 +10,9 @@ import javax.security.auth.Subject;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.tdl.vireo.constant.AppConfig;
+import org.tdl.vireo.constant.CustomImage;
 import org.tdl.vireo.email.SystemEmailTemplateService;
 import org.tdl.vireo.export.Depositor;
 import org.tdl.vireo.export.Packager;
@@ -540,15 +543,21 @@ public class TestDataLoader extends Job {
 				File depositsDir = new File(Play.configuration.getProperty("deposits.path"));
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
-				
-				File leftLogo = new File(ThemeSettingsTab.LEFT_LOGO_PATH);
-				if(leftLogo.exists())
-					leftLogo.delete();
-				
-				File rightLogo = new File(ThemeSettingsTab.RIGHT_LOGO_PATH);
-				if(rightLogo.exists())
-					rightLogo.delete();
-				
+
+                // For each named customizable image, clear the theme directory of all versions
+                //  of that image, regardless of resolution or file extension.
+                //  For example, "conf/theme/left-logo.gif" or "conf/theme/right-logo@2x.png"
+                File themeDir = new File(ThemeSettingsTab.THEME_PATH);
+                if (themeDir.exists()) {
+                    for (CIName imageName : AppConfig.CIName.values()) {
+                        FileFilter imageFilter = new WildcardFileFilter(imageName.toString()+"*");
+                        File[] imageFiles = themeDir.listFiles(imageFilter);
+                        for (File imageFile : imageFiles) {
+                            imageFile.delete();
+                        }
+                    }
+                }
+
 				loadPeople();
 				loadSettings();
 			} finally {
@@ -569,7 +578,7 @@ public class TestDataLoader extends Job {
 	/**
 	 * Load the predefined user accounts.
 	 * 
-	 * There is also one special case, so that Billy Bob Thorton is logged in
+	 * There is also one special case, so that Billy Bob Thornton is logged in
 	 * through shibboleth so that all his attributes will be the same as defined
 	 * by our mock shibboleth provider.
 	 */
@@ -581,7 +590,7 @@ public class TestDataLoader extends Job {
 			person.setPassword(personDefinition.password);
 			person.save();
 		}
-		// Special case. Initialize Billy-bob with all the data defined by the shibboleth authentication. This results in a lot less confusion when the authentitation changes a person's metadat.
+		// Special case. Initialize Billy Bob with all the data defined by the shibboleth authentication. This results in a lot less confusion when the authentication changes a person's metadata.
 		
 		boolean originalMock = shibAuth.mock;
 		shibAuth.mock = true;
@@ -593,6 +602,7 @@ public class TestDataLoader extends Job {
 	/**
 	 * Load all predefined settings. Colleges, departments, majors, degrees,
 	 * document types, graduation month, and embargo definitions.
+     * @throws IOException if couldn't make deposit dir
 	 */
 	public static void loadSettings() throws IOException {
 				
@@ -764,7 +774,7 @@ public class TestDataLoader extends Job {
 							try {
 								// We could pick the same role twice.
 								member.addRole(role.name);
-							} catch (IllegalArgumentException iae) {/* ignore */};
+							} catch (IllegalArgumentException iae) {/* ignore */}
 						}
 					}
 					member.save();

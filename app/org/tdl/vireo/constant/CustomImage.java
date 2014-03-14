@@ -1,5 +1,7 @@
 package org.tdl.vireo.constant;
 
+import org.apache.commons.collections.IteratorUtils;
+import org.apache.commons.collections.iterators.IteratorEnumeration;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Configuration;
@@ -10,10 +12,12 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.event.ListSelectionEvent;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 
 /**
@@ -206,9 +210,13 @@ public class CustomImage {
      * @param extension optionally, a file type extension to indicate image's format
      * @return dimensions of image, or null if it couldn't be read and understood
      */
-    public static Dimension verifyAndGetDimensions(File image, String extension) {
-        // if file extension present, sometimes we can use that to read height and width without
-        //  loading the whole image
+    public static Dimension verifyFormatAndGetDimensions(File image, String extension) {
+        // There are only three image formats we wish to accept for display in common browsers.
+        java.util.List<ImageReader> allowedReaders = new ArrayList<ImageReader>(3);
+        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("jpeg")));
+        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("gif")));
+        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("png")));
+
         if (!StringUtils.isBlank(extension)) {
             Iterator<ImageReader> it = ImageIO.getImageReadersBySuffix(extension);
             if (it.hasNext()) {
@@ -225,12 +233,6 @@ public class CustomImage {
                     reader.dispose();
                 }
             }
-        }
-
-        // can't use file extension, so try slower generic method
-        ImageIcon imageIcon = new ImageIcon(image.getAbsolutePath());
-        if (imageIcon.getIconWidth() >= 0) {
-            return new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
         }
 
         // nothing worked.

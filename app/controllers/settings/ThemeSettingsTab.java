@@ -175,10 +175,6 @@ public class ThemeSettingsTab extends SettingsTab {
 		themeSettings();
 	}
 
-    //TODO
-    // make reset button replace delete button on file choice, or make input autosubmit on choice
-    // test for new ThemeSettingsTab behavior
-
     /**
      * Make sure the theme directory exists.
      * @throws IOException if theme dir doesn't exist and couldn't be created
@@ -272,9 +268,9 @@ public class ThemeSettingsTab extends SettingsTab {
             // Uploading a new file.
             // Check that it's a valid image with known dimensions.
             String extension = FilenameUtils.getExtension(file.getName());
-            Dimension dim = CustomImage.verifyAndGetDimensions(file, extension);
+            Dimension dim = CustomImage.verifyFormatAndGetDimensions(file, extension);
             if (dim == null) {
-                throw new ImageFormatException("Image format not recognized");
+                throw new ImageFormatException("Image format not recognized. Please use a valid JPEG, PNG, or GIF file.");
             }
 
             // If there are existing customization files, deal with it.
