@@ -167,7 +167,7 @@ jQuery(document).ready(function(){
                 <div class="preview" style="
                     width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;
                     background-image:url('@{Application.index()}${LEFT_LOGO_1X}');
-                    #{if org.tdl.vireo.constant.CustomImage.is2xSame(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
+                    #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
                         filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${LEFT_LOGO_1X}', sizingMethod='scale');
                     #{/if}">&nbsp;
                 </div>
@@ -209,7 +209,7 @@ jQuery(document).ready(function(){
                 <div class="preview" style="
                     width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;
                     background-image:url('@{Application.index()}${RIGHT_LOGO_1X}');
-                    #{if org.tdl.vireo.constant.CustomImage.is2xSame(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
+                    #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
                         filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${RIGHT_LOGO_1X}', sizingMethod='scale');
                     #{/if}">&nbsp;
                 </div>

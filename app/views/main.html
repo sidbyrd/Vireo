@@ -67,7 +67,7 @@
                 background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}');
                 height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
                 width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
-                #{if org.tdl.vireo.constant.CustomImage.is2xSame(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
+                #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
                 *{ This allows IE7/8 to display a scaled background image.
                 If it's a PNG, the unscaled version shows through without blank.gif, which renders as opaque white. }*
                 filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}', sizingMethod='scale');
@@ -88,7 +88,7 @@
                 background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}');
                 height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
                 width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
-                #{if org.tdl.vireo.constant.CustomImage.is2xSame(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
+                #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
                 *{ This allows IE7/8 to display a scaled background image.
                 If it's a PNG, the unscaled version shows through without blank.gif, which renders as opaque white. }*
                 filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}', sizingMethod='scale');

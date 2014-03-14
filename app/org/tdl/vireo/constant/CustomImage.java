@@ -1,7 +1,5 @@
 package org.tdl.vireo.constant;
 
-import org.apache.commons.collections.IteratorUtils;
-import org.apache.commons.collections.iterators.IteratorEnumeration;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Configuration;
@@ -12,13 +10,10 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
-import javax.swing.event.ListSelectionEvent;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Static utility methods for dealing with the configuration values
@@ -32,20 +27,9 @@ public class CustomImage {
 
     // Text returned by fileDescription().
     private static final String DESC_DEFAULT = "default image"; // special: "EXT" (if present) gets replaced with file extension
-    private static final String DESC_CUSTOM = "existing custom .EXT image"; // special: "EXT" (if present) gets replaced with file extension
+    private static final String DESC_CUSTOM = "uploaded .EXT image"; // special: "EXT" (if present) gets replaced with file extension
     private static final String DESC_NONE = "[none]";
     private static final String DESC_SCALED = "[using scaled-down 2x image]";
-
-    /**
-     * Internal. Returns the saved url path for the image that should be served for
-     * @1x resolution. This may actually be a double-resolution file, with "@2x" in
-     * the filename, depending on other settings.
-     * @param name constant identifying the image in app settings
-     * @return base URL path, relative to application base
-     */
-    private static String baseUrl(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(name+AppConfig.CI_URLPATH);
-    }
 
     /**
      * Get the url for serving the specified image and resolution, according to
@@ -102,34 +86,6 @@ public class CustomImage {
     }
 
     /**
-     * Does the image use one file that is appropriate for both 1x and 2x resolution?
-     * @param name constant identifying the image in app settings
-     * @return whether 1x and 2x use the same file
-     */
-    public static boolean is2xSame(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SAME);
-    }
-
-    /**
-     * Does the image use two stored files, one for 1x resolution and a
-     * separate one for 2x?
-     * @param name constant identifying the image in app settings
-     * @return whether 1x and 2x have separate files
-     */
-    public static boolean is2xSeparate(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SEPARATE);
-    }
-
-    /**
-     * Does the image have only a 1x file, and no file appropriate for 2x resolution?
-     * @param name constant identifying the image in app settings
-     * @return whethere there is no file appropriate for 2x
-     */
-    public static boolean is2xNone(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_NONE);
-    }
-
-    /**
      * For an image, resolution, and file type, make a standardized filename
      * (The extension is there so web servers get the mimetype right.)
      * @param name constant identifying the image in app settings
@@ -166,7 +122,7 @@ public class CustomImage {
      * @return whether the current configuration says there's such a file
      */
     public static boolean hasFile(AppConfig.CIName name, boolean is2x) {
-        return (!is2x && !is2xSame(name)) || (is2x && !is2xNone(name));
+        return (!is2x && !is1xScaled(name)) || (is2x && !is2xNone(name));
     }
 
     /**
@@ -205,37 +161,89 @@ public class CustomImage {
     }
 
     /**
-     * Gets image dimensions for given file. Also verifies that the image is a valid, readable format.
+     * Internal--you probably don't need this to just display the image. Use url() instead.
+     * Returns the saved url path for the image that should be served for
+     * @1x resolution. This may actually be a double-resolution file, with "@2x" in
+     * the filename, depending on other settings.
+     * @param name constant identifying the image in app settings
+     * @return base URL path, relative to application base
+     */
+    private static String baseUrl(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_URLPATH);
+    }
+
+    /**
+     * Does scaling need to be applied to make the 1x image display at the
+     *  correct display resolution? (2x images are always scaled.)
+     *  I.e. does the image use one file that is appropriate for both 1x and 2x resolution?
+     * @param name constant identifying the image in app settings
+     * @return whether 1x and 2x use the same file
+     */
+    public static boolean is1xScaled(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SAME);
+    }
+
+    /**
+     * Does the image use two stored files, one for 1x resolution and a
+     * separate one for 2x?
+     * @param name constant identifying the image in app settings
+     * @return whether 1x and 2x have separate files
+     */
+    public static boolean is2xSeparate(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SEPARATE);
+    }
+
+    /**
+     * Does the image have only a 1x file, and no file appropriate for 2x resolution?
+     * @param name constant identifying the image in app settings
+     * @return whether there is no file appropriate for 2x
+     */
+    public static boolean is2xNone(AppConfig.CIName name) {
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_NONE);
+    }
+
+    /**
+     * Verifies that:
+     *  1) the file extension isn't empty.
+     *  2) the file extension indicates an understood image type.
+     *  3) that type either represents JPEG, PNG, or GIF.
+     *  4) the file actually is a decodable example of the image type its extension indicates.
+     * Once the file is verified, the dimensions are determined, without having to
+     *   instantiate and decode the entire image contents if possible, depending on the
+     *   image reader implementation.
+     * This could be done without matching and verifying the file extension, but since
+     *   the image is intended to be served on the web, the extension helps with mimetype
+     *   selection and universal compatibility, so requiring its correctness is a feature here.
      * @param image image file
-     * @param extension optionally, a file type extension to indicate image's format
-     * @return dimensions of image, or null if it couldn't be read and understood
+     * @param extension the type extension to indicate image's format
+     * @return dimensions of image, or null if it didn't verify or couldn't be decoded
      */
     public static Dimension verifyFormatAndGetDimensions(File image, String extension) {
         // There are only three image formats we wish to accept for display in common browsers.
-        java.util.List<ImageReader> allowedReaders = new ArrayList<ImageReader>(3);
-        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("jpeg")));
-        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("gif")));
-        allowedReaders.addAll(IteratorUtils.toList(ImageIO.getImageReadersByFormatName("png")));
+        // These are the formatName of the standard Java ImageReader for those three types.
+        final List<String> allowedReaders = Arrays.asList("JPEG", "gif", "png");
 
         if (!StringUtils.isBlank(extension)) {
+            // let Java figure out that both ".jpg" and ".jpeg" both mean the image reader
+            //  whose name is "JPEG", etc.
             Iterator<ImageReader> it = ImageIO.getImageReadersBySuffix(extension);
             if (it.hasNext()) {
                 ImageReader reader = it.next();
                 try {
-                    ImageInputStream stream = new FileImageInputStream(image);
-                    reader.setInput(stream);
-                    int width = reader.getWidth(reader.getMinIndex());
-                    int height = reader.getHeight(reader.getMinIndex());
-                    return new Dimension(width, height);
-                } catch (IOException e) {
-                    // we have more things left to try; not a failure yet.
+                    if (allowedReaders.contains(reader.getFormatName())) {
+                        ImageInputStream stream = new FileImageInputStream(image);
+                        reader.setInput(stream);
+                        int width = reader.getWidth(reader.getMinIndex());
+                        int height = reader.getHeight(reader.getMinIndex());
+                        return new Dimension(width, height);
+                    }
+                } catch (IOException e) { //
                 } finally {
                     reader.dispose();
                 }
             }
         }
 
-        // nothing worked.
         return null;
     }
 }
