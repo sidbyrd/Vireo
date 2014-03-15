@@ -136,7 +136,6 @@ public class ThemeSettingsTab extends SettingsTab {
 	@Security(RoleType.MANAGER)
 	public static void uploadImage(String name, File image1x, File image2x) {
 		try {
-Logger.info("************ Upload image action");
             for (CIName verifiedName : CIName.values()) {
                 if (verifiedName.toString().equals(name)) {
 

@@ -3,7 +3,6 @@ package controllers.settings;
 import controllers.AbstractVireoFunctionalTest;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
-import org.apache.tools.ant.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,13 +12,11 @@ import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
-import play.Logger;
 import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
 import play.mvc.Http.Response;
 import play.mvc.Router;
-import sun.management.jdp.JdpPacketWriter;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -204,7 +201,6 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         final File gifLarge = getResourceFile("SampleLogo-double.gif"); // any gif
 
         LOGIN();
-        Logger.info("#########################################\n#######################################");
 
 		//Get the url
 		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
