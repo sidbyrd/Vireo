@@ -194,14 +194,14 @@ public final class CustomImage {
             final String extension = FilenameUtils.getExtension(file.getName());
             final Dimension dim = CustomImage.verifyFormatAndGetDimensions(file, extension);
             if (dim == null) {
-                throw new IllegalArgumentException("Image format not recognized. Please use a valid JPEG, PNG, or GIF file with the proper file extension.");
+                throw new IllegalArgumentException(Messages.get("CI_ERROR_FORMAT_UNKNOWN"));
             }
             int h=(int)dim.getHeight();
             int w=(int)dim.getWidth();
 
             // 2x files with odd dimensions aren't allowed. What would they be the double-size of?
             if (is2x && ((h&1)==1 || (w&1)==1)) {
-                throw new IllegalArgumentException("Both the height and width pixel dimensions of a 2x image must be even numbers.");
+                throw new IllegalArgumentException(Messages.get("CI_ERROR_DIMENSIONS_ODD"));
             }
 
             // If there are existing customization files, deal with that.
@@ -212,12 +212,12 @@ public final class CustomImage {
                 // last chance to do it before modifying anything else.
                 if (CustomImage.hasCustomFile(name, !is2x)) {
                     if (!extension.equals(extensionOld)) {
-                        throw new IllegalArgumentException("The new file extension must match the existing file extension \"."+extensionOld+"\". Try deleting the other file first.");
+                        throw new IllegalArgumentException(Messages.get("CI_ERROR_MISMATCHED_FORMAT").replace("EXT",extensionOld));
                     }
                     final int factorOfDisplayDims = is2x? 2 : 1;
                     if (   h != factorOfDisplayDims* settingRepo.getConfigInt(name+AppConfig.CI_HEIGHT)
                         || w != factorOfDisplayDims* settingRepo.getConfigInt(name+AppConfig.CI_WIDTH)) {
-                        throw new IllegalArgumentException("The 2x file dimensions must be exactly double the 1x file dimensions. Try deleting the other file first.");
+                        throw new IllegalArgumentException(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"));
                     }
                 }
 
