@@ -116,7 +116,7 @@ public class ThemeSettingsTab extends SettingsTab {
 			String message = escapeJavaScript(iae.getMessage());			
 			renderJSON("{ \"failure\": \"true\", \"message\": \"" + message + "\" }");
 		} catch (RuntimeException re) {
-			Logger.error(re,"theme-settings: unable to update custom image: "+re.getMessage());
+			Logger.error(re,"theme-settings: unable to update settings: "+re.getMessage());
 			String message = escapeJavaScript(re.getMessage());			
 			renderJSON("{ \"failure\": \"true\", \"message\": \""+message+"\" }");
 		}
@@ -157,7 +157,7 @@ public class ThemeSettingsTab extends SettingsTab {
                 }
             }
         } catch (IOException e) {
-            Logger.error("tab-settings: could not update custom image because "+e.getMessage());
+            Logger.error("theme-settings: could not update custom image because "+e.getMessage());
             flash.error("The server failed to update the image.");
         } catch (IllegalArgumentException e) {
             flash.error(e.getMessage());
