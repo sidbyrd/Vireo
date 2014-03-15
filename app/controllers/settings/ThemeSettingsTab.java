@@ -53,8 +53,8 @@ public class ThemeSettingsTab extends SettingsTab {
         renderArgs.put("RIGHT_LOGO_2X", CustomImage.url(CIName.RIGHT_LOGO, true));
         renderArgs.put("RIGHT_LOGO_HEIGHT", CustomImage.displayHeight(CIName.RIGHT_LOGO));
         renderArgs.put("RIGHT_LOGO_WIDTH", CustomImage.displayWidth(CIName.RIGHT_LOGO));
-        final boolean rightHasCustom1x = CustomImage.hasCustomFile(CIName.LEFT_LOGO, false);
-        final boolean rightHasCustom2x = CustomImage.hasCustomFile(CIName.LEFT_LOGO, true);
+        final boolean rightHasCustom1x = CustomImage.hasCustomFile(CIName.RIGHT_LOGO, false);
+        final boolean rightHasCustom2x = CustomImage.hasCustomFile(CIName.RIGHT_LOGO, true);
         renderArgs.put("RIGHT_LOGO_FILE_DESC_1X", CustomImage.fileDescription(CIName.RIGHT_LOGO, false));
         renderArgs.put("RIGHT_LOGO_FILE_DESC_2X", CustomImage.fileDescription(CIName.RIGHT_LOGO, true));
 
@@ -124,14 +124,15 @@ public class ThemeSettingsTab extends SettingsTab {
 
     /**
      * Upload and delete files for a customized image. Sets all configuration values
-     * as needed. Rejects bad inputs and saves a flash.error.
+     * as needed. Rejects bad inputs and saves a descriptive flash.error.
      * unlisted params:
      * delete1x set to delete the existing low-res version of the image
      * delete2x set to delete the existing high-res version of the image
+     * submit_upload, to indicate that uploaded files should be processed
      * @param name The value of a AppConfig.CIName constant identifying which custom image.
      *             If no constant matches, nothing will happen.
-     * @param image1x the low-res version of the image
-     * @param image2x the high-res version of the image
+     * @param image1x the low-res version of the image, used if submit_upload is present.
+     * @param image2x the high-res version of the image, used if submit_upload is present.
      */
 	@Security(RoleType.MANAGER)
 	public static void uploadImage(String name, File image1x, File image2x) {
@@ -146,10 +147,10 @@ public class ThemeSettingsTab extends SettingsTab {
                     if (params.get("delete2x") != null) {
                         CustomImage.delete(verifiedName, true);
                     }
-                    if (image1x != null) {
+                    if (params._contains("submit_upload") && image1x != null) {
                         CustomImage.replace(verifiedName, false, image1x);
                     }
-                    if (image2x != null) {
+                    if (params._contains("submit_upload") && image2x != null) {
                         CustomImage.replace(verifiedName, true, image2x);
                     }
                     break;

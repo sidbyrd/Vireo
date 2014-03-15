@@ -283,7 +283,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         files.clear();
         files.put("image1x", pngLarge);
         response = POST(URL,params,files);
-        // should be accepted and image data set for remaining image to be standalone 2x
+        // should be rejected, and image data should stay the same
 		assertStatus(302,response);
         checkUploadedImage(png2x, png2x, png2x, "150", "84", null, pngLarge, 2);
 
@@ -311,7 +311,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         params.put("name", CIName.TEST_LOGO.toString());
         files.clear();
         response = POST(URL,params,files);
-        // should be accepted and image data set for remaining image to be standalone 2x
+        // should be default
 		assertStatus(302,response);
         checkUploadedImage(default1x, default1x, default2x, "150", "50", null, null, 1);
 
@@ -348,12 +348,16 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		assertStatus(302, response);
         checkUploadedImage(gif1x, gif1x, null, "300", "168", gifLarge, null, 0);
 
-        // clean up : here or somewhere else? delete files, reset config values.
+        // delete1x and attempt to submit a 2x, but fail to set submit_upload, resulting in default state
         params.clear();
 		params.put("delete1x", "true");
         params.put("name", CIName.TEST_LOGO.toString());
         files.clear();
-        POST(URL,params,files);
+        files.put("image1x", pngSmall);
+        response = POST(URL,params,files);
+        // should be default
+		assertStatus(302,response);
+        checkUploadedImage(default1x, default1x, default2x, "150", "50", null, null, 1);
 	}
 
 	/**

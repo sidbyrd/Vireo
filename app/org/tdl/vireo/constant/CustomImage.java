@@ -23,7 +23,9 @@ import java.util.List;
 /**
  * Manages persistence, manipulation, and information requests about customized
  * image assets that are saved in the theme directory and may have a 1x and/or
- * 2x resolution image file for display in the user's browser.
+ * 2x resolution image file for display in the user's browser. Except where
+ * specifically stated, all methods leave the overall configuration in a consistent
+ * state at all times.
  */
 public final class CustomImage {
     private CustomImage() { /* everything in this class is static; no need to ever instantiate. */}
@@ -241,7 +243,8 @@ public final class CustomImage {
      * @param file the new customized file to save
      * @throws IOException thrown on error storing or deleting image files
      * @throws IllegalArgumentException if image format could not be understood, or if new image size/format
-     * doesn't match existing counterpart
+     * doesn't match existing counterpart, or if trying to save a 2x image with odd dimensions. The Exception's
+     * getMessage() will contain an explanation suitable for presentation to the user.
      */
     public static void replace (AppConfig.CIName name, boolean is2x, File file) throws IOException, IllegalArgumentException {
         checkThemeDir();
@@ -396,7 +399,7 @@ public final class CustomImage {
      * Verifies that:
      *  1) the file extension isn't empty.
      *  2) the file extension indicates an understood image type.
-     *  3) that type either represents JPEG, PNG, or GIF.
+     *  3) that type is JPEG, PNG, or GIF.
      *  4) the file actually is a decodable example of the image type its extension indicates.
      * Once the file is verified, the dimensions are determined, without having to
      *   instantiate and decode the entire image contents if possible, depending on the
