@@ -19,6 +19,7 @@ import org.tdl.vireo.model.Language;
 import org.tdl.vireo.model.Major;
 import org.tdl.vireo.model.Program;
 import org.tdl.vireo.model.SettingsRepository;
+import play.Logger;
 
 /**
  * Jpa specific implementation of the Vireo Repository interface.
@@ -318,11 +319,34 @@ public class JpaSettingsRepositoryImpl implements SettingsRepository {
 		return getConfigValue(name) != null ? true : false;
 	}
 
+    @Override
+    public int getConfigInt(String field) {
+        try {
+            return Integer.parseInt(getConfigValue(field));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
 	@Override
 	public List<Configuration> findAllConfigurations() {
 		return (List) JpaConfigurationImpl.findAll();
 
 	}
+
+    @Override
+    public void saveConfiguration(String field, String value) {
+        Logger.info(" field="+field+"; value="+value);
+        Configuration config = findConfigurationByName(field);
+
+        if (config == null) {
+            config = createConfiguration(field, value);
+        } else {
+            config.setValue(value);
+        }
+        config.save();
+    }
+
 
 	/**
 	 * Set default configuration parameters from spring.

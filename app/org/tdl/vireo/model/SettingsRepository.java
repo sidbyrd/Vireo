@@ -457,7 +457,7 @@ public interface SettingsRepository {
 	public Configuration findConfigurationByName(String name);
 	
 	/**
-	 * Find a system wide configuration and return it's value. If the
+	 * Find a system wide configuration and return its value. If the
 	 * configuration parameter is not set, then return the default value
 	 * supplied.
 	 * 
@@ -470,7 +470,7 @@ public interface SettingsRepository {
 	public String getConfigValue(String name, String defaultValue);
 
 	/**
-	 * Find a system wide configuration and return it's value. If the
+	 * Find a system wide configuration and return its value. If the
 	 * configuration object does not exist the the Configuration.DEFAULTS
 	 * registry will be consulted. If a default has been registered for the
 	 * parameter then the default will be returned, otherwise null.
@@ -482,7 +482,7 @@ public interface SettingsRepository {
 	public String getConfigValue(String name);
 	
 	/**
-	 * Find a system wide configuration and return it's boolean value. If the
+	 * Find a system wide configuration and return its boolean value. If the
 	 * configuration parameter has any value at all it is considered true, if no
 	 * configuration entry is defined for the parameter then it is considered
 	 * false.
@@ -493,6 +493,13 @@ public interface SettingsRepository {
 	 */
 	public boolean getConfigBoolean(String name);
 
+    /**
+     * Convenience method to interpret a stored Configuration value as an int, not a String.
+     * @param field the Configuration field to look up
+     * @return the value of the field as an integer, or 0 if not an int.
+     */
+    public int getConfigInt(String field);
+    
 	/**
 	 * Find all system wide configuration parameters.
 	 * 
@@ -500,6 +507,15 @@ public interface SettingsRepository {
 	 *         list if there are none.
 	 */
 	public List<Configuration> findAllConfigurations();
+
+    /**
+     * Saves a Configuration value, whether it is new or an overwrite.
+     * @param field field to save to
+     * @param value value to save
+     */
+    public void saveConfiguration(String field, String value);
+
+
 	
 	
 	// ///////////////////////////

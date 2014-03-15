@@ -2,6 +2,7 @@ package controllers.settings;
 
 import controllers.AbstractVireoFunctionalTest;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.tools.ant.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -12,11 +13,13 @@ import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
+import play.Logger;
 import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
 import play.mvc.Http.Response;
 import play.mvc.Router;
+import sun.management.jdp.JdpPacketWriter;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -40,6 +43,8 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	@Before
 	public void setup() {
 		context.turnOffAuthorization();
+        CustomImage.resetMetadata(CIName.TEST_LOGO);
+
 		JPA.em().getTransaction().commit();
 		JPA.em().clear();
 		JPA.em().getTransaction().begin();
@@ -47,10 +52,22 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	
 	@After
 	public void cleanup() {
-		context.restoreAuthorization();
-		JPA.em().getTransaction().commit();
+		JPA.em().getTransaction().rollback();
 		JPA.em().clear();
 		JPA.em().getTransaction().begin();
+
+        CustomImage.resetMetadata(CIName.TEST_LOGO);
+        context.restoreAuthorization();
+
+        // Remove any possible images left in the theme directory
+        File themeDir = new File(CustomImage.THEME_PATH);
+        if (themeDir.exists()) {
+            FileFilter imageFilter = new WildcardFileFilter(CIName.TEST_LOGO.toString()+"*");
+            File[] imageFiles = themeDir.listFiles(imageFilter);
+            for (File imageFile : imageFiles) {
+                org.apache.commons.io.FileUtils.deleteQuietly(imageFile);
+            }
+        }
 	}
 	
 	/**
@@ -117,7 +134,6 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 				value.setValue(originalValue.getValue());
 				value.save();
 			}
-		
 		}
 	}
 
@@ -128,10 +144,16 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
     private static void checkUploadedImage(String nameBase, String name1x, String name2x,
                                            String width, String height,
                                            File custom1x, File custom2x, int code2x) throws IOException {
+
+        JPA.em().getTransaction().rollback();
+        JPA.em().getTransaction().begin();
+
+        final boolean shouldBeDefault = custom1x==null && custom2x==null;
+
         // check image metadata
-        assertEquals(ThemeSettingsTab.THEME_URL_PREFIX+nameBase, settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals((name1x==null)?null:ThemeSettingsTab.THEME_URL_PREFIX + name1x, CustomImage.url(CIName.TEST_LOGO, false));
-        assertEquals((name2x==null)?null:ThemeSettingsTab.THEME_URL_PREFIX+name2x, CustomImage.url(CIName.TEST_LOGO, true));
+        assertEquals((shouldBeDefault?"":CustomImage.THEME_URL_PREFIX)+nameBase, settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
+        assertEquals(name1x==null?null:(shouldBeDefault?"":CustomImage.THEME_URL_PREFIX) + name1x, CustomImage.url(CIName.TEST_LOGO, false));
+        assertEquals(name2x==null?null:(shouldBeDefault?"":CustomImage.THEME_URL_PREFIX) + name2x, CustomImage.url(CIName.TEST_LOGO, true));
         assertEquals(width, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_WIDTH));
         assertEquals(height, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_HEIGHT));
         assertEquals(!(custom1x!=null || custom2x!=null), CustomImage.isDefault(CIName.TEST_LOGO));
@@ -142,17 +164,20 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         assertEquals(code2x == 2, CustomImage.is1xScaled(CIName.TEST_LOGO));
 
         // check custom file existence and contents
-        final String ext = FilenameUtils.getExtension(nameBase);
-        assertEquals(ext, CustomImage.extension(CIName.TEST_LOGO));
-        File file = new File(ThemeSettingsTab.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, false, ext));
-        assertEquals(custom1x!=null, file.exists());
-        if (custom1x!=null) {
-            assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom1x, file));
-        }
-        file = new File(ThemeSettingsTab.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, true, ext));
-        assertEquals(custom2x!=null, file.exists());
-        if (custom2x!=null) {
-            assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom2x, file));
+        if (!shouldBeDefault) {
+            final String ext = FilenameUtils.getExtension(nameBase);
+            File file = new File(CustomImage.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, false, ext));
+            assertEquals(custom1x!=null, file.exists());
+            if (custom1x!=null) {
+                assertTrue(file.getPath(), file.exists());
+                assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom1x, file));
+            }
+            file = new File(CustomImage.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, true, ext));
+            assertEquals(custom2x!=null, file.exists());
+            if (custom2x!=null) {
+                assertTrue(file.getPath(), file.exists());
+                assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom2x, file));
+            }
         }
     }
 
@@ -163,29 +188,44 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	 */
 	@Test
 	public void testUploadingImage() throws IOException {
-        final String png1x="test-logo.png";
-        final String png2x="test-logo@2x.png";
-        final String default1x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-sm.png";
-        final String default2x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-sm@2x.png";
         final Map<String,String> params = new HashMap<String,String>(4);
         final Map<String,File> files = new HashMap<String,File>(2);
-        final File pngSmall = getResourceFile("SampleFeedbackDocumentSmall.png");
-        final File pngLarge = getResourceFile("SampleFeedbackDocument.png");
-        final File jpgLarge = getResourceFile("SampleFeedbackDocument.jpg");
+
+        final String png1x="test-logo.png";
+        final String png2x="test-logo@2x.png";
+        final String default1x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm.png";
+        final String default2x="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm@2x.png";
+        final String jpg1x="test-logo.jpg";
+        final String gif1x="test-logo.gif";
+        final File pngSmall = getResourceFile("SampleLogo-single.png"); // single: 150*84
+        final File pngLarge = getResourceFile("SampleLogo-double.png"); // double: 300*168
+        final File pngOdd = getResourceFile("SampleFeedbackDocument.png"); // odd: 541x378
+        final File jpgLarge = getResourceFile("SampleLogo-double.jpg"); // any jpg
+        final File gifLarge = getResourceFile("SampleLogo-double.gif"); // any gif
 
         LOGIN();
+        Logger.info("#########################################\n#######################################");
 
 		//Get the url
 		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
 
-        // upload 1x onto default
+        // upload invalid 2x image onto default (non-even height/width)
         params.put("submit_upload", "true");
         params.put("name", CIName.TEST_LOGO.toString());
-        files.put("image1x", pngLarge);
+		files.put("image2x", pngOdd);
+		Response response = POST(URL,params,files);
+        // should be rejected, and image data should stay default
+		assertStatus(302,response);
+        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("must+be+even"));
+        checkUploadedImage(default1x, default1x, default2x, "150", "50", null, null, 1);
+
+        // upload 1x onto default (with odd dimensions)
+        files.clear();
+        files.put("image1x", pngOdd);
         // should be accepted and set as standalone 1x image with no 2x
-        Response response = POST(URL,params,files);
+        response = POST(URL,params,files);
         assertStatus(302, response);
-        checkUploadedImage(png1x, png1x, null, "541", "378", pngLarge, null, 0);
+        checkUploadedImage(png1x, png1x, null, "541", "378", pngOdd, null, 0);
 
         // upload a different (smaller) 1x onto existing 1x
         files.clear();
@@ -193,31 +233,34 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		response = POST(URL,params,files);
         // should be accepted and replace the previous 1x
 		assertStatus(302, response);
-        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+        checkUploadedImage(png1x, png1x, null, "150", "84", pngSmall, null, 0);
 
-        // upload invalid image (format PNG but extension GIF)
+        // upload invalid 1x image (true format is PNG but extension says GIF)
         files.clear();
-		files.put("image1x", getResourceFileWithExtension("SampleFeedbackDocumentSmall.png", "gif"));
+		files.put("image1x", getResourceFileWithExtension("SampleFeedbackDocument.png", "gif"));
 		response = POST(URL,params,files);
         // should be rejected, and image data should stay the same
-		assertStatus(200,response); // in test, a page describing the error appears
-        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+		assertStatus(302,response);
+        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("format+not+recognized"));
+        checkUploadedImage(png1x, png1x, null, "150", "84", pngSmall, null, 0);
 
-        // upload invalid 2x (same format as 1x, not double the size)
+        // upload incompatible 2x image (same format as 1x, not double the size)
         files.clear();
 		files.put("image2x", pngSmall);
 		response = POST(URL,params,files);
         // should be rejected, and image data should stay the same
-		assertStatus(200,response);
-        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+		assertStatus(302,response);
+        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("dimensions+must+be+exactly+double"));
+        checkUploadedImage(png1x, png1x, null, "150", "84", pngSmall, null, 0);
 
-        // upload invalid 2x (different format from 2x, double the size)
+        // upload incompatible 2x image (different format from 2x, double the size)
         files.clear();
 		files.put("image2x", jpgLarge);
 		response = POST(URL,params,files);
         // should be rejected, and image data should stay the same
-		assertStatus(200,response);
-        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+		assertStatus(302,response);
+        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("extension+must+match"));
+        checkUploadedImage(png1x, png1x, null, "150", "84", pngSmall, null, 0);
 
         // upload valid new 2x (same format as 1x, double the size)
 		files.clear();
@@ -225,7 +268,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		response = POST(URL,params,files);
         // should be accepted and image data set for separate 1x and 2x
 		assertStatus(302,response);
-        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
+        checkUploadedImage(png1x, png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
 
         // delete 1x, leaving 2x in place
         params.clear();
@@ -235,7 +278,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         response = POST(URL,params,files);
         // should be accepted and image data set for remaining image to be standalone 2x
 		assertStatus(302,response);
-        checkUploadedImage(png2x, null, png2x, "271", "189", null, pngLarge, 2);
+        checkUploadedImage(png2x, png2x, png2x, "150", "84", null, pngLarge, 2);
 
         // upload invalid 1x (same extension as 2x, not half the size)
         params.clear();
@@ -246,7 +289,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         response = POST(URL,params,files);
         // should be accepted and image data set for remaining image to be standalone 2x
 		assertStatus(302,response);
-        checkUploadedImage(png2x, null, png2x, "271", "189", null, pngLarge, 2);
+        checkUploadedImage(png2x, png2x, png2x, "150", "84", null, pngLarge, 2);
 
         // upload 1x onto existing 2x
         files.clear();
@@ -254,7 +297,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         response = POST(URL,params,files);
         // should be accepted and image data set for separate 1x and 2x
 		assertStatus(302,response);
-        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
+        checkUploadedImage(png1x, png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
 
         // delete 2x, leaving 1x in place
         params.clear();
@@ -264,7 +307,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         response = POST(URL,params,files);
         // should be accepted and data set for standalone 1x image
         assertStatus(302,response);
-        checkUploadedImage(png1x, png1x, null, "271", "189", pngSmall, null, 0);
+        checkUploadedImage(png1x, png1x, null, "150", "84", pngSmall, null, 0);
 
         // delete 1x with no existing 2x, resulting in default state
         params.clear();
@@ -286,20 +329,28 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         response = POST(URL,params,files);
         // should be accepted and data set for separate 1x and 2x
         assertStatus(302,response);
-        checkUploadedImage(png1x, png1x, png2x, "271", "189", pngSmall, pngLarge, 1);
+        checkUploadedImage(png1x, png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
 
-        // delete2x, upload different 1x (JPEG), upload different 2x that's an invalid combination
+        // delete2x, upload different suddenly-valid 1x (JPEG), upload different 2x that's now an invalid combination with the JPEG
         params.clear();
         params.put("delete2x", "true");
         params.put("submit_upload", "true");
         params.put("name", CIName.TEST_LOGO.toString());
         files.clear();
-        files.put("image1x", pngLarge);
+        files.put("image1x", jpgLarge);
         files.put("image2x", pngSmall);
         response = POST(URL,params,files);
         // should be rejected ultimately, but not until 2x deleted, and 1x updated and data set for standalone 1x
-        assertStatus(200,response);
-        checkUploadedImage(png1x, png1x, null, "271", "189", jpgLarge, null, 0);
+        assertStatus(302,response);
+        checkUploadedImage(jpg1x, jpg1x, null, "300", "168", jpgLarge, null, 0);
+
+        // upload a 1x GIF onto existing 1x JPG
+        files.clear();
+		files.put("image1x", gifLarge);
+		response = POST(URL,params,files);
+        // should be accepted and replace the previous 1x
+		assertStatus(302, response);
+        checkUploadedImage(gif1x, gif1x, null, "300", "168", gifLarge, null, 0);
 
         // clean up : here or somewhere else? delete files, reset config values.
         params.clear();
@@ -307,8 +358,6 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         params.put("name", CIName.TEST_LOGO.toString());
         files.clear();
         POST(URL,params,files);
-
-        // not tested: GIF format acceptance, all possible combinations of upload+delete in same request, proper HTML interface function
 	}
 
 	/**

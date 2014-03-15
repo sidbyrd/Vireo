@@ -462,11 +462,22 @@ public class FirstUserTest extends AbstractVireoFunctionalTest {
 			return false;
 		}
 
+        @Override
+        public int getConfigInt(String name) {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
 		@Override
 		public List<Configuration> findAllConfigurations() {
 			// TODO Auto-generated method stub
 			return null;
 		}
+
+        @Override
+        public void saveConfiguration(String field, String value) {
+			// TODO Auto-generated method stub
+        }
 
 		@Override
 		public DepositLocation createDepositLocation(String name) {

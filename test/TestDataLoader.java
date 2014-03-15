@@ -544,17 +544,15 @@ public class TestDataLoader extends Job {
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
 
-                // For each named customizable image, clear the theme directory of all versions
+                // For the customizable test image, clear the theme directory of all versions
                 //  of that image, regardless of resolution or file extension.
-                //  For example, "conf/theme/left-logo.gif" or "conf/theme/right-logo@2x.png"
-                File themeDir = new File(ThemeSettingsTab.THEME_PATH);
+                //  For example, "conf/theme/test-logo.gif" or "conf/theme/test-logo@2x.png"
+                File themeDir = new File(CustomImage.THEME_PATH);
                 if (themeDir.exists()) {
-                    for (CIName imageName : AppConfig.CIName.values()) {
-                        FileFilter imageFilter = new WildcardFileFilter(imageName.toString()+"*");
-                        File[] imageFiles = themeDir.listFiles(imageFilter);
-                        for (File imageFile : imageFiles) {
-                            FileUtils.deleteQuietly(imageFile);
-                        }
+                    FileFilter imageFilter = new WildcardFileFilter(CIName.TEST_LOGO.toString()+"*");
+                    File[] imageFiles = themeDir.listFiles(imageFilter);
+                    for (File imageFile : imageFiles) {
+                        FileUtils.deleteQuietly(imageFile);
                     }
                 }
 
