@@ -116,7 +116,7 @@ public class ThemeSettingsTab extends SettingsTab {
 			String message = escapeJavaScript(iae.getMessage());			
 			renderJSON("{ \"failure\": \"true\", \"message\": \"" + message + "\" }");
 		} catch (RuntimeException re) {
-			Logger.error(re,"Unable to update application settings");
+			Logger.error(re,"theme-settings: unable to update custom image: "+re.getMessage());
 			String message = escapeJavaScript(re.getMessage());			
 			renderJSON("{ \"failure\": \"true\", \"message\": \""+message+"\" }");
 		}
