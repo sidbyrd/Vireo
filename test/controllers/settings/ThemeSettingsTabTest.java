@@ -7,11 +7,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.tdl.vireo.constant.AppConfig;
-import org.tdl.vireo.constant.CustomImage;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
+import org.tdl.vireo.theme.CustomImage;
+import org.tdl.vireo.theme.ThemeDirectory;
 import play.Play;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
@@ -57,7 +58,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         context.restoreAuthorization();
 
         // Remove any possible images left in the theme directory
-        File themeDir = new File(CustomImage.THEME_PATH);
+        File themeDir = new File(ThemeDirectory.PATH);
         if (themeDir.exists()) {
             FileFilter imageFilter = new WildcardFileFilter(CIName.TEST_LOGO.toString()+"*");
             File[] imageFiles = themeDir.listFiles(imageFilter);
@@ -148,9 +149,9 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         final boolean shouldBeDefault = custom1x==null && custom2x==null;
 
         // check image metadata
-        assertEquals((shouldBeDefault?"":CustomImage.THEME_URL_PREFIX)+nameBase, settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
-        assertEquals(name1x==null?null:(shouldBeDefault?"":CustomImage.THEME_URL_PREFIX) + name1x, CustomImage.url(CIName.TEST_LOGO, false));
-        assertEquals(name2x==null?null:(shouldBeDefault?"":CustomImage.THEME_URL_PREFIX) + name2x, CustomImage.url(CIName.TEST_LOGO, true));
+        assertEquals((shouldBeDefault?"":ThemeDirectory.URL_PREFIX)+nameBase, settingRepo.getConfigValue(CIName.TEST_LOGO+AppConfig.CI_URLPATH));
+        assertEquals(name1x==null?null:(shouldBeDefault?"":ThemeDirectory.URL_PREFIX) + name1x, CustomImage.url(CIName.TEST_LOGO, false));
+        assertEquals(name2x==null?null:(shouldBeDefault?"":ThemeDirectory.URL_PREFIX) + name2x, CustomImage.url(CIName.TEST_LOGO, true));
         assertEquals(width, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_WIDTH));
         assertEquals(height, settingRepo.getConfigValue(CIName.TEST_LOGO + AppConfig.CI_HEIGHT));
         assertEquals(!(custom1x!=null || custom2x!=null), CustomImage.isDefault(CIName.TEST_LOGO));
@@ -163,13 +164,13 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         // check custom file existence and contents
         if (!shouldBeDefault) {
             final String ext = FilenameUtils.getExtension(nameBase);
-            File file = new File(CustomImage.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, false, ext));
+            File file = new File(ThemeDirectory.PATH +CustomImage.standardFilename(CIName.TEST_LOGO, false, ext));
             assertEquals(custom1x!=null, file.exists());
             if (custom1x!=null) {
                 assertTrue(file.getPath(), file.exists());
                 assertTrue(org.apache.commons.io.FileUtils.contentEquals(custom1x, file));
             }
-            file = new File(CustomImage.THEME_PATH+CustomImage.standardFilename(CIName.TEST_LOGO, true, ext));
+            file = new File(ThemeDirectory.PATH +CustomImage.standardFilename(CIName.TEST_LOGO, true, ext));
             assertEquals(custom2x!=null, file.exists());
             if (custom2x!=null) {
                 assertTrue(file.getPath(), file.exists());

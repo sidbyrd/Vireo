@@ -3,9 +3,9 @@ package controllers.settings;
 import controllers.Authentication;
 import controllers.Security;
 import controllers.SettingsTab;
-import org.tdl.vireo.constant.CustomImage;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.RoleType;
+import org.tdl.vireo.theme.CustomImage;
 import play.Logger;
 import play.mvc.With;
 

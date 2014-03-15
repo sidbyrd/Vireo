@@ -6,12 +6,11 @@ import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
 import org.junit.Test;
-import org.tdl.vireo.constant.AppPref;
+import org.tdl.vireo.constant.UserPref;
 import org.tdl.vireo.email.VireoEmail;
 import org.tdl.vireo.model.MockPerson;
 import org.tdl.vireo.model.MockPreference;
 import org.tdl.vireo.model.MockSubmission;
-import org.tdl.vireo.model.Preference;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.state.MockState;
 
@@ -44,7 +43,7 @@ public class VireoEmailImplTest extends UnitTest {
 
 			// Now try with someone logged in.
 			MockPreference pref = new MockPreference();
-			pref.name = AppPref.CC_EMAILS;
+			pref.name = UserPref.CC_EMAILS;
 
 			MockPerson person = new MockPerson();
 			person.currentEmailAddress = "current@email.com";

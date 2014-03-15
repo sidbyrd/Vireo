@@ -1,11 +1,11 @@
-package org.tdl.vireo.constant;
+package org.tdl.vireo.theme;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.SettingsRepository;
-import play.Logger;
 import play.i18n.Messages;
 import play.modules.spring.Spring;
 
@@ -28,80 +28,20 @@ import java.util.List;
  * state at all times.
  */
 public final class CustomImage {
+    // Implementation note: this class (as currently implemented) uses Configurations
+    // for all settings, and it stores files directly on disk. That means two things:
+    // 1) no db schema changes, and
+    // 2) all methods here are static.
+
     private CustomImage() { /* everything in this class is static; no need to ever instantiate. */}
     private static SettingsRepository settingRepo = Spring.getBeanOfType(SettingsRepository.class);
-
-    /***************************************
-     * Theme Directory
-     ***************************************/
-
-    // Currently, nothing but CustomImages ever use the theme directory.
-    // If that ever changes, refactor this section out to someplace better.
-
-    /** filesystem path to theme directory, relative to Play! app */
-    public static final String THEME_PATH = "conf"+File.separator+"theme"+File.separator;
-
-    /** URL path for serving things in the theme directory, as configured in routes */
-    public static final String THEME_URL_PREFIX = "theme/";
-
-    /**
-     * Make sure the theme directory exists.
-     * @throws IOException if theme dir doesn't exist and couldn't be created
-     */
-    private static void checkThemeDir() throws IOException {
-        final File themeDir = new File(THEME_PATH);
-        if(!themeDir.exists()){
-            if (!themeDir.mkdir()) {
-                throw new IOException("Could not create theme directory "+themeDir.getPath());
-            }
-        }
-    }
-
-    /**
-     * Given a URL for an resource being served from the theme directory, return the corresponding File
-     * (without checking whether it actually exists).
-     * Simpler than using play.mvc.Router if the relevant constants are correct.
-     * @param url url for the resource
-     * @return File for the resource
-     */
-    private static File fileForThemeUrl(String url) {
-        return new File(THEME_PATH+StringUtils.substringAfter(url, THEME_URL_PREFIX));
-    }
-
-    /**
-     * Given a File representing a file in the theme directory, return the URL where that file would
-     * be served from (without checking whether it actually exists).
-     * Simpler than using play.mvc.Router if the relevant constants are correct.
-     * @param file a file in the theme directory
-     * @return the URL for the file
-     */
-    private static String urlForThemeFile(File file) {
-        return THEME_URL_PREFIX +StringUtils.substringAfter(file.getPath(), THEME_PATH);
-    }
-
-    /**
-     * Deletes a file from the theme directory, if it exists.
-     * @param filename the name of the file, with no path component
-     */
-    private static void deleteThemeFile(String filename) {
-        final File file = new File(THEME_PATH+filename);
-        if(file.exists()){
-            if (!file.delete()) {
-                // Can't delete. Probably not a real problem except for some wasted disk space--at least not yet--but do log it.
-                Logger.error("theme-dir: could not delete existing file " + file.getAbsolutePath());
-            }
-        }
-    }
-
-    /*****************************************************************
-     * Information about how to display (called from/passed to views)
-     *****************************************************************/
 
     /** goes right before the format extension in a double-resolution file's filename */
     private static final String marker2x = "@2x";
 
-    // These are all short static utilities, since all metadata about a Custom Image
-    //  is actually just stored as app Configuration values. Zero database changes!
+    /*****************************************************************
+     * Information about how to display (called from/passed to views)
+     *****************************************************************/
 
     /**
      * Get the url for serving the specified image and resolution, according to
@@ -232,7 +172,7 @@ public final class CustomImage {
     }
 
     /*****************************************
-     * Manipulation (called from Controllers)
+     * Manipulation (called from controllers)
      *****************************************/
 
     /**
@@ -247,7 +187,7 @@ public final class CustomImage {
      * getMessage() will contain an explanation suitable for presentation to the user.
      */
     public static void replace (AppConfig.CIName name, boolean is2x, File file) throws IOException, IllegalArgumentException {
-        checkThemeDir();
+        ThemeDirectory.check();
 
         if (file != null) {
             // Check that incoming file is a valid image with known dimensions.
@@ -282,11 +222,11 @@ public final class CustomImage {
                 }
 
                 // Explicitly delete previous if present--the new standardized filename may differ due to extension.
-                deleteThemeFile(CustomImage.standardFilename(name, is2x, extensionOld));
+                ThemeDirectory.deleteFile(CustomImage.standardFilename(name, is2x, extensionOld));
             }
 
             // Save new file.
-            final File newFile = new File(THEME_PATH+CustomImage.standardFilename(name, is2x, extension));
+            final File newFile = new File(ThemeDirectory.PATH +CustomImage.standardFilename(name, is2x, extension));
             FileUtils.copyFile(file, newFile);
 
             // Set 2x metadata
@@ -308,7 +248,7 @@ public final class CustomImage {
             }
 
             // Set basic image metadata.
-            settingRepo.saveConfiguration(name+AppConfig.CI_URLPATH, urlForThemeFile(newFile));
+            settingRepo.saveConfiguration(name+AppConfig.CI_URLPATH, ThemeDirectory.urlForFile(newFile));
             settingRepo.saveConfiguration(name+AppConfig.CI_HEIGHT, String.valueOf(h));
             settingRepo.saveConfiguration(name+AppConfig.CI_WIDTH, String.valueOf(w));
         }
@@ -324,7 +264,7 @@ public final class CustomImage {
     public static void delete (AppConfig.CIName name, boolean is2x) {
 
         if (!CustomImage.isDefault(name)) {
-            deleteThemeFile(CustomImage.standardFilename(name, is2x, FilenameUtils.getExtension(baseUrl(name))));
+            ThemeDirectory.deleteFile(CustomImage.standardFilename(name, is2x, FilenameUtils.getExtension(baseUrl(name))));
             if (!CustomImage.hasFile(name, !is2x)) {
                 // No counterpart exists - switch to defaults
                 resetMetadata(name);
@@ -338,8 +278,9 @@ public final class CustomImage {
 
     /**
      * Reset all metadata for one image to default values
-     * Note: this does not delete any files, so the caller must ensure that the
-     * resulting state is consistent.
+     * Note: this does not delete any files, so external callers must ensure that the
+     * resulting state is consistent (or about to get thrown out anyway--this
+     * is only really exposed so test code can use it).
      * @param name constant identifying which custom image
      */
     public static void resetMetadata(AppConfig.CIName name) {

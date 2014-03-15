@@ -1,35 +1,12 @@
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-
-import javax.security.auth.Subject;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.tdl.vireo.constant.AppConfig;
-import org.tdl.vireo.constant.CustomImage;
 import org.tdl.vireo.email.SystemEmailTemplateService;
 import org.tdl.vireo.export.Depositor;
 import org.tdl.vireo.export.Packager;
 import org.tdl.vireo.export.impl.FileDepositorImpl;
-import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.model.CommitteeMember;
-import org.tdl.vireo.model.Configuration;
-import org.tdl.vireo.model.DegreeLevel;
-import org.tdl.vireo.model.DepositLocation;
-import org.tdl.vireo.model.EmbargoType;
-import org.tdl.vireo.model.NameFormat;
-import org.tdl.vireo.model.Person;
-import org.tdl.vireo.model.PersonRepository;
-import org.tdl.vireo.model.RoleType;
-import org.tdl.vireo.model.SettingsRepository;
-import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.model.SubmissionRepository;
+import org.tdl.vireo.model.*;
 import org.tdl.vireo.proquest.ProquestSubject;
 import org.tdl.vireo.proquest.ProquestVocabularyRepository;
 import org.tdl.vireo.search.impl.LuceneIndexerImpl;
@@ -37,15 +14,21 @@ import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.security.impl.ShibbolethAuthenticationMethodImpl;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
-
-import controllers.settings.ThemeSettingsTab;
-
+import org.tdl.vireo.theme.ThemeDirectory;
 import play.Logger;
 import play.Play;
 import play.db.jpa.JPA;
 import play.jobs.Job;
 import play.jobs.OnApplicationStart;
 import play.modules.spring.Spring;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
 
 import static org.tdl.vireo.constant.AppConfig.*;
 
@@ -547,7 +530,7 @@ public class TestDataLoader extends Job {
                 // For the customizable test image, clear the theme directory of all versions
                 //  of that image, regardless of resolution or file extension.
                 //  For example, "conf/theme/test-logo.gif" or "conf/theme/test-logo@2x.png"
-                File themeDir = new File(CustomImage.THEME_PATH);
+                File themeDir = new File(ThemeDirectory.PATH);
                 if (themeDir.exists()) {
                     FileFilter imageFilter = new WildcardFileFilter(CIName.TEST_LOGO.toString()+"*");
                     File[] imageFiles = themeDir.listFiles(imageFilter);

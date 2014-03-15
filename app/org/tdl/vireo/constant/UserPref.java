@@ -1,7 +1,7 @@
 package org.tdl.vireo.constant;
 
 /**
- * Common Application Preferences Names.
+ * Common User Preferences Names.
  * 
  * Stored with each person are preference objects consisting of name / value
  * pairs. These preferences can determine how particular parts of the
@@ -15,7 +15,7 @@ package org.tdl.vireo.constant;
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
  */
-public class AppPref {
+public class UserPref {
 
 	/** When sending any emails, CC the current user. **/
 	public final static String CC_EMAILS = "cc_emails";

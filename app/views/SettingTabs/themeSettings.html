@@ -159,7 +159,7 @@ jQuery(document).ready(function(){
                     <input type="file" class="filestyle" name="image1x" data-input-value="${LEFT_LOGO_FILE_DESC_1X}"/>
                     <label class="btn btn-small"><i class="icon-trash"></i><input class="hidden" type="submit" name="delete1x"#{ifnot leftHasCustom1x} disabled="disabled"#{/ifnot}></label>
                 </p>
-                <p>2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional--you only need 1x or 2x, but both is best. If using both, this should be the same image but exactly twice as many pixels wide and high. Users with high resolution screens (most mobile devices and newer laptops) will see this version."><i class="icon-info-sign"></i></a><br />
+                <p>2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional--you only need 1x or 2x, but both is best. If using both, this should be the same image but exactly twice as many pixels wide and high. The dimensions also must be even numbers. Users with high resolution screens (most mobile devices and newer laptops) will see this version."><i class="icon-info-sign"></i></a><br />
                     <input type="file" class="filestyle" name="image2x" data-input-value="${LEFT_LOGO_FILE_DESC_2X}"/>
                     <label class="btn btn-small"><i class="icon-trash"></i><input class="hidden" type="submit" name="delete2x"#{ifnot leftHasCustom2x} disabled="disabled"#{/ifnot}></label></p>
                 <input class="btn disabled" disabled="disabled" type="submit" name="submit_upload" value="Upload" />
@@ -170,7 +170,7 @@ jQuery(document).ready(function(){
                 <div class="preview" style="
                     width:${LEFT_LOGO_WIDTH}px; height:${LEFT_LOGO_HEIGHT}px;
                     background-image:url('@{Application.index()}${LEFT_LOGO_1X}');
-                    #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
+                    #{if org.tdl.vireo.theme.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
                         filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${LEFT_LOGO_1X}', sizingMethod='scale');
                     #{/if}">&nbsp;
                 </div>
@@ -200,7 +200,7 @@ jQuery(document).ready(function(){
                     <input type="file" class="filestyle" name="image1x" data-input-value="${RIGHT_LOGO_FILE_DESC_1X}"/>
                     <label class="btn btn-small"><i class="icon-trash"></i><input class="hidden" type="submit" name="delete1x"#{ifnot rightHasCustom1x} disabled="disabled"#{/ifnot}></label>
                 </p>
-                <p>2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional--you only need 1x or 2x, but both is best. If using both, this should be the same image but exactly twice as many pixels wide and high. Users with high resolution screens (most mobile devices and newer laptops) will see this version."><i class="icon-info-sign"></i></a><br />
+                <p>2x resolution <a href="#" class="tooltip-icon" rel="tooltip" title="Optional--you only need 1x or 2x, but both is best. If using both, this should be the same image but exactly twice as many pixels wide and high. The dimensions also must be even numbers. Users with high resolution screens (most mobile devices and newer laptops) will see this version."><i class="icon-info-sign"></i></a><br />
                     <input type="file" class="filestyle" name="image2x" data-input-value="${RIGHT_LOGO_FILE_DESC_2X}"/>
                     <label class="btn btn-small"><i class="icon-trash"></i><input class="hidden" type="submit" name="delete2x"#{ifnot rightHasCustom2x} disabled="disabled"#{/ifnot}></label>
                 </p>
@@ -212,7 +212,7 @@ jQuery(document).ready(function(){
                 <div class="preview" style="
                     width:${RIGHT_LOGO_WIDTH}px; height:${RIGHT_LOGO_HEIGHT}px;
                     background-image:url('@{Application.index()}${RIGHT_LOGO_1X}');
-                    #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
+                    #{if org.tdl.vireo.theme.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
                         filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${RIGHT_LOGO_1X}', sizingMethod='scale');
                     #{/if}">&nbsp;
                 </div>

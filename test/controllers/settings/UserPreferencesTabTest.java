@@ -1,6 +1,6 @@
 package controllers.settings;
 
-import static org.tdl.vireo.constant.AppPref.*;
+import static org.tdl.vireo.constant.UserPref.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;

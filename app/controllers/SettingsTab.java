@@ -7,7 +7,7 @@ import java.util.List;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
-import org.tdl.vireo.constant.AppPref;
+import org.tdl.vireo.constant.UserPref;
 import org.tdl.vireo.model.AbstractOrderedModel;
 import org.tdl.vireo.model.College;
 import org.tdl.vireo.model.CommitteeMemberRoleType;
@@ -87,12 +87,12 @@ public class SettingsTab extends AbstractVireoController {
 				person.setCurrentEmailAddress(value);
 			} else if ("ccEmail".equals(field)) {
 				
-				Preference ccEmail = person.getPreference(AppPref.CC_EMAILS);
+				Preference ccEmail = person.getPreference(UserPref.CC_EMAILS);
 				if (value == null && ccEmail != null) {
 					// remove the setting
 					ccEmail.delete();
 				} else if (value != null && ccEmail == null) {
-					person.addPreference(AppPref.CC_EMAILS, "true").save();
+					person.addPreference(UserPref.CC_EMAILS, "true").save();
 				}
 			} else {
 				throw new IllegalArgumentException("Unknown field type.");

@@ -64,50 +64,50 @@
 				filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_MAIN_COLOR_ON)}', endColorstr='${settingRepo.getConfigValue(org.tdl.vireo.constant.AppConfig.BUTTON_HIGHLIGHT_COLOR_ON)}');
 			}			
 			#left-logo{
-                background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}');
-                height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
-                width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
-                #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
+                background-image:url('@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}');
+                height:${org.tdl.vireo.theme.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
+                width:${org.tdl.vireo.theme.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}px;
+                #{if org.tdl.vireo.theme.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
                 *{ This allows IE7/8 to display a scaled background image.
                 If it's a PNG, the unscaled version shows through without blank.gif, which renders as opaque white. }*
-                filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}', sizingMethod='scale');
+                filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, false)}', sizingMethod='scale');
                 #{/if}
 			}
-            #{if org.tdl.vireo.constant.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
+            #{if org.tdl.vireo.theme.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),
                    only screen and (min-resolution: 1.5dppx) {
                 #left-logo {
-                    background-image: url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}');
+                    background-image: url('@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, true)}');
                     background-size: 100%;
                 }
             }
             #{/if}
 			#right-logo{
-                background-image:url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}');
-                height:${org.tdl.vireo.constant.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
-                width:${org.tdl.vireo.constant.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
-                #{if org.tdl.vireo.constant.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
+                background-image:url('@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}');
+                height:${org.tdl.vireo.theme.CustomImage.displayHeight(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
+                width:${org.tdl.vireo.theme.CustomImage.displayWidth(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}px;
+                #{if org.tdl.vireo.theme.CustomImage.is1xScaled(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
                 *{ This allows IE7/8 to display a scaled background image.
                 If it's a PNG, the unscaled version shows through without blank.gif, which renders as opaque white. }*
-                filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}', sizingMethod='scale');
+                filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}public/images/blank.gif', sizingMethod='scale') progid:DXImageTransform.Microsoft.AlphaImageLoader(src='@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, false)}', sizingMethod='scale');
                 #{/if}
 			}
-            #{if org.tdl.vireo.constant.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
+            #{if org.tdl.vireo.theme.CustomImage.is2xSeparate(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO)}
             @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
                    only screen and (min--moz-device-pixel-ratio: 1.5),
                    only screen and (-o-min-device-pixel-ratio: 3/2),
                    only screen and (min-resolution: 1.5dppx) {
                 #right-logo {
-                    background-image: url('@{Application.index()}${org.tdl.vireo.constant.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, true)}');
+                    background-image: url('@{Application.index()}${org.tdl.vireo.theme.CustomImage.url(org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO, true)}');
                     background-size: 100%;
                 }
             }
             #{/if}
             #header{
                 %{
-                    int tallest = org.tdl.vireo.constant.CustomImage.tallerHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO);
+                    int tallest = org.tdl.vireo.theme.CustomImage.tallerHeight(org.tdl.vireo.constant.AppConfig.CIName.LEFT_LOGO, org.tdl.vireo.constant.AppConfig.CIName.RIGHT_LOGO);
                     int headerHeight = tallest + 45;
                     int headerLabelTop = 5 - 0.5*tallest;
                 }%

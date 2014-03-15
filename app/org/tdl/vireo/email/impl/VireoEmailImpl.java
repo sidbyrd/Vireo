@@ -1,6 +1,5 @@
 package org.tdl.vireo.email.impl;
 
-import java.text.DateFormatSymbols;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,21 +7,18 @@ import java.util.Map;
 
 import javax.mail.internet.InternetAddress;
 
-import org.tdl.vireo.constant.AppPref;
+import org.tdl.vireo.constant.UserPref;
 import org.tdl.vireo.email.VireoEmail;
 import org.tdl.vireo.model.EmailTemplate;
 import org.tdl.vireo.model.NameFormat;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.PersonRepository;
-import org.tdl.vireo.model.Preference;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.services.StringVariableReplacement;
 
 import play.Play;
-import play.mvc.Router;
-import play.mvc.Router.ActionDefinition;
 
 /**
  * Implementation of the vireo email object.
@@ -79,7 +75,7 @@ public class VireoEmailImpl implements VireoEmail {
 		
 		// Check to see if the current person want's to be CC'ed
 		Person person = context.getPerson();
-		if (person != null && person.getPreference(AppPref.CC_EMAILS) != null) {
+		if (person != null && person.getPreference(UserPref.CC_EMAILS) != null) {
 			String email = person.getEmail();
 			if (person.getCurrentEmailAddress() != null)
 				email = person.getCurrentEmailAddress();
