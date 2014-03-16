@@ -33,6 +33,7 @@ import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.security.SecurityContext;
+import org.tdl.vireo.services.Utilities;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
 
@@ -622,7 +623,7 @@ public abstract class AbstractSubmissionTests extends AbstractVireoFunctionalTes
 		Map<String, File> fileParams = new HashMap<String,File>();
 		File primaryFile = null;
 		if (primary != null) {
-			primaryFile = getResourceFile(primary);
+			primaryFile = Utilities.getResourceFile(primary);
 			fileParams.put("primaryDocument", primaryFile);
 		}
 
@@ -639,7 +640,7 @@ public abstract class AbstractSubmissionTests extends AbstractVireoFunctionalTes
 			params.put("attachmentType", "SUPPLEMENTAL");
 			
 			fileParams = new HashMap<String,File>();
-			File supplementaryFile = getResourceFile(supplement);
+			File supplementaryFile = Utilities.getResourceFile(supplement);
 			fileParams.put("additionalDocument", supplementaryFile);			
 
 			response = POST(FILE_UPLOAD_URL,params,fileParams);
@@ -761,40 +762,5 @@ public abstract class AbstractSubmissionTests extends AbstractVireoFunctionalTes
 			assertNotNull(sub.getCommitteeEmailHash());
 		}
 		
-	}
-
-
-
-	/**
-	 * Internal Helper Method
-	 * 
-	 * Extract the file from the jar and place it in a temporary location for
-	 * the test to operate from. The caller needs to remember to delete the file
-	 * after it's use.
-	 * 
-	 * @param filePath
-	 *            The path, relative to the classpath, of the file to reference.
-	 * @return A Java File object reference.
-	 */
-	protected static File getResourceFile(String filePath) throws IOException {
-
-		File file = File.createTempFile("ingest-import-test", ".pdf");
-
-		// While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
-		//InputStream is = DSpaceCSVIngestServiceImplTests.class
-		//		.getResourceAsStream(filePath);
-		InputStream is = Play.classloader.getResourceAsStream(filePath);
-		OutputStream os = new FileOutputStream(file);
-
-		// Copy the file out of the jar into a temporary space.
-		byte[] buffer = new byte[1024];
-		int len;
-		while ((len = is.read(buffer)) > 0) {
-			os.write(buffer, 0, len);
-		}
-		is.close();
-		os.close();
-
-		return file;
 	}
 }

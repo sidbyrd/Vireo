@@ -1,6 +1,5 @@
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.email.SystemEmailTemplateService;
 import org.tdl.vireo.export.Depositor;
@@ -14,7 +13,7 @@ import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.security.impl.ShibbolethAuthenticationMethodImpl;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
-import org.tdl.vireo.theme.ThemeDirectory;
+import org.tdl.vireo.theme.CustomImage;
 import play.Logger;
 import play.Play;
 import play.db.jpa.JPA;
@@ -23,7 +22,6 @@ import play.jobs.OnApplicationStart;
 import play.modules.spring.Spring;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -527,17 +525,7 @@ public class TestDataLoader extends Job {
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
 
-                // For the customizable test image, clear the theme directory of all versions
-                //  of that image, regardless of resolution or file extension.
-                //  For example, "conf/theme/test-logo.gif" or "conf/theme/test-logo@2x.png"
-                File themeDir = new File(ThemeDirectory.PATH);
-                if (themeDir.exists()) {
-                    FileFilter imageFilter = new WildcardFileFilter(CIName.TEST_LOGO.toString()+"*");
-                    File[] imageFiles = themeDir.listFiles(imageFilter);
-                    for (File imageFile : imageFiles) {
-                        FileUtils.deleteQuietly(imageFile);
-                    }
-                }
+                CustomImage.reset(CIName.TEST_LOGO);
 
 				loadPeople();
 				loadSettings();

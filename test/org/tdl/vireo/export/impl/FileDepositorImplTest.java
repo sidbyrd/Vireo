@@ -14,6 +14,7 @@ import org.tdl.vireo.export.MockExportPackage;
 import org.tdl.vireo.model.MockDepositLocation;
 import org.tdl.vireo.model.MockSubmission;
 
+import org.tdl.vireo.services.Utilities;
 import play.Play;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
@@ -134,7 +135,7 @@ public class FileDepositorImplTest extends UnitTest {
 		MockDepositLocation location = getDepositLocation();
 		
 		MockExportPackage pkg = new MockExportPackage();
-		pkg.file = getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+		pkg.file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
 		pkg.mimeType = "application/zip";
 		pkg.format = "http://purl.org/net/sword-types/METSDSpaceSIP";
 		pkg.submission = new MockSubmission();
@@ -149,39 +150,6 @@ public class FileDepositorImplTest extends UnitTest {
 		depositFile.delete();
 	}
 
-
-	/**
-	 * Extract the file from the jar and place it in a temporary location for
-	 * the test to operate from.
-	 * 
-	 * @param filePath
-	 *            The path, relative to the classpath, of the file to reference.
-	 * @return A Java File object reference.
-	 */
-	protected static File getResourceFile(String filePath) throws IOException {
-
-		File file = File.createTempFile("sword-deposit", ".zip");
-
-		// While we're packaged by play we have to ask Play for the inputstream
-		// instead of the classloader.
-		// InputStream is = DSpaceCSVIngestServiceImplTests.class
-		// .getResourceAsStream(filePath);
-		InputStream is = Play.classloader.getResourceAsStream(filePath);		
-		OutputStream os = new FileOutputStream(file);
-
-		// Copy the file out of the jar into a temporary space.
-		byte[] buffer = new byte[1024];
-		int len;
-		while ((len = is.read(buffer)) > 0) {
-			os.write(buffer, 0, len);
-		}
-		is.close();
-		os.close();
-
-		return file;
-	}
-
-	
 	/**
 	 * @return A basic deposit location.
 	 */

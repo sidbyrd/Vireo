@@ -18,6 +18,7 @@ import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.MockDepositLocation;
 import org.tdl.vireo.model.Submission;
 
+import org.tdl.vireo.services.Utilities;
 import play.Play;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
@@ -194,7 +195,7 @@ public class Sword1DepositorImplTest extends UnitTest {
 	public void testDeposit() throws IOException {
 		MockDepositLocation location = getDepositLocation();
 		
-		File file = getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+		File file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
 		String mimeType = "application/zip";
 		String format = "http://purl.org/net/sword-types/METSDSpaceSIP";
 		MockPackage pkg = new MockPackage(mimeType, format, file);
@@ -211,7 +212,7 @@ public class Sword1DepositorImplTest extends UnitTest {
 	public void testUncompressedDeposit() throws IOException {
 		MockDepositLocation location = getDepositLocation();
 		
-		File file = getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+		File file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
 		File dir = File.createTempFile("tmp-", ".dir");
 		dir.delete();
 		dir.mkdir();
@@ -235,7 +236,7 @@ public class Sword1DepositorImplTest extends UnitTest {
 	public void testDepositWithBadPackage() throws IOException {
 		MockDepositLocation location = getDepositLocation();
 		
-		File file = getResourceFile("org/tdl/vireo/export/impl/Sword1_InvalidDeposit.zip");
+		File file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_InvalidDeposit.zip");
 		String mimeType = "application/zip";
 		String format = "http://purl.org/net/sword-types/METSDSpaceSIP";
 		MockPackage pkg = new MockPackage(mimeType, format, file);
@@ -262,7 +263,7 @@ public class Sword1DepositorImplTest extends UnitTest {
 		location.username = "invalid";
 		location.password = "invalid";
 
-		File file = getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+		File file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
 		String mimeType = "application/zip";
 		String format = "http://purl.org/net/sword-types/METSDSpaceSIP";
 		MockPackage pkg = new MockPackage(mimeType, format, file);
@@ -286,39 +287,6 @@ public class Sword1DepositorImplTest extends UnitTest {
 		} 
 	}
 
-	
-	/**
-	 * Extract the file from the jar and place it in a temporary location for
-	 * the test to operate from.
-	 * 
-	 * @param filePath
-	 *            The path, relative to the classpath, of the file to reference.
-	 * @return A Java File object reference.
-	 */
-	protected static File getResourceFile(String filePath) throws IOException {
-
-		File file = File.createTempFile("sword-deposit", ".zip");
-
-		// While we're packaged by play we have to ask Play for the inputstream
-		// instead of the classloader.
-		// InputStream is = DSpaceCSVIngestServiceImplTests.class
-		// .getResourceAsStream(filePath);
-		InputStream is = Play.classloader.getResourceAsStream(filePath);		
-		OutputStream os = new FileOutputStream(file);
-
-		// Copy the file out of the jar into a temporary space.
-		byte[] buffer = new byte[1024];
-		int len;
-		while ((len = is.read(buffer)) > 0) {
-			os.write(buffer, 0, len);
-		}
-		is.close();
-		os.close();
-
-		return file;
-	}
-
-	
 	public void unzip(File zipFile, File destDir) throws IOException {
 		int BUFFER = 2048;
 

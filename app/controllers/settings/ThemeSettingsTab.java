@@ -142,16 +142,16 @@ public class ThemeSettingsTab extends SettingsTab {
 
                     // Found correct image name.
                     if (params.get("delete1x") != null) {
-                        CustomImage.delete(verifiedName, false);
+                        CustomImage.deleteFile(verifiedName, false);
                     }
                     if (params.get("delete2x") != null) {
-                        CustomImage.delete(verifiedName, true);
+                        CustomImage.deleteFile(verifiedName, true);
                     }
                     if (params._contains("submit_upload") && image1x != null) {
-                        CustomImage.replace(verifiedName, false, image1x);
+                        CustomImage.replaceFile(verifiedName, false, image1x);
                     }
                     if (params._contains("submit_upload") && image2x != null) {
-                        CustomImage.replace(verifiedName, true, image2x);
+                        CustomImage.replaceFile(verifiedName, true, image2x);
                     }
                     break;
                 }

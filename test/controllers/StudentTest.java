@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.tdl.vireo.model.*;
 import org.tdl.vireo.model.jpa.JpaAttachmentImpl;
 import org.tdl.vireo.security.SecurityContext;
+import org.tdl.vireo.services.Utilities;
 import org.tdl.vireo.state.MockState;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
@@ -587,7 +588,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		assertContentMatch("<title>View Application</title>",response);
 		assertTrue(getContent(response).contains("Upload additional files"));
 		
-		File testPDF = getResourceFile("SamplePrimaryDocument.pdf");
+		File testPDF = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
 		
 		// Post a manuscript
 		Map<String,File> fileParams = new HashMap<String,File>();
@@ -657,7 +658,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
         assertContentMatch("class=\"btn btn-primary disabled\" name=\"submit_corrections\" value=\"Complete Corrections\"",response);
 
         // add primary document so validation will pass, and submit_corrections again
-        File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
+        File primaryFile = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
         Map<String,File> fileParams = new HashMap<String,File>();
         fileParams.put("primaryDocument", primaryFile);
 
@@ -718,7 +719,7 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 
         // submit primary doc, which should make validation pass
         Map<String,String> params = new HashMap<String,String>();
-        File primaryFile = getResourceFile("SamplePrimaryDocument.pdf");
+        File primaryFile = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
         Map<String,File> fileParams = new HashMap<String,File>();
         fileParams.put("primaryDocument", primaryFile);
         response = POST(VIEW_URL,params,fileParams);
@@ -827,39 +828,5 @@ public class StudentTest extends AbstractVireoFunctionalTest {
 		JPA.em().getTransaction().commit();
 		JPA.em().clear();
 		JPA.em().getTransaction().begin();
-	}
-	
-	/**
-	 * Internal Helper Method
-	 * 
-	 * Extract the file from the jar and place it in a temporary location for
-	 * the test to operate from. The caller needs to remember to delete the file
-	 * after it's use.
-	 * 
-	 * @param filePath
-	 *            The path, relative to the classpath, of the file to reference.
-	 * @return A Java File object reference.
-     * @throws IOException if resource file couldn't be loaded
-	 */
-	protected static File getResourceFile(String filePath) throws IOException {
-
-		File file = File.createTempFile("ingest-import-test", ".pdf");
-
-		// While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
-		//InputStream is = DSpaceCSVIngestServiceImplTests.class
-		//		.getResourceAsStream(filePath);
-		InputStream is = Play.classloader.getResourceAsStream(filePath);
-		OutputStream os = new FileOutputStream(file);
-
-		// Copy the file out of the jar into a temporary space.
-		byte[] buffer = new byte[1024];
-		int len;
-		while ((len = is.read(buffer)) > 0) {
-			os.write(buffer, 0, len);
-		}
-		is.close();
-		os.close();
-
-		return file;
 	}
 }

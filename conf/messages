@@ -125,6 +125,6 @@ CI_FILE_DESC_SCALED=[using scaled-down 2x image]
 
 # CustomImage error messages
 CI_ERROR_FORMAT_UNKNOWN=Image format not recognized. Please use a valid JPEG, PNG, or GIF file with the proper file extension.
-CI_ERROR_DIMENSIONS_ODD=Both the height and width pixel dimensions of a 2x image must be even numbers.
+CI_ERROR_DIMENSIONS_2X_ODD=Both the height and width pixel dimensions of a 2x image must be even numbers.
 CI_ERROR_MISMATCHED_FORMAT=The new file extension must match the existing file extension ".EXT". Try deleting the other file first.
 CI_ERROR_MISMATCHED_DIMENSIONS=The 2x file dimensions must be exactly double the 1x file dimensions. Try deleting the other file first.

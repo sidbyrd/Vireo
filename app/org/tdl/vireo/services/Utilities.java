@@ -1,5 +1,10 @@
 package org.tdl.vireo.services;
 
+import org.apache.commons.io.FilenameUtils;
+import play.Play;
+
+import java.io.*;
+
 /**
  * A catch-all class for various Vireo utilities
  * 
@@ -41,4 +46,49 @@ public class Utilities {
 		return input.replaceAll("[" + CONTROL_RANGES[0] + CONTROL_RANGES[1] + 
 				CONTROL_RANGES[2] + CONTROL_RANGES[3] + CONTROL_RANGES[4] + "]", replace);
 	}
+
+    /**
+     * Extract the file from the jar and place it in a temporary location for the test to operate from.
+     *
+     * @param filePath The path, relative to the classpath, of the file to reference.
+     * @return A Java File object reference.
+     * @throws java.io.IOException
+     */
+    public static File getResourceFile(String filePath) throws IOException {
+        // use the original file's correct extension
+        return getResourceFileWithExtension(filePath, FilenameUtils.getExtension(filePath));
+    }
+
+    /**
+     * Extract the file from the jar and place it in a temporary location for the test to operate from.
+     * Manually override the file extension that the temp file will get.
+     *
+     * @param filePath The path, relative to the classpath, of the file to reference.
+     * @param extension the file extension for the created temp file
+     * @return A Java File object reference.
+     * @throws IOException
+     */
+    public static File getResourceFileWithExtension(String filePath, String extension) throws IOException {
+        File file = File.createTempFile("ingest-import-test", '.'+extension);
+
+        // While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
+        //InputStream is = DSpaceCSVIngestServiceImplTests.class
+        //		.getResourceAsStream(filePath);
+        InputStream is = Play.classloader.getResourceAsStream(filePath);
+        OutputStream os = new FileOutputStream(file);
+        try {
+            // Copy the file out of the jar into a temporary space.
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) > 0) {
+                os.write(buffer, 0, len);
+            }
+        } finally {
+            is.close();
+            os.close();
+        }
+
+        return file;
+    }
+
 }

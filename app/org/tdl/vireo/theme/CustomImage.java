@@ -2,6 +2,7 @@ package org.tdl.vireo.theme;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
@@ -15,6 +16,7 @@ import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -186,7 +188,7 @@ public final class CustomImage {
      * doesn't match existing counterpart, or if trying to save a 2x image with odd dimensions. The Exception's
      * getMessage() will contain an explanation suitable for presentation to the user.
      */
-    public static void replace (AppConfig.CIName name, boolean is2x, File file) throws IOException, IllegalArgumentException {
+    public static void replaceFile(AppConfig.CIName name, boolean is2x, File file) throws IOException, IllegalArgumentException {
         ThemeDirectory.check();
 
         if (file != null) {
@@ -201,7 +203,7 @@ public final class CustomImage {
 
             // 2x files with odd dimensions aren't allowed. What would they be the double-size of?
             if (is2x && ((h&1)==1 || (w&1)==1)) {
-                throw new IllegalArgumentException(Messages.get("CI_ERROR_DIMENSIONS_ODD"));
+                throw new IllegalArgumentException(Messages.get("CI_ERROR_DIMENSIONS_2X_ODD"));
             }
 
             // If there are existing customization files, deal with that.
@@ -261,7 +263,7 @@ public final class CustomImage {
      * @param name constant identifying which custom image
      * @param is2x whether to delete the file for the high-resolution version
     */
-    public static void delete (AppConfig.CIName name, boolean is2x) {
+    public static void deleteFile(AppConfig.CIName name, boolean is2x) {
 
         if (!CustomImage.isDefault(name)) {
             ThemeDirectory.deleteFile(CustomImage.standardFilename(name, is2x, FilenameUtils.getExtension(baseUrl(name))));
@@ -277,24 +279,20 @@ public final class CustomImage {
     }
 
     /**
-     * Reset all metadata for one image to default values
-     * Note: this does not delete any files, so external callers must ensure that the
-     * resulting state is consistent (or about to get thrown out anyway--this
-     * is only really exposed so test code can use it).
+     * Remove any possible images left in the theme directory, regardless of resolution
+     * or extension. Reset all related metadata. Leaves everything for the specified image
+     * in a completely default state.
      * @param name constant identifying which custom image
      */
-    public static void resetMetadata(AppConfig.CIName name) {
-        if (settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH) != null) {
-            settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
-        }
-        if (settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT) != null) {
-            settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
-        }
-        if (settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH) != null) {
-            settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
-        }
-        if (settingRepo.findConfigurationByName(name+AppConfig.CI_2X) != null) {
-            settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
+    public static void reset(AppConfig.CIName name) {
+        resetMetadata(name);
+        File themeDir = new File(ThemeDirectory.PATH);
+        if (themeDir.exists()) {
+            FileFilter imageFilter = new WildcardFileFilter(name+"*");
+            File[] imageFiles = themeDir.listFiles(imageFilter);
+            for (File imageFile : imageFiles) {
+                imageFile.delete();
+            }
         }
     }
 
@@ -305,6 +303,7 @@ public final class CustomImage {
     /**
      * For an image, resolution, and file type, make a standardized filename
      * (The extension is required so web servers get the mimetype right.)
+     * This is public so test can use it, but you shouldn't generally need it for anything else.
      * @param name constant identifying the image in app settings
      * @param is2x whether this is a high-res image
      * @param extension file extension of the original image file
@@ -334,6 +333,26 @@ public final class CustomImage {
      */
     private static String baseUrl(AppConfig.CIName name) {
         return settingRepo.getConfigValue(name + AppConfig.CI_URLPATH);
+    }
+
+    /**
+     * Reset all metadata for one image to default values.
+     * Does not update files.
+     * @param name constant identifying which custom image
+     */
+    private static void resetMetadata(AppConfig.CIName name) {
+        if (settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH) != null) {
+            settingRepo.findConfigurationByName(name+AppConfig.CI_URLPATH).delete();
+        }
+        if (settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT) != null) {
+            settingRepo.findConfigurationByName(name+AppConfig.CI_HEIGHT).delete();
+        }
+        if (settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH) != null) {
+            settingRepo.findConfigurationByName(name+AppConfig.CI_WIDTH).delete();
+        }
+        if (settingRepo.findConfigurationByName(name+AppConfig.CI_2X) != null) {
+            settingRepo.findConfigurationByName(name+AppConfig.CI_2X).delete();
+        }
     }
 
     /**

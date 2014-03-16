@@ -27,6 +27,7 @@ import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.model.jpa.JpaAttachmentImpl;
 import org.tdl.vireo.security.SecurityContext;
+import org.tdl.vireo.services.Utilities;
 import org.tdl.vireo.state.State;
 import org.tdl.vireo.state.StateManager;
 
@@ -665,7 +666,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		File file = null;
 		
 		try {
-			file = getResourceFile("SampleSupplementalDocument.doc");
+			file = Utilities.getResourceFile("SampleSupplementalDocument.doc");
 			files.put("additionalAttachment", file);
 		} catch (IOException ioe) {
 			fail("Test upload file not found.");
@@ -697,7 +698,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		Submission submission = subRepo.createSubmission(person);
 		submission.setAssignee(person);
 		submission.save();
-		File file = getResourceFile("SamplePrimaryDocument.pdf");
+		File file = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
 
 		
 		Long id = submission.getId();
@@ -778,7 +779,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		File file = null;
 		
 		try {
-			file = getResourceFile("SamplePrimaryDocument.pdf");
+			file = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
 			files.put("additionalAttachment", file);
 		} catch (IOException ioe) {
 			fail("Test upload file not found.");
@@ -855,7 +856,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		File file = null;
 		
 		try {
-			file = getResourceFile("SamplePrimaryDocument.pdf");
+			file = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
 			files.put("additionalAttachment", file);
 		} catch (IOException ioe) {
 			fail("Test upload file not found.");
@@ -920,7 +921,7 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		File file = null;
 		
 		try {
-			file = getResourceFile("SamplePrimaryDocument.pdf");
+			file = Utilities.getResourceFile("SamplePrimaryDocument.pdf");
 			files.put("additionalAttachment", file);
 		} catch (IOException ioe) {
 			fail("Test upload file not found.");
@@ -972,33 +973,4 @@ public class ViewTabTest extends AbstractVireoFunctionalTest {
 		
 		assertEquals(4,month);
 	}
-	
-	/**
-     * Extract the file from the jar and place it in a temporary location for the test to operate from.
-     *
-     * @param filePath The path, relative to the classpath, of the file to reference.
-     * @return A Java File object reference.
-     * @throws IOException
-     */
-    protected static File getResourceFile(String filePath) throws IOException {
-
-        File file = File.createTempFile("ingest-import-test", ".pdf");
-
-        // While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
-        //InputStream is = DSpaceCSVIngestServiceImplTests.class
-        //		.getResourceAsStream(filePath);
-        InputStream is = Play.classloader.getResourceAsStream(filePath);
-        OutputStream os = new FileOutputStream(file);
-
-        // Copy the file out of the jar into a temporary space.
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = is.read(buffer)) > 0) {
-            os.write(buffer, 0, len);
-        }
-        is.close();
-        os.close();
-
-        return file;
-    }
 }
