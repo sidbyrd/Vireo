@@ -7,6 +7,7 @@ import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
 import org.tdl.vireo.model.SettingsRepository;
+import play.Logger;
 import play.i18n.Messages;
 import play.modules.spring.Spring;
 
@@ -283,15 +284,18 @@ public final class CustomImage {
      * or extension. Reset all related metadata. Leaves everything for the specified image
      * in a completely default state.
      * @param name constant identifying which custom image
+     * @throws IOException if couldn't delete files
      */
-    public static void reset(AppConfig.CIName name) {
+    public static void reset(AppConfig.CIName name) throws IOException {
         resetMetadata(name);
         File themeDir = new File(ThemeDirectory.PATH);
         if (themeDir.exists()) {
-            FileFilter imageFilter = new WildcardFileFilter(name+"*");
+            FileFilter imageFilter = new WildcardFileFilter(name.toString().replace("_","-")+"*");
             File[] imageFiles = themeDir.listFiles(imageFilter);
             for (File imageFile : imageFiles) {
-                imageFile.delete();
+                if (!imageFile.delete()) {
+                    throw new IOException("failed to delete file '"+imageFile.getPath()+"'");
+                }
             }
         }
     }

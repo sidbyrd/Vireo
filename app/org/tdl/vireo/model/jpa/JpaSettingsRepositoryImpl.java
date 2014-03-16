@@ -336,7 +336,6 @@ public class JpaSettingsRepositoryImpl implements SettingsRepository {
 
     @Override
     public void saveConfiguration(String field, String value) {
-        Logger.info(" field="+field+"; value="+value);
         Configuration config = findConfigurationByName(field);
 
         if (config == null) {
