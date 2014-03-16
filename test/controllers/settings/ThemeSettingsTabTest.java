@@ -133,6 +133,16 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
         CustomImageTest.checkCustomImage(urlName1x, urlName2x, width, height, custom1xFile, custom2xFile, code2x);
     }
 
+    //TODO
+    // split up the giant testUploadingImage() test
+    // focus here on testing interface bits, not CI function.
+    // learn how Junit mocking works. Can it help here?
+    // can it (or something) replace the need for having TEST_LOGO?
+    // test fileDescription in CustomImageTest
+    // limit max filesize for CI uploads
+    // fix SubmissionSettingsTabTest
+    // add resources and uncomment that one test
+
 	/**
 	 * Test various cases and orderings of uploading and deleting custom images, both the 1x
      * and 2x versions.

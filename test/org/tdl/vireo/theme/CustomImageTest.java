@@ -27,7 +27,7 @@ public class CustomImageTest extends UnitTest {
     public static PersonRepository personRepo = Spring.getBeanOfType(PersonRepository.class);
     public static SettingsRepository settingRepo = Spring.getBeanOfType(SettingsRepository.class);
 
-    /** names for image+resolution, once installed */
+    /** names that files are saved under once they've been passed to CustomImage.replace() */
     private final String urlDefault1x ="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm.png";
     private final String urlDefault2x ="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm@2x.png";
     private final String urlPng1x ="test-logo.png";
@@ -79,16 +79,15 @@ public class CustomImageTest extends UnitTest {
     /**
      * Helper to assert that pretty much everything about the saved state of a custom image is as expected.
      * Methods whose return value is tested here:
-     * - CustomImage.url(name, false)
-     * - CustomImage.url(name, true)
-     * - CustomImage.displayWidth(name)
-     * - CustomImage.displayHeight(name)
-     * - CustomImage.isDefault(name)
-     * - CustomImage.hasCustomFile(name, false)
-     * - CustomImage.hasCustomFile(name, true)
-     * - CustomImage.is2xNone(name)
-     * - CustomImage.is2xSeparate(name)
-     * - CustomImage.is1xScaled(name)
+     * - CustomImage.url
+     * - CustomImage.displayWidth
+     * - CustomImage.displayHeight
+     * - CustomImage.isDefault
+     * - CustomImage.hasCustomFile
+     * - CustomImage.is2xNone
+     * - CustomImage.is2xSeparate
+     * - CustomImage.is1xScaled
+     * - customImage.standardFilename
      * Non-method-return output tested here (exposed directly to user by HTTP, not via any Java method call):
      * - presence/absence of custom 1x file (if applicable).
      * - contents of custom 1x file (if applicable).
@@ -96,7 +95,7 @@ public class CustomImageTest extends UnitTest {
      * - contents of custom 2x file (if applicable).
      * - lack of any theme files that look like they're for this image, but weren't expected.
      * @param urlName1x correct filename only (no path) from CustomImage.url(name, false).
-     * @param urlName2x correct filename only (no path) from CustomImage.url(name, true), or null if that method should return null.
+     * @param urlName2x correct filename only (no path) from CustomImage.url(name, true), or null if should return null.
      * @param width correct display width
      * @param height correct display height
      * @param custom1xFile The correct contents of the stored 1x custom image, or null if it shouldn't exist.
@@ -118,7 +117,7 @@ public class CustomImageTest extends UnitTest {
         assertEquals(urlName2x==null?null:(shouldBeDefault?"":ThemeDirectory.URL_PREFIX) + urlName2x, CustomImage.url(AppConfig.CIName.TEST_LOGO, true));
         assertEquals(width, CustomImage.displayWidth(AppConfig.CIName.TEST_LOGO));
         assertEquals(height, CustomImage.displayHeight(AppConfig.CIName.TEST_LOGO));
-        assertEquals(!(custom1xFile!=null || custom2xFile!=null), CustomImage.isDefault(AppConfig.CIName.TEST_LOGO));
+        assertEquals(shouldBeDefault, CustomImage.isDefault(AppConfig.CIName.TEST_LOGO));
         assertEquals(custom1xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.TEST_LOGO, false));
         assertEquals(custom2xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.TEST_LOGO, true));
         assertEquals(code2x == 0, CustomImage.is2xNone(AppConfig.CIName.TEST_LOGO));
@@ -134,6 +133,7 @@ public class CustomImageTest extends UnitTest {
         // and check that the file contents are correct on those we do want.
         if (themeDir.exists()) {
             final String ext = FilenameUtils.getExtension(urlName1x);
+            // could derive non-default saved filename from urlName1x/2x, but this tests one more CustomImage method.
             File filename1x = new File(ThemeDirectory.PATH +CustomImage.standardFilename(AppConfig.CIName.TEST_LOGO, false, ext));
             File filename2x = new File(ThemeDirectory.PATH +CustomImage.standardFilename(AppConfig.CIName.TEST_LOGO, true, ext));
             FileFilter imageFilter = new WildcardFileFilter(AppConfig.CIName.TEST_LOGO.toString().replace("_","-")+"*");
@@ -348,7 +348,7 @@ public class CustomImageTest extends UnitTest {
         checkCustomImage(urlPng1x, null, "150", "84", filePngSmall, null, 0);
     }
 
-/* I know this works--this class is over-tested already--and I don't want to have to include 2 more resource image files just for this.
+/* Didn't want to have to include 2 more resource image files just for this.
     // 1x+2x: replace 1x (matching) -> success, replace 2x (matching) -> success
     @Test public void test_success_from1x2x_add1xMatch() throws IOException {
         CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
@@ -456,5 +456,8 @@ public class CustomImageTest extends UnitTest {
     }
 
     // not tested: CustomImage.tallerHeight(name1, name2).
-    // It requires two test images so would be a bit of work, but it's a trivial method.
+    // Would require two different CIName images set up for testing (we only have one), but it's a trivial method.
+
+    // Not tested: CustomImage.fileDescription.
+    // It's just a very simple combination of other methods which *are* tested, but would be annoyingly wordy to test directly.
 }
