@@ -69,7 +69,8 @@ public class Utilities {
      * @throws IOException
      */
     public static File getResourceFileWithExtension(String filePath, String extension) throws IOException {
-        File file = File.createTempFile("ingest-import-test", '.'+extension);
+        File file = File.createTempFile("resource", '.'+extension);
+        file.deleteOnExit();
 
         // While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
         //InputStream is = DSpaceCSVIngestServiceImplTests.class
@@ -91,4 +92,27 @@ public class Utilities {
         return file;
     }
 
+    /**
+     * Creates and returns a temp file with empty contents of the requested size
+     * @param filesize how many bytes of empty to put in the file
+     * @return temp file of given size
+     * @throws IOException if couldn't be created
+     */
+    public static File blankFileWithSize(int filesize) throws IOException {
+        File file = File.createTempFile("blank", null);
+        file.deleteOnExit();
+
+        OutputStream os = new FileOutputStream(file);
+        try {
+            byte[] buffer = new byte[1024];
+            while (filesize > 0) {
+                os.write(buffer, 0, filesize);
+                filesize -= 1024;
+            }
+        } finally {
+            os.close();
+        }
+
+        return file;
+    }
 }

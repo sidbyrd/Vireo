@@ -27,35 +27,56 @@ public class CustomImageTest extends UnitTest {
     public static PersonRepository personRepo = Spring.getBeanOfType(PersonRepository.class);
     public static SettingsRepository settingRepo = Spring.getBeanOfType(SettingsRepository.class);
 
-    /** names that files are saved under once they've been passed to CustomImage.replace() */
-    private final String urlDefault1x ="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm.png";
-    private final String urlDefault2x ="public"+File.separatorChar+"images"+File.separatorChar+"vireo-logo-sm@2x.png";
-    private final String urlPng1x ="test-logo.png";
-    private final String urlPng2x ="test-logo@2x.png";
-    private final String urlJpg1x ="test-logo.jpg";
-    private final String urlGif1x ="test-logo.gif";
+    // This stuff is static because it's unchanging and only needs calculating/making
+    // once ever (especially the image files), not once per test, whereas this class
+    // is instantiated once per test.
+
+    /** record defaults to check against later */
+    private static String urlDefault1x;
+    private static String urlDefault2x;
+    private static String defaultWidth;
+    private static String defaultHeight;
+
+    /** proper URLs for images of a given resolution and format */
+    private static String urlPng1x;
+    private static String urlPng2x;
+    private static String urlJpg1x;
+    private static String urlGif1x;
 
     /** test files available */
-    private File filePngSmall;
-    private File filePngLarge;
-    private File filePngOdd;
-    private File fileJpgLarge;
-    private File fileGifLarge;
-
-    public CustomImageTest() {
-        try {
-            filePngSmall = Utilities.getResourceFile("SampleLogo-single.png"); // single: 150*84
-            filePngLarge = Utilities.getResourceFile("SampleLogo-double.png"); // double: 300*168
-            filePngOdd = Utilities.getResourceFile("SampleFeedbackDocument.png"); // odd: 541x378
-            fileJpgLarge = Utilities.getResourceFile("SampleLogo-double.jpg"); // any jpg
-            fileGifLarge = Utilities.getResourceFile("SampleLogo-double.gif"); // any gif
-        } catch (IOException e) { /**/ }
-    }
+    private static File filePngSmall;
+    private static File filePngLarge;
+    private static File filePngOdd;
+    private static File fileJpgLarge;
+    private static File fileGifLarge;
 
     @BeforeClass
-    public static void setupBeforeClass() throws IOException{
+    public static void setupClass() throws IOException{
         context.turnOffAuthorization();
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO); // if it wasn't already somehow, make it default.
+
+        // don't stomp on existing theme configuration
+        ThemeDirectory.setTest(true);
+        CustomImage.setTest(true);
+
+        // if it somehow wasn't already, reset to default.
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
+
+        // initialize unchanging data and resources used in multiple tests
+        urlDefault1x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, false);
+        urlDefault2x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, true);
+        defaultWidth = CustomImage.displayWidth(AppConfig.CIName.LEFT_LOGO);
+        defaultHeight = CustomImage.displayHeight(AppConfig.CIName.LEFT_LOGO);
+
+        urlPng1x = ThemeDirectory.URL_PREFIX+"left-logo.png";
+        urlPng2x = ThemeDirectory.URL_PREFIX+"left-logo@2x.png";
+        urlJpg1x = ThemeDirectory.URL_PREFIX+"left-logo.jpg";
+        urlGif1x = ThemeDirectory.URL_PREFIX+"left-logo.gif";
+
+        filePngSmall = Utilities.getResourceFile("SampleLogo-single.png"); // single: 150*84
+        filePngLarge = Utilities.getResourceFile("SampleLogo-double.png"); // double: 300*168
+        filePngOdd = Utilities.getResourceFile("SampleFeedbackDocument.png"); // odd: 541x378
+        fileJpgLarge = Utilities.getResourceFile("SampleLogo-double.jpg"); // any jpg
+        fileGifLarge = Utilities.getResourceFile("SampleLogo-double.gif"); // any gif
 
         JPA.em().getTransaction().commit();
         JPA.em().clear();
@@ -68,12 +89,23 @@ public class CustomImageTest extends UnitTest {
         JPA.em().clear();
         JPA.em().getTransaction().begin();
 
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO); // make sure to leave no files from failed tests
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO); // make sure to leave no files from failed tests
     }
 
     @AfterClass
-    public static void cleanupAfterClass() {
+    public static void cleanupClass() throws IOException {
         context.restoreAuthorization();
+        ThemeDirectory.setTest(false);
+        CustomImage.setTest(false);
+    }
+
+    // Since these defaults are queried from CustomImage and then used to verify later operations,
+    // make sure they're what I think they are, which is images outside the theme directory, and
+    // therefore cannot somehow be equal to test resources that need to be different from default.
+    @Test public void testDefaults() {
+        assertNotNull(urlDefault1x);
+        assertFalse(urlDefault1x.startsWith(ThemeDirectory.URL_PREFIX));
+        assertFalse(urlDefault1x != null && urlDefault2x.startsWith(ThemeDirectory.URL_PREFIX));
     }
 
     /**
@@ -94,8 +126,8 @@ public class CustomImageTest extends UnitTest {
      * - presence/absence of custom 2x file (if applicable).
      * - contents of custom 2x file (if applicable).
      * - lack of any theme files that look like they're for this image, but weren't expected.
-     * @param urlName1x correct filename only (no path) from CustomImage.url(name, false).
-     * @param urlName2x correct filename only (no path) from CustomImage.url(name, true), or null if should return null.
+     * @param urlName1x correct url from CustomImage.url(name, false).
+     * @param urlName2x correct url from CustomImage.url(name, true), or null if should return null.
      * @param width correct display width
      * @param height correct display height
      * @param custom1xFile The correct contents of the stored 1x custom image, or null if it shouldn't exist.
@@ -106,54 +138,52 @@ public class CustomImageTest extends UnitTest {
      *              2: is1xScaled==true (a.k.a is2xSame==true)
      * @throws IOException if error while checking custom file existence or content
      */
-    public static void checkCustomImage(String urlName1x, String urlName2x,
-                                         String width, String height,
-                                         File custom1xFile, File custom2xFile, int code2x) throws IOException {
+    public static void assertCustomImageState(String urlName1x, String urlName2x,
+                                              String width, String height,
+                                              File custom1xFile, File custom2xFile, int code2x) throws IOException {
 
         final boolean shouldBeDefault = custom1xFile==null && custom2xFile==null;
 
         // check image metadata queries
-        assertEquals((shouldBeDefault?"":ThemeDirectory.URL_PREFIX) + urlName1x, CustomImage.url(AppConfig.CIName.TEST_LOGO, false));
-        assertEquals(urlName2x==null?null:(shouldBeDefault?"":ThemeDirectory.URL_PREFIX) + urlName2x, CustomImage.url(AppConfig.CIName.TEST_LOGO, true));
-        assertEquals(width, CustomImage.displayWidth(AppConfig.CIName.TEST_LOGO));
-        assertEquals(height, CustomImage.displayHeight(AppConfig.CIName.TEST_LOGO));
-        assertEquals(shouldBeDefault, CustomImage.isDefault(AppConfig.CIName.TEST_LOGO));
-        assertEquals(custom1xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.TEST_LOGO, false));
-        assertEquals(custom2xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.TEST_LOGO, true));
-        assertEquals(code2x == 0, CustomImage.is2xNone(AppConfig.CIName.TEST_LOGO));
-        assertEquals(code2x == 1, CustomImage.is2xSeparate(AppConfig.CIName.TEST_LOGO));
-        assertEquals(code2x == 2, CustomImage.is1xScaled(AppConfig.CIName.TEST_LOGO));
+        assertEquals(urlName1x, CustomImage.url(AppConfig.CIName.LEFT_LOGO, false));
+        assertEquals(urlName2x, CustomImage.url(AppConfig.CIName.LEFT_LOGO, true));
+        assertEquals(width, CustomImage.displayWidth(AppConfig.CIName.LEFT_LOGO));
+        assertEquals(height, CustomImage.displayHeight(AppConfig.CIName.LEFT_LOGO));
+        assertEquals(shouldBeDefault, CustomImage.isDefault(AppConfig.CIName.LEFT_LOGO));
+        assertEquals(custom1xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.LEFT_LOGO, false));
+        assertEquals(custom2xFile != null, CustomImage.hasCustomFile(AppConfig.CIName.LEFT_LOGO, true));
+        assertEquals(code2x == 0, CustomImage.is2xNone(AppConfig.CIName.LEFT_LOGO));
+        assertEquals(code2x == 1, CustomImage.is2xSeparate(AppConfig.CIName.LEFT_LOGO));
+        assertEquals(code2x == 2, CustomImage.is1xScaled(AppConfig.CIName.LEFT_LOGO));
 
-        // If there are any customizations, make sure there is a theme dir.
-        File themeDir = new File(ThemeDirectory.PATH);
         if (!shouldBeDefault) {
-            assertTrue(themeDir.exists());
-        }
-        // Check that no files for this image are in the theme dir except those we want,
-        // and check that the file contents are correct on those we do want.
-        if (themeDir.exists()) {
+            assertTrue(ThemeDirectory.check(false));
             final String ext = FilenameUtils.getExtension(urlName1x);
-            // could derive non-default saved filename from urlName1x/2x, but this tests one more CustomImage method.
-            File filename1x = new File(ThemeDirectory.PATH +CustomImage.standardFilename(AppConfig.CIName.TEST_LOGO, false, ext));
-            File filename2x = new File(ThemeDirectory.PATH +CustomImage.standardFilename(AppConfig.CIName.TEST_LOGO, true, ext));
-            FileFilter imageFilter = new WildcardFileFilter(AppConfig.CIName.TEST_LOGO.toString().replace("_","-")+"*");
-            File[] foundFiles = themeDir.listFiles(imageFilter);
+            
+            // Check that custom files exist with correct content,
+            // and that CustomImage can come up with the right names for them
+            File file1x = ThemeDirectory.fileForUrl(urlName1x);
+            if (custom1xFile!=null) {
+                assertTrue(file1x.compareTo(ThemeDirectory.getFile(CustomImage.standardFilename(AppConfig.CIName.LEFT_LOGO, false, ext)))==0);
+                assertTrue(file1x.exists());
+                assertTrue(FileUtils.contentEquals(custom1xFile, file1x));
+            }
+            File file2x = ThemeDirectory.fileForUrl(urlName2x);
+            if (custom2xFile!=null) {
+                assertTrue(file2x.compareTo(ThemeDirectory.getFile(CustomImage.standardFilename(AppConfig.CIName.LEFT_LOGO, true, ext)))==0);
+                assertTrue(file2x.exists());
+                assertTrue(FileUtils.contentEquals(custom2xFile, file2x));
+            }
+
+            // Check that no files for this image are in the theme dir except those we want.
+            FileFilter imageFilter = new WildcardFileFilter(AppConfig.CIName.LEFT_LOGO.toString().replace("_","-")+"*");
+            File[] foundFiles = ThemeDirectory.listFiles(imageFilter);
             for (File file : foundFiles) {
-                // if anticipated filename found, check the file's contents.
-                if (custom1xFile!=null && file.compareTo(filename1x)==0) {
-                    assertTrue(FileUtils.contentEquals(custom1xFile, file));
-                    custom1xFile = null; // mark that we found it.
-                } else if (custom2xFile!=null && file.compareTo(filename2x)==0) {
-                    assertTrue(FileUtils.contentEquals(custom2xFile, file));
-                    custom2xFile = null; // mark that we found it.
-                } else {
+                if (! (custom1xFile!=null && file.compareTo(file1x)==0) || (custom2xFile!=null && file.compareTo(file2x)==0)) {
                     fail("Found customized image file in theme directory that should not be there: '"+file.getPath()+"'");
                 }
             }
         }
-        // Check that we didn't fail to find and check any files we should have.
-        assertNull("Failed to find expected custom 1x image file", custom1xFile);
-        assertNull("Failed to find expected custom 2x image file", custom2xFile);
     }
 
     /* *****************************
@@ -162,31 +192,31 @@ public class CustomImageTest extends UnitTest {
 
     // default: add 1x (odd-sized) -> success
     @Test public void test_success_fromDefault_add1xOdd() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngOdd);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngOdd);
         // check: 1x only, pngOdd
-        checkCustomImage(urlPng1x, null, "541", "378", filePngOdd, null, 0);
+        assertCustomImageState(urlPng1x, null, "541", "378", filePngOdd, null, 0);
     }
 
     // default: add 2x -> success
     @Test public void test_success_fromDefault_add2x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
         // check: 2x only, pngSmall
-        checkCustomImage(urlPng2x, urlPng2x, "75", "42", null, filePngSmall, 2);
+        assertCustomImageState(urlPng2x, urlPng2x, "75", "42", null, filePngSmall, 2);
     }
 
     // default: delete1x -> unchanged, delete2x -> unchanged, reset -> unchanged
     @Test public void test_unchanged_fromDefault_remove1xRemove2xReset() throws IOException {
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, false);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, false);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, true);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, true);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
 
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO);
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     /* *************************
@@ -195,70 +225,70 @@ public class CustomImageTest extends UnitTest {
 
     // 1x: replace 1x -> success
     @Test public void test_success_from1x_add1x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
         
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngLarge);
         // check: 1x only, pngLarge
-        checkCustomImage(urlPng1x, null, "300", "168", filePngLarge, null, 0);
+        assertCustomImageState(urlPng1x, null, "300", "168", filePngLarge, null, 0);
     }
 
     // 1x: add 2x (match OK) -> success
     @Test public void test_success_from1x_add2xMatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
         
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
         // check: 1x+2x, pngSmall+pngLarge
-        checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
+        assertCustomImageState(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
     }
 
     // 1x: add 2x (mismatch) -> error
     @Test public void test_error_from1x_add2xMismatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
 
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
             fail("Should not accept 2x image with mismatched size");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"), e.getMessage());
         }
         // check: 1x only, pngSmall
-        checkCustomImage(urlPng1x, null, "150", "84", filePngSmall, null, 0);
+        assertCustomImageState(urlPng1x, null, "150", "84", filePngSmall, null, 0);
 
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, fileJpgLarge);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, fileJpgLarge);
             fail("Should not accept 2x image with mismatched format");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_MISMATCHED_FORMAT").replace("EXT", "png"), e.getMessage());
         }
         // check: 1x only, pngSmall
-        checkCustomImage(urlPng1x, null, "150", "84", filePngSmall, null, 0);
+        assertCustomImageState(urlPng1x, null, "150", "84", filePngSmall, null, 0);
     }
 
     // 1x: remove1x -> success
     @Test public void test_success_from1x_remove1x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, false);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, false);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     // 1x: remove2x -> unchanged
     @Test public void test_unchanged_from1x_remove2x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, true);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, true);
         // check: 1x only, pngSmall
-        checkCustomImage(urlPng1x, null, "150", "84", filePngSmall, null, 0);
+        assertCustomImageState(urlPng1x, null, "150", "84", filePngSmall, null, 0);
     }
 
     // 1x: reset -> success
     @Test public void test_success_from1x_reset() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
 
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO);
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     /* *************************
@@ -267,61 +297,61 @@ public class CustomImageTest extends UnitTest {
 
     // 2x: replace 2x -> success
     @Test public void test_success_from2x_add2x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
 
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
         // check: 2x only, pngLarge
-        checkCustomImage(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
+        assertCustomImageState(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
     }
 
     // 2x: add 1x (match OK) -> success
     @Test public void test_success_from2x_add1xMatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
         // check: 1x+2x, pngSmall+pngLarge
-        checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
+        assertCustomImageState(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
     }
 
     // 2x: add 1x (mismatch) -> error
     @Test public void test_error_from2x_add1xMismatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngLarge);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngLarge);
             fail("Should not accept 1x image with mismatched size");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"), e.getMessage());
         }
         // check: 2x only, pngLarge
-        checkCustomImage(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
+        assertCustomImageState(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
     }
 
     // 2x: remove2x -> success
     @Test public void test_success_from2x_remove2x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, true);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, true);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     // 2x: remove1x -> unchanged
     @Test public void test_unchanged_from2x_remove1x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, false);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, false);
         // check: 2x only, pngSmall
-        checkCustomImage(urlPng2x, urlPng2x, "75", "42", null, filePngSmall, 2);
+        assertCustomImageState(urlPng2x, urlPng2x, "75", "42", null, filePngSmall, 2);
     }
 
     // 2x: reset -> success
     @Test public void test_success_from2x_reset() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
 
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO);
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     /* ***************************
@@ -330,35 +360,35 @@ public class CustomImageTest extends UnitTest {
 
     // 1x+2x: remove1x -> success
     @Test public void test_success_from1x2x_remove1x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, false);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, false);
         // check: 2x only, pngLarge
-        checkCustomImage(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
+        assertCustomImageState(urlPng2x, urlPng2x, "150", "84", null, filePngLarge, 2);
     }
 
     // 1x+2x: remove2x -> success
     @Test public void test_success_from1x2x_remove2x() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
-        CustomImage.deleteFile(AppConfig.CIName.TEST_LOGO, true);
+        CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, true);
         // check: 1x only, pngSmall
-        checkCustomImage(urlPng1x, null, "150", "84", filePngSmall, null, 0);
+        assertCustomImageState(urlPng1x, null, "150", "84", filePngSmall, null, 0);
     }
 
 /* Didn't want to have to include 2 more resource image files just for this.
     // 1x+2x: replace 1x (matching) -> success, replace 2x (matching) -> success
     @Test public void test_success_from1x2x_add1xMatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall2);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall2);
         // check: 1x+2x, pngSmall2+pngLarge
         checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall2, filePngLarge, 1);
 
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge2);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge2);
         // check: 1x+2x, pngSmall2+pngLarge2
         checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall2, filePngLarge2, 1);
     }
@@ -366,36 +396,36 @@ public class CustomImageTest extends UnitTest {
 
     // 1x+2x: replace 1x (mismatch) -> error, replace 2x (mismatch) -> error
     @Test public void test_error_from1x_add1xMismatchAdd2xMismatch() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngLarge);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngLarge);
             fail("Should not accept 1x image with mismatched size");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"), e.getMessage());
         }
         // check: 1x+2x, pngSmall+pngLarge
-        checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
+        assertCustomImageState(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
 
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngSmall);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngSmall);
             fail("Should not accept 2x image with mismatched size");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"), e.getMessage());
         }
         // check: 1x+2x, pngSmall+pngLarge
-        checkCustomImage(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
+        assertCustomImageState(urlPng1x, urlPng2x, "150", "84", filePngSmall, filePngLarge, 1);
     }
 
     // 1x+2x: reset -> success
     @Test public void test_success_from1x2x_reset() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, filePngSmall);
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, filePngSmall);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngLarge);
 
-        CustomImage.reset(AppConfig.CIName.TEST_LOGO);
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     /* ******************************
@@ -406,53 +436,53 @@ public class CustomImageTest extends UnitTest {
     // add 2x (odd-sized) -> error
     @Test public void test_error_add2xOdd() throws IOException {
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, true, filePngOdd);
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, true, filePngOdd);
             fail("Should not accept odd-sized 2x image");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_DIMENSIONS_2X_ODD"), e.getMessage());
         }
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     // add image (file extension doesn't match true format) -> error
     @Test public void test_error_addIncorrectExtension() throws IOException {
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, Utilities.getResourceFileWithExtension("SampleLogo-single.png", "gif"));
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, Utilities.getResourceFileWithExtension("SampleLogo-single.png", "gif"));
             fail("Should not accept image file with incorrect file extension");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_FORMAT_UNKNOWN"), e.getMessage());
         }
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     // add PDF file -> error
     @Test public void test_error_addInvalidImage() throws IOException {
         try {
-            CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, Utilities.getResourceFile("SamplePrimaryDocument.pdf"));
+            CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, Utilities.getResourceFile("SamplePrimaryDocument.pdf"));
             fail("Should not accept file that isn't a common webserver image format");
         } catch (IllegalArgumentException e) {
             assertEquals(Messages.get("CI_ERROR_FORMAT_UNKNOWN"), e.getMessage());
         }
         // check: default
-        checkCustomImage(urlDefault1x, urlDefault2x, "150", "50", null, null, 1);
+        assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
     }
 
     // add GIF image -> success
     @Test public void test_success_addGif() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, fileGifLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, fileGifLarge);
 
         // check: 1x only, gifLarge
-        checkCustomImage(urlGif1x, null, "300", "168", fileGifLarge, null, 0);
+        assertCustomImageState(urlGif1x, null, "300", "168", fileGifLarge, null, 0);
     }
 
     // add JPG image -> success
     @Test public void test_success_addJpg() throws IOException {
-        CustomImage.replaceFile(AppConfig.CIName.TEST_LOGO, false, fileJpgLarge);
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, fileJpgLarge);
 
         // check: 1x only, gifLarge
-        checkCustomImage(urlJpg1x, null, "300", "168", fileJpgLarge, null, 0);
+        assertCustomImageState(urlJpg1x, null, "300", "168", fileJpgLarge, null, 0);
     }
 
     // not tested: CustomImage.tallerHeight(name1, name2).

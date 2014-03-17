@@ -77,10 +77,7 @@ public class AppConfig {
         LEFT_LOGO("left_logo"),
 
         /** Prefix for the top right logo in main.html */
-        RIGHT_LOGO("right_logo"),
-
-        /** fake logo for testing without stomping existing configuration */
-        TEST_LOGO("test_logo");
+        RIGHT_LOGO("right_logo");
 
         private CIName(final String text) { this.text = text; }
         private final String text;

@@ -24,6 +24,9 @@ import static org.tdl.vireo.constant.AppConfig.*;
 @With(Authentication.class)
 public class ThemeSettingsTab extends SettingsTab {
 
+    /** max size in bytes of uploaded custom images */
+    public final static int MAX_UPLOAD_SIZE = 1024*1024; // if you change this, change the error message in verifyFile()
+
 	@Security(RoleType.MANAGER)
 	public static void themeSettings() {
 		
@@ -139,7 +142,6 @@ public class ThemeSettingsTab extends SettingsTab {
 		try {
             for (CIName verifiedName : CIName.values()) {
                 if (verifiedName.toString().equals(name)) {
-
                     // Found correct image name.
                     if (params.get("delete1x") != null) {
                         CustomImage.deleteFile(verifiedName, false);
@@ -148,21 +150,36 @@ public class ThemeSettingsTab extends SettingsTab {
                         CustomImage.deleteFile(verifiedName, true);
                     }
                     if (params._contains("submit_upload") && image1x != null) {
+                        verifyFile(image1x);
                         CustomImage.replaceFile(verifiedName, false, image1x);
                     }
                     if (params._contains("submit_upload") && image2x != null) {
+                        verifyFile(image2x);
                         CustomImage.replaceFile(verifiedName, true, image2x);
                     }
                     break;
                 }
             }
         } catch (IOException e) {
-            Logger.error("theme-settings: could not update custom image because "+e.getMessage());
+            Logger.error("theme-settings: IOException: could not update custom image because "+e.getMessage());
             flash.error("The server failed to update the image.");
         } catch (IllegalArgumentException e) {
             flash.error(e.getMessage());
-            Logger.info("%%%Error: "+e.getMessage());
         }
 		themeSettings();
 	}
+
+    /**
+     * Checks that a file intended for use as a logo image is appropriate.
+     * @param file the file to check
+     * @throws IllegalArgumentException if the file is too big, too small, or not really a file
+     */
+    private static void verifyFile (File file) throws IllegalArgumentException {
+        if (file.length() <= 0L) {
+            throw new IllegalArgumentException("The image was empty"); // more informative than the "invalid format" error that would happen later
+        }
+        if (file.length() > MAX_UPLOAD_SIZE) {
+            throw new IllegalArgumentException("The maximum image size allowed is 1 MB. Website graphics should be small.");
+        }
+    }
 }

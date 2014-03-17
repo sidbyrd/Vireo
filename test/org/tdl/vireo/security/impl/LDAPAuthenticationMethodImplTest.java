@@ -105,33 +105,33 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.StudentID,            "myuID");
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.UserStatus,           "myuUserStatus");
         instance.setLdapFieldNames(ldapFieldNames);
-        instance.setMock(true);
-        Map<String, String> mockAttributes = new HashMap<String, String>(25);
-        mockAttributes.put("uid", "netid1");
-        mockAttributes.put("mail", "mail1@email.com");
-        mockAttributes.put("givenName", "Billy");
-        mockAttributes.put("middleName", "Bob");
-        mockAttributes.put("sn", "Thornton");
-        mockAttributes.put("myuBirthYear", "1955");
-        mockAttributes.put("eduPersonPrimaryAffiliation", "student");
-        mockAttributes.put("telephoneNumber", "+99 (55) 555-5555");
-        mockAttributes.put("postalAddress", "1100 Congress Ave");
-        mockAttributes.put("l", "Austin");
-        mockAttributes.put("st", "TX");
-        mockAttributes.put("postalCode", "78701");
-        mockAttributes.put("myuPermPhone", "555-555-1932");
-        mockAttributes.put("myuPermAddress", "Another City$Another State 54321");
-        mockAttributes.put("mail3", "perm@email.com");
-        mockAttributes.put("myuDegree", "Ph.D.");
-        mockAttributes.put("ou", "Performance Studies");
-        mockAttributes.put("myuCollege", "Clown College");
-        mockAttributes.put("myuMajor", "Trapeze");
-        mockAttributes.put("myuGradYear", "2014");
-        mockAttributes.put("myuGradMonth", "01");
-        mockAttributes.put("myuID", "S01234567");
-        mockAttributes.put("myuUserStatus", "active");
-        instance.setMockAttributes(mockAttributes);
-        instance.setMockUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
+        instance.setTestStub(true);
+        Map<String, String> stubAttributes = new HashMap<String, String>(25);
+        stubAttributes.put("uid", "netid1");
+        stubAttributes.put("mail", "mail1@email.com");
+        stubAttributes.put("givenName", "Billy");
+        stubAttributes.put("middleName", "Bob");
+        stubAttributes.put("sn", "Thornton");
+        stubAttributes.put("myuBirthYear", "1955");
+        stubAttributes.put("eduPersonPrimaryAffiliation", "student");
+        stubAttributes.put("telephoneNumber", "+99 (55) 555-5555");
+        stubAttributes.put("postalAddress", "1100 Congress Ave");
+        stubAttributes.put("l", "Austin");
+        stubAttributes.put("st", "TX");
+        stubAttributes.put("postalCode", "78701");
+        stubAttributes.put("myuPermPhone", "555-555-1932");
+        stubAttributes.put("myuPermAddress", "Another City$Another State 54321");
+        stubAttributes.put("mail3", "perm@email.com");
+        stubAttributes.put("myuDegree", "Ph.D.");
+        stubAttributes.put("ou", "Performance Studies");
+        stubAttributes.put("myuCollege", "Clown College");
+        stubAttributes.put("myuMajor", "Trapeze");
+        stubAttributes.put("myuGradYear", "2014");
+        stubAttributes.put("myuGradMonth", "01");
+        stubAttributes.put("myuID", "S01234567");
+        stubAttributes.put("myuUserStatus", "active");
+        instance.setStubAttributes(stubAttributes);
+        instance.setStubUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
 	}
 	
 	/**
@@ -183,8 +183,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         context.logout();
 
         // with status=inactive
-        instance.getMockAttributes().remove("myuUserStatus");
-        instance.getMockAttributes().put("myuUserStatus", "inactive");
+        instance.getStubAttributes().remove("myuUserStatus");
+        instance.getStubAttributes().put("myuUserStatus", "inactive");
         result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -198,11 +198,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseNewUser() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -225,14 +225,14 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseNewUserInactiveUnchecked() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.getMockAttributes().remove("myuUserStatus");
-        instance.getMockAttributes().put("myuUserStatus", "inactive");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.getStubAttributes().remove("myuUserStatus");
+        instance.getStubAttributes().put("myuUserStatus", "inactive");
         instance.setValueUserStatusActive(null);
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -254,10 +254,10 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseNetIdEmailDomain() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         instance.setNetIDEmailDomain("@myu.edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -282,13 +282,13 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseAllowNetIdAsMissingName() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.getMockAttributes().remove("givenName");
-        instance.getMockAttributes().remove("sn");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.getStubAttributes().remove("givenName");
+        instance.getStubAttributes().remove("sn");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         instance.setAllowNetIdAsMissingName(true);
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -314,11 +314,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseNewUserClaimsEmail() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid2");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail2@email.com");
-        instance.setMockUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid2");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail2@email.com");
+        instance.setStubUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -336,10 +336,10 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testPositiveCaseNewUserClaimsWithNetIdEmailDomain() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "mail2");
-        instance.getMockAttributes().remove("mail");
-        instance.setMockUserDn("uid=mail2,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "mail2");
+        instance.getStubAttributes().remove("mail");
+        instance.setStubUserDn("uid=mail2,OU=people,DC=myu,DC=edu");
         instance.setNetIDEmailDomain("@email.com");
         AuthenticationResult result = instance.authenticate("mail2", "secret", null);
 
@@ -384,23 +384,23 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     @Test
     public void testNegativeCasesWrongNetID() {
         // User-supplied NetID does not match expected DN
-        instance.setMockUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
+        instance.setStubUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
         assertNull(context.getPerson());
 
         // User-supplied NetID does not match LDAP-supplied NetID
-        instance.setMockUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
+        instance.setStubUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
         result = instance.authenticate("netid2", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
         assertNull(context.getPerson());
 
         // LDAP-supplied NetID does not match expected DN
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid2");
-        instance.setMockUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid2");
+        instance.setStubUserDn("uid=netid1,OU=people,DC=myu,DC=edu");
         result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -430,10 +430,10 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testNegativeCasesNewUserEmailTaken() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid2");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid2");
         // ldap email is still email1@email.com
-        instance.setMockUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
+        instance.setStubUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -447,11 +447,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testNegativeCaseNewUserClaimsEmailNotAllowed() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid2");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail2@email.com");
-        instance.setMockUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid2");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail2@email.com");
+        instance.setStubUserDn("uid=netid2,OU=people,DC=myu,DC=edu");
         instance.setAllowNewUserEmailMatch(false);
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
@@ -466,13 +466,13 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     @Test
     public void testNegativeCasesNewUserInactive() {
         // User has never logged in before, and status is reported as inactive
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.getMockAttributes().remove("myuUserStatus");
-        instance.getMockAttributes().put("myuUserStatus", "inactive");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.getStubAttributes().remove("myuUserStatus");
+        instance.getStubAttributes().put("myuUserStatus", "inactive");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -485,10 +485,10 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testNegativeCaseNetIdEmailDomain() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -502,13 +502,13 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testNegativeCaseAllowNetIdAsMissingName() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.getMockAttributes().remove("givenName");
-        instance.getMockAttributes().remove("sn");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.getStubAttributes().remove("givenName");
+        instance.getStubAttributes().remove("sn");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -524,11 +524,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     @Test
     public void testNegativeCaseIllegalEmail() {
         // invalid email reported by LDAP
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "no-at-character");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "no-at-character");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -536,7 +536,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertNull(person);
 
         // no email reported by LDAP, and invalid configuration of netIdEmailDomain
-        instance.getMockAttributes().remove("mail");
+        instance.getStubAttributes().remove("mail");
         instance.setNetIDEmailDomain("myu.edu"); // no leading "@"
         result = instance.authenticate("netid3", "secret", null);
 
@@ -572,11 +572,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testFlatDirectoryNewUser() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         instance.setSearchAnonymous(false);
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -595,10 +595,10 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     @Test
     public void testAttributesExistingUser() {
         // LDAP has Billy, Bob, Thornton as name parts.
-        instance.getMockAttributes().remove("mail");
+        instance.getStubAttributes().remove("mail");
         // email would be collision with person2, but shouldn't matter because shouldn't be set
-        instance.getMockAttributes().put("mail", "mail2@email.com");
-        instance.getMockAttributes().remove("mail2"); // perm email
+        instance.getStubAttributes().put("mail", "mail2@email.com");
+        instance.getStubAttributes().remove("mail2"); // perm email
         // put some optional attributes onto person1
         context.turnOffAuthorization();
         person1.setCurrentCollege("Electoral");
@@ -647,11 +647,11 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testAttributesNewUser() {
-        instance.getMockAttributes().remove("uid");
-        instance.getMockAttributes().put("uid", "netid3");
-        instance.getMockAttributes().remove("mail");
-        instance.getMockAttributes().put("mail", "mail3@email.com");
-        instance.setMockUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
+        instance.getStubAttributes().remove("uid");
+        instance.getStubAttributes().put("uid", "netid3");
+        instance.getStubAttributes().remove("mail");
+        instance.getStubAttributes().put("mail", "mail3@email.com");
+        instance.setStubUserDn("uid=netid3,OU=people,DC=myu,DC=edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -715,8 +715,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     public void testExtraAndMissingLdapData() {
         instance.getLdapFieldNames().remove(LDAPAuthenticationMethodImpl.AttributeName.CurrentPostalZip);
         instance.getLdapFieldNames().remove(LDAPAuthenticationMethodImpl.AttributeName.CurrentDegree);
-        instance.getMockAttributes().remove("l"); // currentPostalCity
-        instance.getMockAttributes().remove("myuMajor"); // currentMajor
+        instance.getStubAttributes().remove("l"); // currentPostalCity
+        instance.getStubAttributes().remove("myuMajor"); // currentMajor
         AuthenticationResult result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -748,7 +748,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
      */
     @Test
     public void testOptionalDataTransformations() {
-        Map<String, String> ldap = instance.getMockAttributes();
+        Map<String, String> ldap = instance.getStubAttributes();
         // invalid permanent email
         ldap.remove("mail3");
         ldap.put("mail3", "invalidEmail");

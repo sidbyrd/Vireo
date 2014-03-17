@@ -525,7 +525,8 @@ public class TestDataLoader extends Job {
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
 
-                CustomImage.reset(CIName.TEST_LOGO);
+                //ThemeDirectory.setTest(true);
+                //CustomImage.setTest(true);
 
 				loadPeople();
 				loadSettings();

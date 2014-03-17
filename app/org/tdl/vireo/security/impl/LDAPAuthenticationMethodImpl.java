@@ -135,19 +135,19 @@ public class LDAPAuthenticationMethodImpl extends
     // mapping from names of fields we can collect to the names used in LDAP for those fields
     private Map <AttributeName, String> ldapFieldNames = new HashMap<AttributeName, String>();
     
-	// Whether LDAP responses and authentication will be mocked or real.
-	private boolean mock = false;
+	// Whether LDAP responses and authentication will be test stub values or real.
+	private boolean testStub = false;
 
-	// map of fake ldap user attributes injected directly for mock
-    private Map<String, String> mockAttributes;
+	// map of fake ldap user attributes injected directly as test stub values
+    private Map<String, String> stubAttributes;
 
-    // mock DN expected for authentication match
-    private String mockUserDn;
+    // test stub DN expected for authentication match
+    private String stubUserDn;
 
     /**
-     * mock password might as well just be hardcoded.
+     * test stub password might as well just be hardcoded.
      */
-    public static final String mockPassword = "secret";
+    public static final String stubPassword = "secret";
 
     /**
      * This is the url to the institution's ldap server. The /o=myu.edu
@@ -341,41 +341,40 @@ public class LDAPAuthenticationMethodImpl extends
     }
 
     /**
-     * @param mock
-     * True if LDAP authentication should be mocked with test
-     * attributes. This allows you to use the application without it
-     * talking to a real LDAP.
+     * @param testStub
+     * True if, instead of connecting to a real LDAP, we should instead connect
+     * to a table of test values to return for specific queries.
      */
-    public void setMock(boolean mock) {
-        this.mock = mock;
+    public void setTestStub(boolean testStub) {
+        this.testStub = testStub;
     }
 
     /**
-     * If this authentication method is configured to mock an LDAP
+     * If this authentication method is configured for a test stub LDAP
      * connection then these are the raw LDAP field names and attributes
-     * that will be returned from the mock LDAP service when authenticating.
+     * that will be returned from the test stub LDAP service when authenticating.
      *
      * The map should contain LDAP field names as keys and corresponding
      * LDAP attribute data as values.
      *
-     * @param mockAttributes
-     *            A map of mock LDAP attributes.
+     * @param stubAttributes
+     *            A map of stub LDAP attributes.
      */
-    public void setMockAttributes(Map<String, String> mockAttributes) {
-        this.mockAttributes = mockAttributes;
+    public void setStubAttributes(Map<String, String> stubAttributes) {
+        this.stubAttributes = stubAttributes;
     }
-    public Map<String, String> getMockAttributes() {
-        return mockAttributes;
+    public Map<String, String> getStubAttributes() {
+        return stubAttributes;
     }
 
     /**
-     * If this authentication method is configured to Mock an LDAP
+     * If this authentication method is configured to use a test stub LDAP
      * connection then this is the DN that needs to be matched for
      * authentication to succeed.
-     * @param mockUserDn a mock user DN to match against
+     * @param stubUserDn a stub user DN to match against
      */
-    public void setMockUserDn(String mockUserDn) {
-        this.mockUserDn = mockUserDn;
+    public void setStubUserDn(String stubUserDn) {
+        this.stubUserDn = stubUserDn;
     }
 
     /**
@@ -612,7 +611,7 @@ public class LDAPAuthenticationMethodImpl extends
         try {
             SearchResult sr = null;
 
-            if (! mock) {
+            if (!testStub) {
                 // do search, filtering on netID, with configured search setup
                 ctx = new InitialDirContext(env);
                 NamingEnumeration<SearchResult> answer = ctx.search(
@@ -629,17 +628,17 @@ public class LDAPAuthenticationMethodImpl extends
                     Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
                 }
             } else {
-                // for mock, save the mock results if the given NetID matches the mock record's NetID field.
-                if (netID.equals(mockAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
-                    // for mock, make a fake SearchResult using given mock attributes
+                // for connection to stub test, save the canned results if the given NetID matches the stub record's NetID field.
+                if (netID.equals(stubAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
+                    // for test, make a fake SearchResult using given stub attributes
                     Attributes attrs = new BasicAttributes();
-                    for (Map.Entry<String, String> entry : mockAttributes.entrySet()) {
+                    for (Map.Entry<String, String> entry : stubAttributes.entrySet()) {
                         attrs.put(entry.getKey(), entry.getValue());
                     }
-                    // This is not (yet) a mock DN. This is just the raw node name as LDAP
+                    // This is not a DN. This is just the raw node name as LDAP
                     // would return it but before further processing by this method.
-                    String mockName = ldapFieldNames.get(AttributeName.NetID)+"="+netID;
-                    sr = new SearchResult(mockName, null, attrs, true);
+                    String stubName = ldapFieldNames.get(AttributeName.NetID)+"="+netID;
+                    sr = new SearchResult(stubName, null, attrs, true);
                 }
             }
 
@@ -715,16 +714,16 @@ public class LDAPAuthenticationMethodImpl extends
 
         DirContext ctx = null;
         try {
-            if (! mock) {
+            if (!testStub) {
                 // Try to bind
                 ctx = new InitialDirContext(env);
             } else {
-                // for mock, check that DN and password match mock values
-                if (StringUtils.isBlank(mockUserDn) || !mockUserDn.equals(dn)) {
-                    throw new NamingException("ldap.mockserver: user DN doesn't match required DN="+((mockUserDn==null)?"null":mockUserDn));
+                // for test stub connection, check that DN and password match stub values
+                if (StringUtils.isBlank(stubUserDn) || !stubUserDn.equals(dn)) {
+                    throw new NamingException("ldap.stubserver: user DN doesn't match required DN="+((stubUserDn ==null)?"null": stubUserDn));
                 }
-                if (StringUtils.isBlank(mockPassword) || !mockPassword.equals(password)) {
-                    throw new NamingException("ldap.mockserver: incorrect password");
+                if (StringUtils.isBlank(stubPassword) || !stubPassword.equals(password)) {
+                    throw new NamingException("ldap.stubserver: incorrect password");
                 }
             }
         } catch (NamingException e) {
