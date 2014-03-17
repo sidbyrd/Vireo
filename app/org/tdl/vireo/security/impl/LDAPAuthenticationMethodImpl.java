@@ -15,6 +15,8 @@ import javax.management.RuntimeErrorException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.*;
+import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
@@ -133,7 +135,8 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * Swaps out the normal LDAP context factory implementation for another one.
-     * Intended to be used with a mock/stub implementation for testing.
+     * Intended to be used with a mock/stub implementation for testing, or
+     * perhaps with a non-Sun implementation if that's ever necessary?
      * @param newFactoryName the class name of the new LDAP context factory to swap in
      * @return the class name of the old LDAP context factory being swapped out
      */
@@ -326,7 +329,7 @@ public class LDAPAuthenticationMethodImpl extends
             throw new IllegalArgumentException("ldap: missing required attribute NetID in the provided ldapFieldNames.");
         }
         if (ldapFieldNames == this.ldapFieldNames) {
-            return; // trying to feed me my own fields
+            return; // trying to feed me my own fields, which doesn't work since I'm about to clear my old one.
         }
 
         this.ldapFieldNames.clear();
@@ -380,25 +383,30 @@ public class LDAPAuthenticationMethodImpl extends
         //    If not using a flat LDAP structure with no anon access and no admin login,
         //      this will connect to LDAP and also retrieve user attributes.
         Map<AttributeName,String> attributes = new HashMap<AttributeName, String>();
-        String dn = ldapUserSearch(netID, attributes);
+        try {
+            String dn = ldapUserSearch(netID, attributes);
 
-        if (StringUtils.isBlank(dn)) {
-            // The given netID does not exist in LDAP, or search failed
-            Logger.info("ldap: could not find user netID=" + netID);
-            return AuthenticationResult.BAD_CREDENTIALS;
-        }
-        // sanity check -- did the search return the user we asked for?
-        String foundNetId = attributes.get(AttributeName.NetID); // will be null if we couldn't search
-        if(foundNetId != null && !foundNetId.equals(netID)) {
-            Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
+            if (StringUtils.isBlank(dn)) {
+                // The given netID does not exist in LDAP, or search failed
+                Logger.info("ldap: could not find user netID=" + netID);
+                return AuthenticationResult.BAD_CREDENTIALS;
+            }
+            // sanity check -- did the search return the user we asked for?
+            String foundNetId = attributes.get(AttributeName.NetID); // will be null if we couldn't search
+            if(foundNetId != null && !foundNetId.equals(netID)) {
+                Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
+                return AuthenticationResult.UNKNOWN_FAILURE;
+            }
+
+            // 2. try to authenticate against LDAP with the user's supplied credentials
+            if (!ldapAuthenticate(dn, password)) {
+                // rejected
+                Logger.info("ldap: could not authenticate user netID=" + netID);
+                return AuthenticationResult.BAD_CREDENTIALS;
+            }
+        } catch (IOException e) {
+            Logger.error(e, "ldap: network error or possible misconfiguration.");
             return AuthenticationResult.UNKNOWN_FAILURE;
-        }
-
-        // 2. try to authenticate against LDAP with the user's supplied credentials
-        if (!ldapAuthenticate(dn, password)) {
-            // rejected
-            Logger.info("ldap: could not authenticate user netID=" + netID);
-            return AuthenticationResult.BAD_CREDENTIALS;
         }
 
         // 3. Make sure we have the right email address from LDAP for the user, since
@@ -483,7 +491,7 @@ public class LDAPAuthenticationMethodImpl extends
 				// Create the new person
                 if (personRepo.findPersonByEmail(email)!=null) {
                     // This check is not strictly necessary since the next try block would catch this too, but this is more specific and clean.
-                    Logger.info("ldap: attempted to create new person netID="+netID+" but email="+email+" was already taken.");
+                    Logger.info("ldap: attempted to create new person netID=" + netID + " but email=" + email + " was already taken.");
                     return AuthenticationResult.BAD_CREDENTIALS;
                 }
 				try {
@@ -543,8 +551,9 @@ public class LDAPAuthenticationMethodImpl extends
      *      from LDAP.
      * @return the correct DN to attempt to bind to to authenticate the user whose
      *      netID was provided, or null if not found or an error occurred
+     * @throws IOException if search tried to talk to the server but couldn't
      */
-    protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) {
+    protected String ldapUserSearch(String netID, Map<AttributeName, String> attributes) throws IOException {
 
         // Set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>(11);
@@ -630,7 +639,12 @@ public class LDAPAuthenticationMethodImpl extends
         catch (NamingException e) {
             // if we won't be returning a DN, don't return attributes either.
             attributes.clear();
-            Logger.debug(e, "ldap.search: failed auth or execution");
+            if (e.getRootCause() instanceof IOException) {
+                // This is worse than just an unknown user. For example, UnknownHostException.
+                Logger.debug("ldap.search: failed to communicate because "+e.getMessage());
+                throw (IOException)e.getRootCause();
+            }
+            Logger.debug(e, "ldap.search: failed auth");
             return null;
         }
         finally {
@@ -640,9 +654,7 @@ public class LDAPAuthenticationMethodImpl extends
                     ctx.close();
                 }
             }
-            catch (NamingException e) {
-                //
-            }
+            catch (NamingException e) { /**/ }
         }
     }
 
@@ -651,8 +663,9 @@ public class LDAPAuthenticationMethodImpl extends
      * @param dn user's DN, constructed or searched for as appropriate
      * @param password user's password
      * @return whether the bind was successfully authenticated
+     * @throws IOException if search tried to talk to the server but couldn't
      */
-    protected boolean ldapAuthenticate(String dn, String password) {
+    protected boolean ldapAuthenticate(String dn, String password) throws IOException {
 
         // set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>();
@@ -671,6 +684,11 @@ public class LDAPAuthenticationMethodImpl extends
             // Try to bind
             ctx = new InitialDirContext(env);
         } catch (NamingException e) {
+            if (e.getRootCause() instanceof IOException) {
+                // This is worse than just an unknown user. For example, UnknownHostException.
+                Logger.debug("ldap.auth: failed to communicate because "+e.getMessage());
+                throw (IOException)e.getRootCause();
+            }
             Logger.debug("ldap.auth: server refused to authenticate DN=" + dn + " due to " + e.getExplanation());
             return false;
         } finally {
@@ -679,9 +697,7 @@ public class LDAPAuthenticationMethodImpl extends
                 if (ctx != null) {
                     ctx.close();
                 }
-            } catch (NamingException e) {
-                //
-            }
+            } catch (NamingException e) { /**/ }
         }
 
         Logger.debug("ldap.auth: successfully authenticated with DN=" + dn);

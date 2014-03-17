@@ -16,14 +16,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
- * Test the LDAP authentication method. These tests require the method to
- * be configured in certain ways so that we know exactly what input to give it.
- * To make these tests work with a variety of configurations before each test
- * we save the current state of, run our tests, then restore the state after the
- * test has run. This means that if a tests fails we may leave the method in a
- * changed state, but other than that it should remain as original configured.
+ * Test the LDAP authentication feature against a stub LDAP server that gives
+ * pre-selected responses.
  */
 public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
@@ -70,7 +67,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         }
 
 		// Set the instance's state to what the tests expect.
-        instance.setProviderURL("test:stub");
+        instance.setProviderURL("ldapstub:test");
         instance.setObjectContext("OU=people,DC=myu,DC=edu");
         instance.setSearchContext("OU=people,DC=myu,DC=edu");
         instance.setSearchAnonymous(true);
@@ -115,7 +112,8 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.adminDn = null;
         StubLdapFactory.adminPass = null;
         StubLdapFactory.netIdLdapFieldName = ldapFieldNames.get(LDAPAuthenticationMethodImpl.AttributeName.NetID);
-        StubLdapFactory.userDn = "uid=netid1,OU=people,DC=myu,DC=edu";
+        StubLdapFactory.objectContext = "OU=people,DC=myu,DC=edu";
+        StubLdapFactory.searchContext = "OU=people,DC=myu,DC=edu"; // My university has these the same. Someone whose are different can fully test this feature.
         StubLdapFactory.attributes = new HashMap<String, String>(25);
         StubLdapFactory.attributes.put("uid", "netid1");
         StubLdapFactory.attributes.put("mail", "mail1@email.com");
@@ -211,7 +209,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -240,7 +237,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
         StubLdapFactory.attributes.remove("myuUserStatus");
         StubLdapFactory.attributes.put("myuUserStatus", "inactive");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         instance.setValueUserStatusActive(null);
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -266,7 +262,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.remove("uid");
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         instance.setNetIDEmailDomain("@myu.edu");
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -297,7 +292,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
         StubLdapFactory.attributes.remove("givenName");
         StubLdapFactory.attributes.remove("sn");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         instance.setAllowNetIdAsMissingName(true);
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -327,7 +321,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid2");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "mail2@email.com");
-        StubLdapFactory.userDn ="uid=netid2,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);
@@ -348,7 +341,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.remove("uid");
         StubLdapFactory.attributes.put("uid", "mail2");
         StubLdapFactory.attributes.remove("mail");
-        StubLdapFactory.userDn ="uid=mail2,OU=people,DC=myu,DC=edu";
         instance.setNetIDEmailDomain("@email.com");
         AuthenticationResult result = instance.authenticate("mail2", "secret", null);
 
@@ -362,6 +354,39 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     }
 
     /**
+     * Positive cases that should result in someone successfully authenticating:
+     * Server required authenticated search, and supplied credentials are correct
+     */
+    @Test
+    public void testPositiveSearchCredentialsCorrect() {
+        instance.setSearchUser("uid=search,OU=admin");
+        instance.setSearchPassword("adminsecret");
+        StubLdapFactory.adminDn="uid=search,OU=admin";
+        StubLdapFactory.adminPass="adminsecret";
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        assertEquals(person1, context.getPerson());
+    }
+
+    /**
+     * Positive cases that should result in someone successfully authenticating:
+     * There's a difference between the supplied subjectContext and
+     * what the server requires, but it doesn't matter when doing a flat DN lookup
+     */
+    @Test
+    public void testPositiveSearchContextWrongFlatDN() {
+        instance.setSearchContext("wrong");
+        instance.setSearchAnonymous(false);
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.SUCCESSFULL, result);
+        assertNotNull(context.getPerson());
+        assertEquals(person1, context.getPerson());
+    }
+
+   /**
      * Negative cases that should result in failures:
      * Missing username or password, or wrong password
      */
@@ -388,29 +413,14 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
 
     /**
      * Negative cases that should result in failures:
-     * Mismatch between NetID / LDAP-NetID / expected DN
+     * Mismatch between NetID and LDAP's stored NetID
      */
     @Test
     public void testNegativeCasesWrongNetID() {
-        // User-supplied NetID does not match expected DN
-        StubLdapFactory.userDn ="uid=netid2,OU=people,DC=myu,DC=edu";
-        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
-
-        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
-        assertNull(context.getPerson());
-
-        // User-supplied NetID does not match LDAP-supplied NetID
-        StubLdapFactory.userDn ="uid=netid1,OU=people,DC=myu,DC=edu";
-        result = instance.authenticate("netid2", "secret", null);
-
-        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
-        assertNull(context.getPerson());
-
         // LDAP-supplied NetID does not match expected DN
         StubLdapFactory.attributes.remove("uid");
         StubLdapFactory.attributes.put("uid", "netid2");
-        StubLdapFactory.userDn ="uid=netid1,OU=people,DC=myu,DC=edu";
-        result = instance.authenticate("netid1", "secret", null);
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
         assertNull(context.getPerson());
@@ -425,7 +435,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         Map<LDAPAuthenticationMethodImpl.AttributeName, String> ldapFieldNames = instance.getLdapFieldNames();
         ldapFieldNames.remove(LDAPAuthenticationMethodImpl.AttributeName.NetID);
         ldapFieldNames.put(LDAPAuthenticationMethodImpl.AttributeName.NetID, "mail");
-        instance.setLdapFieldNames(ldapFieldNames);
         AuthenticationResult result = instance.authenticate("netid1", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -441,8 +450,7 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
     public void testNegativeCasesNewUserEmailTaken() {
         StubLdapFactory.attributes.remove("uid");
         StubLdapFactory.attributes.put("uid", "netid2");
-        // ldap email is still email1@email.com
-        StubLdapFactory.userDn ="uid=netid2,OU=people,DC=myu,DC=edu";
+        // ldap email for netid2 is now mail1@email.com, which is already taken in Vireo by existing user netid1
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -460,7 +468,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid2");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "mail2@email.com");
-        StubLdapFactory.userDn ="uid=netid2,OU=people,DC=myu,DC=edu";
         instance.setAllowNewUserEmailMatch(false);
         AuthenticationResult result = instance.authenticate("netid2", "secret", null);
 
@@ -481,7 +488,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
         StubLdapFactory.attributes.remove("myuUserStatus");
         StubLdapFactory.attributes.put("myuUserStatus", "inactive");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -497,7 +503,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.remove("uid");
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -517,7 +522,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
         StubLdapFactory.attributes.remove("givenName");
         StubLdapFactory.attributes.remove("sn");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -537,7 +541,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "no-at-character");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
@@ -552,7 +555,77 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
         person = context.getPerson();
         assertNull(person);
+    }
 
+    /**
+     * Negative cases that should result in failures:
+     * Server required authenticated search, but supplied credentials are incorrect
+     */
+    @Test
+    public void testNegativeSearchCredentialsIncorrect() {
+        instance.setSearchUser("uid=search,OU=admin");
+        instance.setSearchPassword("oops");
+        StubLdapFactory.adminDn="uid=search,OU=admin";
+        StubLdapFactory.adminPass="adminsecret";
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        Person person = context.getPerson();
+        assertNull(person);
+    }
+
+    /**
+     * Negative cases that should result in failures:
+     * There's a difference between the supplied objectContext or
+     * searchContext and what the server requires, and we are using
+     * user attribute search.
+     */
+    @Test
+    public void testNegativeContextMismatch() {
+        instance.setObjectContext("wrong");
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        Person person = context.getPerson();
+        assertNull(person);
+
+        instance.setObjectContext("OU=people,DC=myu,DC=edu");
+        instance.setSearchContext("wrong");
+        result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        person = context.getPerson();
+        assertNull(person);
+    }
+
+    /**
+     * Negative cases that should result in failures:
+     * There's a difference between the supplied objectContext and
+     * what the server requires, even when doing a flat DN lookup
+     */
+    @Test
+    public void testNegativeObjectContextWrongFlatDN() {
+        instance.setObjectContext("wrong");
+        instance.setSearchAnonymous(false);
+        AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.BAD_CREDENTIALS, result);
+        Person person = context.getPerson();
+        assertNull(person);
+    }
+
+    /**
+     * Negative cases that should result in failures:
+     * The provider URL is wrong
+     */
+    @Test
+    public void testNegativeWrongProviderURL() {
+        instance.setProviderURL("wrong");
+         AuthenticationResult result = instance.authenticate("netid1", "secret", null);
+
+        assertEquals(AuthenticationResult.UNKNOWN_FAILURE, result);
+        Person person = context.getPerson();
+        assertNull(person);
     }
 
     /**
@@ -585,7 +658,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         instance.setSearchAnonymous(false);
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
@@ -660,7 +732,6 @@ public class LDAPAuthenticationMethodImplTest extends UnitTest {
         StubLdapFactory.attributes.put("uid", "netid3");
         StubLdapFactory.attributes.remove("mail");
         StubLdapFactory.attributes.put("mail", "mail3@email.com");
-        StubLdapFactory.userDn ="uid=netid3,OU=people,DC=myu,DC=edu";
         AuthenticationResult result = instance.authenticate("netid3", "secret", null);
 
         assertEquals(AuthenticationResult.SUCCESSFULL, result);

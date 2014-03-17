@@ -3,9 +3,12 @@ package org.tdl.vireo.security.impl;
 import org.apache.commons.lang.StringUtils;
 import play.Logger;
 
+import javax.management.RuntimeErrorException;
 import javax.naming.*;
 import javax.naming.directory.*;
 import javax.naming.spi.InitialContextFactory;
+import java.net.UnknownHostException;
+import java.security.InvalidParameterException;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -14,9 +17,13 @@ public class StubLdapFactory implements InitialContextFactory{
     // map of fake ldap user attributes injected directly as test stub values
     public static Map<String, String> attributes;
 
-    // username DN expected for user login authentication match
-    public static String userDn;
-    // password expected for user login authentication match
+    public static String serverName="ldapstub:test";
+
+    // added to the end of "uid=bbthornton" to get his full user DN
+    public static String objectContext = "OU=people,DC=myu,DC=edu";
+    // provided when searching for "uid=bbthornton" to specify where to search
+    public static String searchContext = "OU=people,DC=myu,DC=edu";
+    // password expected for user login authentication match with whatever NetID is provided
     public static String userPass = "secret";
 
     // username DN expected for admin search user authentication match
@@ -71,7 +78,9 @@ public class StubLdapFactory implements InitialContextFactory{
     }
 
     // This is what's returned when a non-matching search() is called on a StubDirContext.
-    public class EmptyNamingEnumeration<T> implements NamingEnumeration<T> {
+    public static class EmptyNamingEnumeration<T> implements NamingEnumeration<T> {
+        public static EmptyNamingEnumeration<SearchResult> single = new EmptyNamingEnumeration<SearchResult>();
+        private EmptyNamingEnumeration(){ }
         public void close() throws NamingException { }
         public boolean hasMore() throws NamingException { return hasMoreElements(); }
         public T next() throws NamingException { return nextElement(); }
@@ -91,12 +100,19 @@ public class StubLdapFactory implements InitialContextFactory{
         public boolean authAdmin = false;
 
         public StubDirContext(Hashtable<?, ?> environment) throws NamingException {
+            final String providerUrl = (String)environment.get(Context.PROVIDER_URL);
+            if (providerUrl==null || !providerUrl.equals(serverName)) {
+                Logger.debug("ldap.stubserver: Failed connection to wrong provider url '"+providerUrl+'\'');
+                NamingException e = new NamingException("Wrapped exception; that's how LDAP rolls.");
+                e.setRootCause(new UnknownHostException("Connection error. The server '"+providerUrl+"' does not exist."));
+                throw e;
+            }
             final String authType = (String)environment.get(Context.SECURITY_AUTHENTICATION);
             if (authType==null) {
                 throw new NamingException("ldap.stub: environment didn't include authtype");
             } else if (authType.toLowerCase().equals("none")) {
                 // authtype none: make sure anonymous login is really allowed
-                if (userDn==null && userPass==null) {
+                if (userPass==null) {
                     authUser = true;
                     Logger.debug("ldap.stubserver: user bind anonymous success");
                 } else if (adminDn==null && adminPass==null) {
@@ -111,7 +127,8 @@ public class StubLdapFactory implements InitialContextFactory{
                 final String authDn = (String)environment.get(Context.SECURITY_PRINCIPAL);
                 final String authPass = (String)environment.get(Context.SECURITY_CREDENTIALS);
                 if (!StringUtils.isBlank(authDn) && !StringUtils.isBlank(authPass)) {
-
+                    // To match authDN against, build user's DN from netID and object context
+                    String userDn = netIdLdapFieldName+'='+attributes.get(netIdLdapFieldName)+','+objectContext;
                     if  (authDn.equals(userDn) && authPass.equals(userPass)) {
                         authUser = true;
                         Logger.debug("ldap.stubserver: user bind success: '" + userDn+'\'');
@@ -275,6 +292,8 @@ public class StubLdapFactory implements InitialContextFactory{
         @Override
         // returns the configured stub answer if the requested NetID matches
         public NamingEnumeration<SearchResult> search(String name, String filterExpr, Object[] filterArgs, SearchControls searchControls) throws NamingException {
+
+            // First, find all the ways we can reject the request. Just like a real LDAP server :)
             if (closed) {
                 throw new IllegalStateException("Can't query a closed connection");
             }
@@ -286,21 +305,35 @@ public class StubLdapFactory implements InitialContextFactory{
                 Logger.debug("ldap.stubserver: invalid search filters");
                 throw new InvalidSearchFilterException("unexpected or invalid search filters");
             }
-            if (filterArgs[0]!=null && filterArgs[0].equals(netIdLdapFieldName)) {
-                final String requestedNetId = (String)filterArgs[1];
-                if (requestedNetId.equals(attributes.get(netIdLdapFieldName))) {
-                    // found results
-                    Logger.debug("ldap.stubserver: found records match for user "+requestedNetId);
-                    return new SingleStubNamingEnumeration<SearchResult>();
-                } else {
-                    // no results
-                    Logger.debug("ldap.stubserver: no records match for user "+requestedNetId);
-                    return new EmptyNamingEnumeration<SearchResult>();
-                }
+            if (name==null || !name.startsWith(serverName)) {
+                Logger.debug("ldap.stubserver: client has wrong server name in search context. No results will be found.");
+                Logger.debug("ldap.stubserver: client search context does not start with correct server name. No results fill be found.");
+                return EmptyNamingEnumeration.single;
             }
-            // caller searched on a field that wasn't the correct NetID field.
-            Logger.debug("ldap.stubserver: no records match: searched on a field '"+(filterArgs[0]==null?"":filterArgs[0])+"' that wasn't the NetID field '"+netIdLdapFieldName+'\'');
-            return new EmptyNamingEnumeration<SearchResult>();
+            if (!StringUtils.substringAfter(name, serverName).equals(searchContext)) {
+                Logger.debug("ldap.stubserver: client search context does not match. No results fill be found.");
+                return EmptyNamingEnumeration.single;
+            }
+            if (filterArgs.length<1 || !filterArgs[0].equals(netIdLdapFieldName)) {
+                Logger.debug("ldap.stubserver: client searched on a field '"+(filterArgs[0]==null?"":filterArgs[0])+"' that wasn't the NetID field. No results will be found.");
+                return EmptyNamingEnumeration.single;
+            }
+            if (filterArgs.length<2 || StringUtils.isBlank((String)filterArgs[1])) {
+                Logger.debug("ldap.stubserver: blank NetID search value. No results will be found.");
+                return EmptyNamingEnumeration.single;
+            }
+
+            // Actually see if we have it
+            final String requestedNetId = (String)filterArgs[1];
+            if (requestedNetId.equals(attributes.get(netIdLdapFieldName))) {
+                // found results
+                Logger.debug("ldap.stubserver: found records match for user "+requestedNetId);
+                return new SingleStubNamingEnumeration<SearchResult>();
+            } else {
+                // no results
+                Logger.debug("ldap.stubserver: no records match for user "+requestedNetId);
+                return EmptyNamingEnumeration.single;
+            }
         }
 
         @Override
