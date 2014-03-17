@@ -1,5 +1,6 @@
 package org.tdl.vireo.security.impl;
 
+import com.sun.org.apache.xml.internal.security.Init;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
@@ -10,6 +11,7 @@ import play.mvc.Http.Request;
 
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
+import javax.management.RuntimeErrorException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.*;
@@ -17,7 +19,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 
-// adapted starting from org.dspace.authenticate.LDAPAuthentication and several Vireo classes.
+// adapted and created starting from org.dspace.authenticate.LDAPAuthentication and several Vireo classes.
 /**
  * Authenticates netID and password against LDAP. Retrieves personal information.
  * Selects or creates correct Person. Logs in.
@@ -40,25 +42,19 @@ public class LDAPAuthenticationMethodImpl extends
     /**
      * LDAP search scope. May be object scope, single-level, or subtree.
      * Correct value will depend on your LDAP setup.
+     * Normally constants would be uppercase, but direct exposure via Spring in
+     * application.conf makes lowercase nicer for non programmers.
      */
     public enum SearchScope {
-        /**
-         * object level LDAP search scope
-         */
-        OBJECT (0),
-        /**
-         * single level LDAP search scope
-         */
-        @SuppressWarnings({"UnusedDeclaration"})
-        SINGLE (1),
-        /**
-         * subtree LDAP search scope
-         */
-        @SuppressWarnings({"UnusedDeclaration"})
-        SUBTREE (2);
+        /** object level LDAP search scope */
+        object(0),
+        /** single level LDAP search scope */
+        @SuppressWarnings({"UnusedDeclaration"}) single(1),
+        /** subtree LDAP search scope */
+        @SuppressWarnings({"UnusedDeclaration"}) subtree(2);
 
-        int code;
-        SearchScope(int code) {
+        private int code;
+        private SearchScope(int code) {
             this.code = code;
         }
 
@@ -66,7 +62,7 @@ public class LDAPAuthenticationMethodImpl extends
             return code;
         }
     }
-    private SearchScope searchScope = SearchScope.OBJECT;
+    private SearchScope searchScope = SearchScope.object;
 
     // search for user DN and attributes anonymously?
     private boolean searchAnonymous = false;
@@ -125,7 +121,7 @@ public class LDAPAuthenticationMethodImpl extends
 
     /**
      * Student ID is stored as a Preference in Person, since there's no dedicated field for it.
-     * This is the name of the Preference it's stored in.
+     * (Maybe that will change if more people want it?) This is the name of the Preference it's stored in.
      *
      * Pros: doesn't require db schema change; having arbitrary named String data on a student is flexible
      * Cons: this isn't what people/code expects to see in a field called preferences.
@@ -134,20 +130,22 @@ public class LDAPAuthenticationMethodImpl extends
 
     // mapping from names of fields we can collect to the names used in LDAP for those fields
     private Map <AttributeName, String> ldapFieldNames = new HashMap<AttributeName, String>();
-    
-	// Whether LDAP responses and authentication will be test stub values or real.
-	private boolean testStub = false;
-
-	// map of fake ldap user attributes injected directly as test stub values
-    private Map<String, String> stubAttributes;
-
-    // test stub DN expected for authentication match
-    private String stubUserDn;
 
     /**
-     * test stub password might as well just be hardcoded.
+     * Swaps out the normal LDAP context factory implementation for another one.
+     * Intended to be used with a mock/stub implementation for testing.
+     * @param newFactoryName the class name of the new LDAP context factory to swap in
+     * @return the class name of the old LDAP context factory being swapped out
      */
-    public static final String stubPassword = "secret";
+    public String swapInitialDirContextFactory(String newFactoryName) {
+        String oldFactoryName = initialDirContextFactory;
+        initialDirContextFactory = newFactoryName;
+        return oldFactoryName;
+    }
+    // Correct default java LDAP connection factory.
+    private String initialDirContextFactory = "com.sun.jndi.ldap.LdapCtxFactory";
+
+
 
     /**
      * This is the url to the institution's ldap server. The /o=myu.edu
@@ -327,6 +325,9 @@ public class LDAPAuthenticationMethodImpl extends
         if (StringUtils.isBlank(ldapFieldNames.get(AttributeName.NetID))) {
             throw new IllegalArgumentException("ldap: missing required attribute NetID in the provided ldapFieldNames.");
         }
+        if (ldapFieldNames == this.ldapFieldNames) {
+            return; // trying to feed me my own fields
+        }
 
         this.ldapFieldNames.clear();
         // save all non-blank mappings. (some may be present but blank depending on Spring/config setup)
@@ -338,43 +339,6 @@ public class LDAPAuthenticationMethodImpl extends
     }
     public Map<AttributeName, String> getLdapFieldNames() {
         return ldapFieldNames;
-    }
-
-    /**
-     * @param testStub
-     * True if, instead of connecting to a real LDAP, we should instead connect
-     * to a table of test values to return for specific queries.
-     */
-    public void setTestStub(boolean testStub) {
-        this.testStub = testStub;
-    }
-
-    /**
-     * If this authentication method is configured for a test stub LDAP
-     * connection then these are the raw LDAP field names and attributes
-     * that will be returned from the test stub LDAP service when authenticating.
-     *
-     * The map should contain LDAP field names as keys and corresponding
-     * LDAP attribute data as values.
-     *
-     * @param stubAttributes
-     *            A map of stub LDAP attributes.
-     */
-    public void setStubAttributes(Map<String, String> stubAttributes) {
-        this.stubAttributes = stubAttributes;
-    }
-    public Map<String, String> getStubAttributes() {
-        return stubAttributes;
-    }
-
-    /**
-     * If this authentication method is configured to use a test stub LDAP
-     * connection then this is the DN that needs to be matched for
-     * authentication to succeed.
-     * @param stubUserDn a stub user DN to match against
-     */
-    public void setStubUserDn(String stubUserDn) {
-        this.stubUserDn = stubUserDn;
     }
 
     /**
@@ -517,6 +481,11 @@ public class LDAPAuthenticationMethodImpl extends
                 }
 
 				// Create the new person
+                if (personRepo.findPersonByEmail(email)!=null) {
+                    // This check is not strictly necessary since the next try block would catch this too, but this is more specific and clean.
+                    Logger.info("ldap: attempted to create new person netID="+netID+" but email="+email+" was already taken.");
+                    return AuthenticationResult.BAD_CREDENTIALS;
+                }
 				try {
 					person = personRepo.createPerson(netID, email, firstName, lastName, RoleType.STUDENT).save();
 				} catch (RuntimeException re) {
@@ -600,7 +569,7 @@ public class LDAPAuthenticationMethodImpl extends
         }
 
         // set up connection
-        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, initialDirContextFactory);
         env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
         // set up search scope
@@ -609,37 +578,22 @@ public class LDAPAuthenticationMethodImpl extends
 
         DirContext ctx = null;
         try {
+            // do search, filtering on netID, with configured search setup
+            ctx = new InitialDirContext(env);
+            NamingEnumeration<SearchResult> answer = ctx.search(
+                    providerURL + searchContext,
+                    "(&({0}={1}))",
+                    new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
+                    controls);
+
+            // if one user matched, save it.
             SearchResult sr = null;
-
-            if (!testStub) {
-                // do search, filtering on netID, with configured search setup
-                ctx = new InitialDirContext(env);
-                NamingEnumeration<SearchResult> answer = ctx.search(
-                        providerURL + searchContext,
-                        "(&({0}={1}))", new Object[] { ldapFieldNames.get(AttributeName.NetID), netID },
-                        controls);
-
-                // if one user matched, save it.
-                if (answer.hasMoreElements()) {
-                    sr = answer.next();
-                }
-                // if more than one user matched the same netID, well, um... Oh dear. Config error?
-                if (answer.hasMoreElements()) {
-                    Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
-                }
-            } else {
-                // for connection to stub test, save the canned results if the given NetID matches the stub record's NetID field.
-                if (netID.equals(stubAttributes.get(ldapFieldNames.get(AttributeName.NetID)))) {
-                    // for test, make a fake SearchResult using given stub attributes
-                    Attributes attrs = new BasicAttributes();
-                    for (Map.Entry<String, String> entry : stubAttributes.entrySet()) {
-                        attrs.put(entry.getKey(), entry.getValue());
-                    }
-                    // This is not a DN. This is just the raw node name as LDAP
-                    // would return it but before further processing by this method.
-                    String stubName = ldapFieldNames.get(AttributeName.NetID)+"="+netID;
-                    sr = new SearchResult(stubName, null, attrs, true);
-                }
+            if (answer.hasMoreElements()) {
+                sr = answer.next();
+            }
+            // if more than one user matched the same netID, well, um... Oh dear. Config error?
+            if (answer.hasMoreElements()) {
+                Logger.error("ldap.search: more than one user in LDAP for netID=" + netID+"! Using the first one.");
             }
 
             // if no user was found, we're done.
@@ -702,7 +656,7 @@ public class LDAPAuthenticationMethodImpl extends
 
         // set up environment for creating initial context
         Hashtable<String, String> env = new Hashtable<String, String>();
-        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+        env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY, initialDirContextFactory);
         env.put(javax.naming.Context.PROVIDER_URL, providerURL);
 
         // set up authentication credentials
@@ -714,18 +668,8 @@ public class LDAPAuthenticationMethodImpl extends
 
         DirContext ctx = null;
         try {
-            if (!testStub) {
-                // Try to bind
-                ctx = new InitialDirContext(env);
-            } else {
-                // for test stub connection, check that DN and password match stub values
-                if (StringUtils.isBlank(stubUserDn) || !stubUserDn.equals(dn)) {
-                    throw new NamingException("ldap.stubserver: user DN doesn't match required DN="+((stubUserDn ==null)?"null": stubUserDn));
-                }
-                if (StringUtils.isBlank(stubPassword) || !stubPassword.equals(password)) {
-                    throw new NamingException("ldap.stubserver: incorrect password");
-                }
-            }
+            // Try to bind
+            ctx = new InitialDirContext(env);
         } catch (NamingException e) {
             Logger.debug("ldap.auth: server refused to authenticate DN=" + dn + " due to " + e.getExplanation());
             return false;

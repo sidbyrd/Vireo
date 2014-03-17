@@ -92,7 +92,7 @@ public abstract class LuceneAbstractJobImpl extends Job {
 	}
 	
 	/**
-	 * Single to the running job that it should be cancelled. If the job is
+	 * Signal to the running job that it should be cancelled. If the job is
 	 * currently in progress it will stop after the next submission, rollback
 	 * any uncommitted changes to the index and finish processing.
 	 */
