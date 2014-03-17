@@ -486,7 +486,6 @@ public class CustomImageTest extends UnitTest {
     }
 
     // not tested: CustomImage.tallerHeight(name1, name2).
-    // Would require two different CIName images set up for testing (we only have one), but it's a trivial method.
 
     // Not tested: CustomImage.fileDescription.
     // It's just a very simple combination of other methods which *are* tested, but would be annoyingly wordy to test directly.
