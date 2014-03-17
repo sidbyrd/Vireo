@@ -4,6 +4,7 @@ import controllers.AbstractVireoFunctionalTest;
 import org.junit.*;
 import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
+import org.tdl.vireo.model.MockSettingsRepository;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
@@ -37,10 +38,23 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 	public static PersonRepository personRepo = Spring.getBeanOfType(PersonRepository.class);
 	public static SettingsRepository settingRepo = Spring.getBeanOfType(SettingsRepository.class);
 
+    /** stubs to avoid stomping real data during test */
+    private static String origPath = null;
+    private static File tempDir = null;
+    private static SettingsRepository origRepo = null;
+
     @BeforeClass
     public static void setupClass() throws IOException{
-        ThemeDirectory.setTest(true);
-        CustomImage.setTest(true);
+        // don't stomp on existing theme dir
+        tempDir = java.nio.file.Files.createTempDirectory(null).toFile();
+        tempDir.deleteOnExit();
+        origPath = ThemeDirectory.swapPath(tempDir.getPath());
+        // don't stomp on existing Configuration values
+        MockSettingsRepository mockRepo = new MockSettingsRepository();
+        origRepo = CustomImage.swapSettingsRepo(mockRepo);
+
+        // if it somehow wasn't already, reset to default.
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
     }
 
 	@Before
@@ -63,8 +77,12 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
     @AfterClass
     public static void cleanupClass() throws IOException {
-        ThemeDirectory.setTest(false);
-        CustomImage.setTest(false);
+        for (File file : tempDir.listFiles()) {
+            file.delete();
+        }
+        tempDir.delete();
+        ThemeDirectory.swapPath(origPath);
+        CustomImage.swapSettingsRepo(origRepo);
     }
 	
 	/**

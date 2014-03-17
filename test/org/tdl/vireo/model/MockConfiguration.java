@@ -16,6 +16,14 @@ public class MockConfiguration extends AbstractMock implements Configuration {
 	/* Configuration Properties */
 	public String name;
 	public String value;
+    public boolean deleted = false;
+
+    public MockConfiguration() {}
+    
+    public MockConfiguration(String name, String value) {
+        this.name = name;
+        this.value = value;
+    }
 
 	@Override
 	public MockConfiguration save() {
@@ -24,6 +32,7 @@ public class MockConfiguration extends AbstractMock implements Configuration {
 
 	@Override
 	public MockConfiguration delete() {
+        deleted = true;
 		return this;
 	}
 

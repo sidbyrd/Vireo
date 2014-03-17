@@ -8,6 +8,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.tdl.vireo.constant.AppConfig;
+import org.tdl.vireo.model.MockSettingsRepository;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
@@ -50,23 +51,33 @@ public class CustomImageTest extends UnitTest {
     private static File fileJpgLarge;
     private static File fileGifLarge;
 
+    /** stubs to avoid stomping real data during test */
+    private static String origPath = null;
+    private static File tempDir = null;
+    private static SettingsRepository origRepo = null;
+
     @BeforeClass
     public static void setupClass() throws IOException{
         context.turnOffAuthorization();
 
-        // don't stomp on existing theme configuration
-        ThemeDirectory.setTest(true);
-        CustomImage.setTest(true);
+        // don't stomp on existing theme dir
+        tempDir = java.nio.file.Files.createTempDirectory(null).toFile();
+        tempDir.deleteOnExit();
+        origPath = ThemeDirectory.swapPath(tempDir.getPath());
+        // don't stomp on existing Configuration values
+        MockSettingsRepository mockRepo = new MockSettingsRepository();
+        origRepo = CustomImage.swapSettingsRepo(mockRepo);
 
         // if it somehow wasn't already, reset to default.
         CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
 
-        // initialize unchanging data and resources used in multiple tests
+        // save default state so we can compare to it later
         urlDefault1x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, false);
         urlDefault2x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, true);
         defaultWidth = CustomImage.displayWidth(AppConfig.CIName.LEFT_LOGO);
         defaultHeight = CustomImage.displayHeight(AppConfig.CIName.LEFT_LOGO);
 
+        // initialize unchanging data and resources used in multiple tests
         urlPng1x = ThemeDirectory.URL_PREFIX+"left-logo.png";
         urlPng2x = ThemeDirectory.URL_PREFIX+"left-logo@2x.png";
         urlJpg1x = ThemeDirectory.URL_PREFIX+"left-logo.jpg";
@@ -77,26 +88,22 @@ public class CustomImageTest extends UnitTest {
         filePngOdd = Utilities.getResourceFile("SampleFeedbackDocument.png"); // odd: 541x378
         fileJpgLarge = Utilities.getResourceFile("SampleLogo-double.jpg"); // any jpg
         fileGifLarge = Utilities.getResourceFile("SampleLogo-double.gif"); // any gif
-
-        JPA.em().getTransaction().commit();
-        JPA.em().clear();
-        JPA.em().getTransaction().begin();
     }
 
     @After
     public void cleanup() throws IOException{
-        JPA.em().getTransaction().rollback();
-        JPA.em().clear();
-        JPA.em().getTransaction().begin();
-
-        CustomImage.reset(AppConfig.CIName.LEFT_LOGO); // make sure to leave no files from failed tests
+        CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
     }
 
     @AfterClass
     public static void cleanupClass() throws IOException {
         context.restoreAuthorization();
-        ThemeDirectory.setTest(false);
-        CustomImage.setTest(false);
+        for (File file : tempDir.listFiles()) {
+            file.delete();
+        }
+        tempDir.delete();
+        ThemeDirectory.swapPath(origPath);
+        CustomImage.swapSettingsRepo(origRepo);
     }
 
     // Since these defaults are queried from CustomImage and then used to verify later operations,

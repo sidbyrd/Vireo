@@ -525,8 +525,7 @@ public class TestDataLoader extends Job {
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
 
-                //ThemeDirectory.setTest(true);
-                //CustomImage.setTest(true);
+                // mock theme directory / custom image stuff here, if you care
 
 				loadPeople();
 				loadSettings();

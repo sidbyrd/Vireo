@@ -43,41 +43,16 @@ public final class CustomImage {
     private static final String marker2x = "@2x";
 
     /**
-     * Enters or leaves test mode, where settings are saved to an alternate set of
-     * configuration keys. When entering, existing CustomImage configuration values
-     * and defaults are copied from the real configs to the temporary test ones.
-     * When leaving, the test configs and defaults are deleted.
-      * @param test whether to enter or leave test mode
+     * Swaps out the normal settings repository for another one.
+     * Intended to be used with a MockSettingsRepository for testing.
+     * @param newRepo the new settings repository to swap in
+     * @return the previous settings repository that was swapped out
      */
-    public static void setTest(boolean test) {
-        if (test) {
-            prefix = "test_";
-            // copy all existing CustomImage configs to test keys
-            for (AppConfig.CIName name : AppConfig.CIName.values()) {
-                for (String key : Arrays.asList(AppConfig.CI_URLPATH, AppConfig.CI_WIDTH, AppConfig.CI_HEIGHT, AppConfig.CI_2X)) {
-                    Configuration config = settingRepo.findConfigurationByName(name+key);
-                    if (config != null) {
-                        settingRepo.saveConfiguration(prefix+name+key, config.getValue());
-                    }
-                    Configuration.DEFAULTS.register(prefix+name+key, Configuration.DEFAULTS.get(name+key));
-                }
-            }
-        } else {
-            // delete all test keys for all images
-            for (AppConfig.CIName name : AppConfig.CIName.values()) {
-                for (String key : Arrays.asList(AppConfig.CI_URLPATH, AppConfig.CI_WIDTH, AppConfig.CI_HEIGHT, AppConfig.CI_2X)) {
-                    Configuration config = settingRepo.findConfigurationByName("test_"+name+key);
-                    if (config != null) {
-                        config.delete();
-                        Logger.info("deleted test_"+name+key);
-                    }
-                    Configuration.DEFAULTS.unregister("test_" + name + key);
-                }
-            }
-            prefix = "";
-        }
+    public static SettingsRepository swapSettingsRepo(SettingsRepository newRepo) {
+        SettingsRepository oldRepo = settingRepo;
+        settingRepo = newRepo;
+        return oldRepo;
     }
-    private static String prefix = "";
 
     /*****************************************************************
      * Information about how to display (called from/passed to views)
@@ -112,7 +87,7 @@ public final class CustomImage {
      * @return the correct pixel width at which to display the image
      */
     public static String displayWidth(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_WIDTH);
+        return settingRepo.getConfigValue(name+AppConfig.CI_WIDTH);
     }
 
     /**
@@ -121,7 +96,7 @@ public final class CustomImage {
      * @return the correct pixel height at which to display the image
      */
     public static String displayHeight(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_HEIGHT);
+        return settingRepo.getConfigValue(name+AppConfig.CI_HEIGHT);
     }
 
     /**
@@ -154,7 +129,7 @@ public final class CustomImage {
      * @return whether 1x and 2x use the same file
      */
     public static boolean is1xScaled(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SAME);
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SAME);
     }
 
     /**
@@ -164,7 +139,7 @@ public final class CustomImage {
      * @return whether 1x and 2x have separate files
      */
     public static boolean is2xSeparate(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SEPARATE);
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_SEPARATE);
     }
 
     /**
@@ -173,7 +148,7 @@ public final class CustomImage {
      * @return whether there is no file appropriate for 2x
      */
     public static boolean is2xNone(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_NONE);
+        return settingRepo.getConfigValue(name+AppConfig.CI_2X).equals(AppConfig.CI_2XVAL_NONE);
     }
 
     /**
@@ -257,8 +232,8 @@ public final class CustomImage {
                         throw new IllegalArgumentException(Messages.get("CI_ERROR_MISMATCHED_FORMAT").replace("EXT",extensionOld));
                     }
                     final int factorOfDisplayDims = is2x? 2 : 1;
-                    if (   h != factorOfDisplayDims* settingRepo.getConfigInt(prefix + name + AppConfig.CI_HEIGHT)
-                        || w != factorOfDisplayDims* settingRepo.getConfigInt(prefix+name+AppConfig.CI_WIDTH)) {
+                    if (   h != factorOfDisplayDims* settingRepo.getConfigInt(name+AppConfig.CI_HEIGHT)
+                        || w != factorOfDisplayDims* settingRepo.getConfigInt(name+AppConfig.CI_WIDTH)) {
                         throw new IllegalArgumentException(Messages.get("CI_ERROR_MISMATCHED_DIMENSIONS"));
                     }
                 }
@@ -274,25 +249,25 @@ public final class CustomImage {
             // Set 2x metadata
             if (CustomImage.hasCustomFile(name, !is2x)) {
                 // added file to existing counterpart customization
-                settingRepo.saveConfiguration(prefix+name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
+                settingRepo.saveConfiguration(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SEPARATE);
                 if (is2x) {
                     // keep existing name and size of 1x
                     return;
                 }
             } else if (!is2x) {
                 // 1x added as standalone
-                settingRepo.saveConfiguration(prefix+name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
+                settingRepo.saveConfiguration(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_NONE);
             } else {
                 // 2x added as standalone
-                settingRepo.saveConfiguration(prefix+name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
+                settingRepo.saveConfiguration(name+AppConfig.CI_2X, AppConfig.CI_2XVAL_SAME);
                 // use 2x name and display at half size
                 h *= 0.5; w *= 0.5;
             }
 
             // Set basic image metadata.
-            settingRepo.saveConfiguration(prefix+name+AppConfig.CI_URLPATH, ThemeDirectory.urlForFile(newFile));
-            settingRepo.saveConfiguration(prefix+name+AppConfig.CI_HEIGHT, String.valueOf(h));
-            settingRepo.saveConfiguration(prefix+name+AppConfig.CI_WIDTH, String.valueOf(w));
+            settingRepo.saveConfiguration(name+AppConfig.CI_URLPATH, ThemeDirectory.urlForFile(newFile));
+            settingRepo.saveConfiguration(name+AppConfig.CI_HEIGHT, String.valueOf(h));
+            settingRepo.saveConfiguration(name+AppConfig.CI_WIDTH, String.valueOf(w));
         }
     }
 
@@ -312,8 +287,8 @@ public final class CustomImage {
                 resetMetadata(name);
             } else {
                 // Counterpart exists - switch to it (if it isn't already)
-                settingRepo.saveConfiguration(prefix+name+AppConfig.CI_URLPATH, CustomImage.url(name, !is2x));
-                settingRepo.saveConfiguration(prefix+name+AppConfig.CI_2X, is2x? AppConfig.CI_2XVAL_NONE : AppConfig.CI_2XVAL_SAME);
+                settingRepo.saveConfiguration(name+AppConfig.CI_URLPATH, CustomImage.url(name, !is2x));
+                settingRepo.saveConfiguration(name+AppConfig.CI_2X, is2x? AppConfig.CI_2XVAL_NONE : AppConfig.CI_2XVAL_SAME);
             }
         }
     }
@@ -371,7 +346,7 @@ public final class CustomImage {
      * @return base URL path, relative to application base
      */
     private static String baseUrl(AppConfig.CIName name) {
-        return settingRepo.getConfigValue(prefix+name+AppConfig.CI_URLPATH);
+        return settingRepo.getConfigValue(name+AppConfig.CI_URLPATH);
     }
 
     /**
@@ -381,7 +356,7 @@ public final class CustomImage {
      */
     private static void resetMetadata(AppConfig.CIName name) {
         for (String key : Arrays.asList(AppConfig.CI_URLPATH, AppConfig.CI_WIDTH, AppConfig.CI_HEIGHT, AppConfig.CI_2X)) {
-            Configuration config = settingRepo.findConfigurationByName(prefix+name+key);
+            Configuration config = settingRepo.findConfigurationByName(name+key);
             if (config != null) {
                 config.delete();
             }

@@ -48,30 +48,18 @@ public class ThemeDirectory {
     }
 
     /**
-     * Control test mode, where files are saved to a temp directory that is not actually visible
-     * via HTTP and which is deleted when switching out of test.
-     * @param testMode whether to turn test mode on or off
-     * @throws IOException if temp directory couldn't be created
+     * Swaps out the normal path to the theme dir for another one.
+     * Intended to be used with a temp dir for testing.
+     * @param newPath the new directory to swap in
+     * @return the previous path that was swapped out
      */
-    public static void setTest(boolean testMode) throws IOException {
-        if (testMode) {
-            // entering test
-            File tempdir = java.nio.file.Files.createTempDirectory(null).toFile();
-            tempdir.deleteOnExit();
-            path = tempdir.getPath();
-        } else {
-            // leaving test
-            // clean up any files created while in test.
-            File tempdir = new File(getPath());
-            for (File file : tempdir.listFiles()) {
-                file.delete();
-            }
-            tempdir.delete();
-            path = null;
-        }
+    public static String swapPath(String newPath) {
+        String oldPath = path;
+        path = newPath;
+        return oldPath;
     }
-
-    /**
+    
+   /**
      * Verify existence of the theme directory
      * @param create whether to create it if it doesn't exist
      * @return whether the theme directory exists (after trying to create it, if requested)
