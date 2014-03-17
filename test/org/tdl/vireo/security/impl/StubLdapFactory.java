@@ -115,10 +115,12 @@ public class StubLdapFactory implements InitialContextFactory{
                 if (userPass==null) {
                     authUser = true;
                     Logger.debug("ldap.stubserver: user bind anonymous success");
-                } else if (adminDn==null && adminPass==null) {
+                }
+                if (adminDn==null && adminPass==null) {
                     authAdmin = true;
                     Logger.debug("ldap.stubserver: admin bind anonymous success");
-                } else {
+                }
+                if (!authAdmin && !authUser) {
                     Logger.debug("ldap.stubserver: bind failed: anonymous auth not allowed");
                     throw new NamingException("ldap.stub: anonymous auth not allowed");
                 }
