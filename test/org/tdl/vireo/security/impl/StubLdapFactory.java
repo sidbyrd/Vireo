@@ -3,12 +3,10 @@ package org.tdl.vireo.security.impl;
 import org.apache.commons.lang.StringUtils;
 import play.Logger;
 
-import javax.management.RuntimeErrorException;
 import javax.naming.*;
 import javax.naming.directory.*;
 import javax.naming.spi.InitialContextFactory;
 import java.net.UnknownHostException;
-import java.security.InvalidParameterException;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.NoSuchElementException;

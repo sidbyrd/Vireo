@@ -1,6 +1,5 @@
 package org.tdl.vireo.security.impl;
 
-import com.sun.org.apache.xml.internal.security.Init;
 import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
@@ -11,12 +10,10 @@ import play.mvc.Http.Request;
 
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
-import javax.management.RuntimeErrorException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.*;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
