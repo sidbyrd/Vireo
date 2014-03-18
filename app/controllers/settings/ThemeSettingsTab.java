@@ -25,7 +25,7 @@ import static org.tdl.vireo.constant.AppConfig.*;
 public class ThemeSettingsTab extends SettingsTab {
 
     /** max size in bytes of uploaded custom images */
-    public final static int MAX_UPLOAD_SIZE = 1024*1024; // if you change this, change the error message in verifyFile()
+    public final static int MAX_UPLOAD_SIZE = 1024*1024; // if you change this, change the error message in verifySize()
 
 	@Security(RoleType.MANAGER)
 	public static void themeSettings() {
@@ -150,11 +150,11 @@ public class ThemeSettingsTab extends SettingsTab {
                         CustomImage.deleteFile(verifiedName, true);
                     }
                     if (params._contains("submit_upload") && image1x != null) {
-                        verifyFile(image1x);
+                        verifySize(image1x);
                         CustomImage.replaceFile(verifiedName, false, image1x);
                     }
                     if (params._contains("submit_upload") && image2x != null) {
-                        verifyFile(image2x);
+                        verifySize(image2x);
                         CustomImage.replaceFile(verifiedName, true, image2x);
                     }
                     break;
@@ -170,12 +170,13 @@ public class ThemeSettingsTab extends SettingsTab {
 	}
 
     /**
-     * Checks that a file intended for use as a logo image is appropriate.
+     * Checks that a CustomImage intended for use as a main logo image is appropriate.
      * @param file the file to check
      * @throws IllegalArgumentException if the file is too big, too small, or not really a file
      */
-    private static void verifyFile (File file) throws IllegalArgumentException {
-        if (file.length() <= 0L) {
+    private static void verifySize(File file) throws IllegalArgumentException {
+        if (file.length() <= 0) {
+            // apparently browsers/play will often fail to even deliver a size==0 file, but might as well check.
             throw new IllegalArgumentException("The image was empty"); // more informative than the "invalid format" error that would happen later
         }
         if (file.length() > MAX_UPLOAD_SIZE) {

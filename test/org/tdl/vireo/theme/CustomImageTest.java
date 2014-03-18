@@ -213,6 +213,17 @@ public class CustomImageTest extends UnitTest {
 
     // default: delete1x -> unchanged, delete2x -> unchanged, reset -> unchanged
     @Test public void test_unchanged_fromDefault_remove1xRemove2xReset() throws IOException {
+        // Normal checking doesn't look at the default image files on disk. Do for this test.
+        // That makes this test a bit configuration dependent--it assumes the default files are in /public.
+        final File fileDefault1x = CustomImage.is1xScaled(AppConfig.CIName.LEFT_LOGO)? null : new File(urlDefault1x);
+        if (fileDefault1x!=null) {
+            assertTrue(fileDefault1x.exists());
+        }
+        final File fileDefault2x = CustomImage.is2xNone(AppConfig.CIName.LEFT_LOGO)? null : new File(urlDefault2x);
+        if (fileDefault2x!=null) {
+            assertTrue(fileDefault2x.exists());
+        }
+
         CustomImage.deleteFile(AppConfig.CIName.LEFT_LOGO, false);
         // check: default
         assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
@@ -224,6 +235,14 @@ public class CustomImageTest extends UnitTest {
         CustomImage.reset(AppConfig.CIName.LEFT_LOGO);
         // check: default
         assertCustomImageState(urlDefault1x, urlDefault2x, defaultWidth, defaultHeight, null, null, 1);
+
+        // make sure we didn't actually delete the default files
+        if (fileDefault1x!=null) {
+            assertTrue(fileDefault1x.exists());
+        }
+        if (fileDefault2x!=null) {
+            assertTrue(fileDefault2x.exists());
+        }
     }
 
     /* *************************

@@ -23,7 +23,6 @@ public class Utilities {
 	/**
 	 * Scrub UNICODE control characters out of the provided string, deleteing them 
 	 * @param input
-	 * @param replace
 	 * @return
 	 */
 	public static String scrubControl(String input) {
@@ -95,19 +94,19 @@ public class Utilities {
     /**
      * Creates and returns a temp file with empty contents of the requested size
      * @param filesize how many bytes of empty to put in the file
+     * @param extension the file extension to give the new file
      * @return temp file of given size
      * @throws IOException if couldn't be created
      */
-    public static File blankFileWithSize(int filesize) throws IOException {
-        File file = File.createTempFile("blank", null);
+    public static File blankFileWithSize(int filesize, String extension) throws IOException {
+        File file = File.createTempFile("blank", '.'+extension);
         file.deleteOnExit();
 
         OutputStream os = new FileOutputStream(file);
         try {
             byte[] buffer = new byte[1024];
-            while (filesize > 0) {
-                os.write(buffer, 0, filesize);
-                filesize -= 1024;
+            for (int pos=0; pos < filesize; pos += 1024) {
+                os.write(buffer, 0, Math.min(1024, filesize-pos));
             }
         } finally {
             os.close();

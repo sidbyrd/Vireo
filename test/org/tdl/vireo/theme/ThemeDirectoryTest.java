@@ -71,9 +71,16 @@ public class ThemeDirectoryTest extends UnitTest{
         File file2 = ThemeDirectory.getFile("foo.txt");
         assertTrue(file2.exists());
         // verify contents
-        FileInputStream in = new FileInputStream(file2);
-        String contents = IOUtils.toString(in, "UTF-8");
-        assertEquals("correct", contents);
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(file2);
+            final String contents = IOUtils.toString(in, "UTF-8");
+            assertEquals("correct", contents);
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+        }
     }
 
     @Test public void testListFiles() throws IOException {

@@ -1,6 +1,7 @@
 package controllers.settings;
 
 import controllers.AbstractVireoFunctionalTest;
+import org.apache.commons.lang.StringUtils;
 import org.junit.*;
 import org.tdl.vireo.constant.AppConfig;
 import org.tdl.vireo.model.Configuration;
@@ -43,6 +44,11 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
     private static File tempDir = null;
     private static SettingsRepository origRepo = null;
 
+    /** stuff common to many tests */
+    private static final Map<String,String> params = new HashMap<String,String>(4);
+    private static final Map<String,File> files = new HashMap<String,File>(2);
+    private static final String urlUploadImage = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
+
     @BeforeClass
     public static void setupClass() throws IOException{
         // don't stomp on existing theme dir
@@ -64,6 +70,9 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		JPA.em().getTransaction().commit();
 		JPA.em().clear();
 		JPA.em().getTransaction().begin();
+
+        params.clear();
+        files.clear();
 	}
 	
 	@After
@@ -152,233 +161,148 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 		}
 	}
 
-    // Private helper. Passes through to CustomImageTest.assertCustomImageState (see docs there) after doing the
-    // db stuff needed to view results of what the ThemeSettingsTab controller did in its separate db context.
-    private static void assertUploadedImageState(String urlName1x, String urlName2x, String width, String height, File custom1xFile, File custom2xFile, int code2x) throws IOException {
-        JPA.em().getTransaction().rollback(); // throw out my own previous context. I haven't been making important changes here anyway.
-		JPA.em().getTransaction().begin(); // reload saved context, which includes changes just saved by what was tested.
-        CustomImageTest.assertCustomImageState(urlName1x, urlName2x, width, height, custom1xFile, custom2xFile, code2x);
+    /**
+     * Asserts that the "flash" cookie contains the given error message, or if null, asserts that
+     * there is no error.
+     * @param response the HTTP Response in which to check
+     * @param errorText the error text to check for, or null to assert no error
+     */
+    private static void assertErrorMessage(Response response, String errorText) {
+        final String flash = response.cookies.get("PLAY_FLASH").value;
+        if (errorText != null) {
+            errorText = errorText.replace(' ','+');
+            assertTrue("flash should contain '+fragment+' but was "+flash+'\'', flash.contains(errorText));
+        } else {
+            assertTrue("flash should be blank but was '"+flash+'\'', StringUtils.isBlank(flash));
+        }
     }
 
-    // try to upload an image with 0 filesize
-    public void testUploadImage_filesize_minimum() throws IOException {
-        final Map<String,String> params = new HashMap<String,String>(4);
-        final Map<String,File> files = new HashMap<String,File>(2);
-        final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
+    // Make sure deleting a default image doesn't actually do anything
+    @Test public void testUploadImage_deleteDefault() {
         LOGIN();
-
         params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        params.put("submit_upload", "true");
-		files.put("image1x", Utilities.blankFileWithSize(0));
-		Http.Response response = POST(URL,params,files);
-        // should be rejected, and image data should stay default
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("image+was+empty"));
-        //assertUploadedImageState(CustomImageTest.urlDefault1x, CustomImageTest.urlDefault1x, "150", "50", null, null, 1);
-    }
-
-    // try to upload an image with filesize 1 byte over the max limit enforced by ThemeSettingsTab controller
-    public void testUploadImage_filesize_maximum() throws IOException {
-        final Map<String,String> params = new HashMap<String,String>(4);
-        final Map<String,File> files = new HashMap<String,File>(2);
-        final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
-        LOGIN();
-
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        params.put("submit_upload", "true");
-		files.put("image1x", Utilities.blankFileWithSize(ThemeSettingsTab.MAX_UPLOAD_SIZE+1));
-		Http.Response response = POST(URL,params,files);
-        // should be rejected, and image data should stay default
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("maximum+image+size"));
-        //assertUploadedImageState(CustomImageTest.urlDefault1x, CustomImageTest.urlDefault1x, "150", "50", null, null, 1);
-    }
-
-    //TODO
-    // split up the giant testUploadingImage() test
-    // focus here on testing interface bits, not CI function.
-
-	/**
-	 * Test various cases and orderings of uploading and deleting custom images, both the 1x
-     * and 2x versions.
-	 * @throws IOException
-	 */
-	@Test
-	public void testUploadingImage() throws IOException {
-        final Map<String,String> params = new HashMap<String,String>(4);
-        final Map<String,File> files = new HashMap<String,File>(2);
-
-        final String default1x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, false);
-        final String default2x = CustomImage.url(AppConfig.CIName.LEFT_LOGO, true);
-        final String defaultWidth = CustomImage.displayWidth(AppConfig.CIName.LEFT_LOGO);
-        final String defaultHeight = CustomImage.displayHeight(AppConfig.CIName.LEFT_LOGO);
-        final String png1x="theme/left-logo.png";
-        final String png2x="theme/left-logo@2x.png";
-        final String jpg1x="theme/left-logo.jpg";
-        final String gif1x="theme/left-logo.gif";
-        final File pngSmall = Utilities.getResourceFile("SampleLogo-single.png"); // single: 150*84
-        final File pngLarge = Utilities.getResourceFile("SampleLogo-double.png"); // double: 300*168
-        final File pngOdd = Utilities.getResourceFile("SampleFeedbackDocument.png"); // odd: 541x378
-        final File jpgLarge = Utilities.getResourceFile("SampleLogo-double.jpg"); // any jpg
-        final File gifLarge = Utilities.getResourceFile("SampleLogo-double.gif"); // any gif
-
-        LOGIN();
-
-		//Get the url
-		final String URL = Router.reverse("settings.ThemeSettingsTab.uploadImage").url;
-
-        // upload invalid 2x image onto default (non-even height/width)
-        params.put("submit_upload", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-		files.put("image2x", pngOdd);
-		Http.Response response = POST(URL,params,files);
-        // should be rejected, and image data should stay default
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("must+be+even"));
-        assertUploadedImageState(default1x, default2x, defaultWidth, defaultHeight, null, null, 1);
-
-        // upload 1x onto default (with odd dimensions)
-        files.clear();
-        files.put("image1x", pngOdd);
-        // should be accepted and set as standalone 1x image with no 2x
-        response = POST(URL,params,files);
-        assertStatus(302, response);
-        assertUploadedImageState(png1x, null, "541", "378", pngOdd, null, 0);
-
-        // upload a different (smaller) 1x onto existing 1x
-        files.clear();
-		files.put("image1x", pngSmall);
-		response = POST(URL,params,files);
-        // should be accepted and replace the previous 1x
-		assertStatus(302, response);
-        assertUploadedImageState(png1x, null, "150", "84", pngSmall, null, 0);
-
-        // upload invalid 1x image (true format is PNG but extension says GIF)
-        files.clear();
-		files.put("image1x", Utilities.getResourceFileWithExtension("SampleFeedbackDocument.png", "gif"));
-		response = POST(URL,params,files);
-        // should be rejected, and image data should stay the same
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("format+not+recognized"));
-        assertUploadedImageState(png1x, null, "150", "84", pngSmall, null, 0);
-
-        // upload incompatible 2x image (same format as 1x, not double the size)
-        files.clear();
-		files.put("image2x", pngSmall);
-		response = POST(URL,params,files);
-        // should be rejected, and image data should stay the same
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("dimensions+must+be+exactly+double"));
-        assertUploadedImageState(png1x, null, "150", "84", pngSmall, null, 0);
-
-        // upload incompatible 2x image (different format from 2x, double the size)
-        files.clear();
-		files.put("image2x", jpgLarge);
-		response = POST(URL,params,files);
-        // should be rejected, and image data should stay the same
-		assertStatus(302,response);
-        assertTrue(response.cookies.get("PLAY_FLASH").value.contains("extension+must+match"));
-        assertUploadedImageState(png1x, null, "150", "84", pngSmall, null, 0);
-
-        // upload valid new 2x (same format as 1x, double the size)
-		files.clear();
-		files.put("image2x", pngLarge);
-		response = POST(URL,params,files);
-        // should be accepted and image data set for separate 1x and 2x
-		assertStatus(302,response);
-        assertUploadedImageState(png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
-
-        // delete 1x, leaving 2x in place
-        params.clear();
-		params.put("delete1x", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        response = POST(URL,params,files);
-        // should be accepted and image data set for remaining image to be standalone 2x
-		assertStatus(302,response);
-        assertUploadedImageState(png2x, png2x, "150", "84", null, pngLarge, 2);
-
-        // upload invalid 1x (same extension as 2x, not half the size)
-        params.clear();
-        params.put("submit_upload", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        files.put("image1x", pngLarge);
-        response = POST(URL,params,files);
-        // should be rejected, and image data should stay the same
-		assertStatus(302,response);
-        assertUploadedImageState(png2x, png2x, "150", "84", null, pngLarge, 2);
-
-        // upload 1x onto existing 2x
-        files.clear();
-        files.put("image1x", pngSmall);
-        response = POST(URL,params,files);
-        // should be accepted and image data set for separate 1x and 2x
-		assertStatus(302,response);
-        assertUploadedImageState(png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
-
-        // delete 2x, leaving 1x in place
-        params.clear();
-		params.put("delete2x", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        response = POST(URL,params,files);
-        // should be accepted and data set for standalone 1x image
-        assertStatus(302,response);
-        assertUploadedImageState(png1x, null, "150", "84", pngSmall, null, 0);
-
-        // delete 1x with no existing 2x, resulting in default state
-        params.clear();
-		params.put("delete1x", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        response = POST(URL,params,files);
-        // should be default
-		assertStatus(302,response);
-        assertUploadedImageState(default1x, default2x, defaultWidth, defaultHeight, null, null, 1);
-
-        // upload 1x, upload 2x (valid combination)
-        params.clear();
-        params.put("submit_upload", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        files.put("image1x", pngSmall);
-        files.put("image2x", pngLarge);
-        response = POST(URL,params,files);
-        // should be accepted and data set for separate 1x and 2x
-        assertStatus(302,response);
-        assertUploadedImageState(png1x, png2x, "150", "84", pngSmall, pngLarge, 1);
-
-        // delete2x, upload different suddenly-valid 1x (JPEG), upload different 2x that's now an invalid combination with the JPEG
-        params.clear();
+        params.put("delete1x", "true");
         params.put("delete2x", "true");
-        params.put("submit_upload", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        files.put("image1x", jpgLarge);
-        files.put("image2x", pngSmall);
-        response = POST(URL,params,files);
-        // should be rejected ultimately, but not until 2x deleted, and 1x updated and data set for standalone 1x
-        assertStatus(302,response);
-        assertUploadedImageState(jpg1x, null, "300", "168", jpgLarge, null, 0);
+		Http.Response response = POST(urlUploadImage,params);
 
-        // upload a 1x GIF onto existing 1x JPG
-        files.clear();
-		files.put("image1x", gifLarge);
-		response = POST(URL,params,files);
-        // should be accepted and replace the previous 1x
-		assertStatus(302, response);
-        assertUploadedImageState(gif1x, null, "300", "168", gifLarge, null, 0);
-
-        // delete1x and attempt to submit a 2x, but fail to set submit_upload, resulting in default state
-        params.clear();
-		params.put("delete1x", "true");
-        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
-        files.clear();
-        files.put("image1x", pngSmall);
-        response = POST(URL,params,files);
-        // should be default
+        // no error, and image data should stay default
 		assertStatus(302,response);
-        assertUploadedImageState(default1x, default2x, defaultWidth, defaultHeight, null, null, 1);
-	}
+        assertErrorMessage(response, null);
+        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
+
+    // Test that no uploads happen if the submit_upload param is missing, but deletes still work.
+    @Test public void testUploadImage_submit_upload_param() throws IOException {
+        // start with existing custom 1x
+        CustomImage.replaceFile(CIName.LEFT_LOGO, false, Utilities.getResourceFile("SampleLogo-single.png"));
+
+        LOGIN();
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("delete1x", "true");
+		files.put("image2x", Utilities.getResourceFile("SampleLogo-double.png")); // would work if submit_upload were present
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // deleted 1x and failed to add 2x, so we should be back at default
+		assertStatus(302,response);
+        assertErrorMessage(response, null);
+        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
+
+    // Upload a 1x and 2x successfully
+    @Test public void testUploadImage_add() throws IOException {
+        LOGIN();
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("submit_upload", "true");
+		files.put("image1x", Utilities.getResourceFile("SampleLogo-single.png"));
+        files.put("image2x", Utilities.getResourceFile("SampleLogo-double.png"));
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // should have both images and no errors
+		assertStatus(302,response);
+        assertErrorMessage(response, null);
+        assertFalse(CustomImage.isDefault(CIName.LEFT_LOGO));
+        assertTrue(CustomImage.is2xSeparate(CIName.LEFT_LOGO));
+    }
+
+    // Delete a 1x and 2x successfully
+    @Test public void testUploadImage_delete() throws IOException {
+        // start with existing custom 1x & 2x
+        CustomImage.replaceFile(CIName.LEFT_LOGO, false, Utilities.getResourceFile("SampleLogo-single.png"));
+        CustomImage.replaceFile(CIName.LEFT_LOGO, true, Utilities.getResourceFile("SampleLogo-double.png"));
+
+        LOGIN();
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("delete1x", "true");
+        params.put("delete2x", "true");
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // back at default
+		assertStatus(302,response);
+        assertErrorMessage(response, null);
+        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
+
+    // Delete and replace in the same request
+    @Test public void testUploadImage_deleteAndReplace() throws IOException {
+        // start with existing custom 1x & 2x
+        CustomImage.replaceFile(CIName.LEFT_LOGO, false, Utilities.getResourceFile("SampleLogo-single.png"));
+        CustomImage.replaceFile(CIName.LEFT_LOGO, true, Utilities.getResourceFile("SampleLogo-double.png"));
+
+        LOGIN();
+        // delete 1x and replace 2x
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("delete1x", "true");
+        params.put("submit_upload", "true");
+		files.put("image2x", Utilities.getResourceFile("SampleLogo-double.jpg"));
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // should have 2x only, and it should be the new JPG instead of the old PNG
+		assertStatus(302,response);
+        assertErrorMessage(response, null);
+        assertTrue(CustomImage.is1xScaled(CIName.LEFT_LOGO));
+        assertEquals("jpg", StringUtils.substringAfterLast(CustomImage.url(CIName.LEFT_LOGO, true), "."));
+    }
+
+    // Upload an image with 0 filesize
+    @Test public void testUploadImage_errorFilesizeMinimum() throws IOException {
+        LOGIN();
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("submit_upload", "true");
+		files.put("image1x", Utilities.blankFileWithSize(0, "jpg"));
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // 0-length file probably won't even get delivered, but at least image data should stay default
+		assertStatus(302,response);
+        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
+
+    // Upload an image with filesize 1 byte over the max limit enforced by ThemeSettingsTab controller
+    @Test public void testUploadImage_errorFilesizeMax() throws IOException {
+        LOGIN();
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("submit_upload", "true");
+		files.put("image1x", Utilities.blankFileWithSize(ThemeSettingsTab.MAX_UPLOAD_SIZE+1, "jpg"));
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // should be rejected, and image data should stay default
+		assertStatus(302,response);
+        assertErrorMessage(response, "maximum image size");
+        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
+
+    // Test that errors external to ThemeSettingsTab, returned from CustomImage operations, are displayed
+    @Test public void testUploadImage_displayError() throws IOException {
+        LOGIN();
+        // try to upload a 2x with odd dimensions
+        params.put("name", AppConfig.CIName.LEFT_LOGO.toString());
+        params.put("submit_upload", "true");
+		files.put("image2x", Utilities.getResourceFile("SampleFeedbackDocument.png"));
+		Http.Response response = POST(urlUploadImage,params,files);
+
+        // should be rejected, and image data should stay default
+		assertStatus(302,response);
+        assertErrorMessage(response, "must be even");
+
+       assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
+    }
 }
