@@ -29,6 +29,16 @@ public class ThemeDirectoryTest extends UnitTest{
         ThemeDirectory.swapPath(origPath);
     }
 
+    @Test public void testPath() {
+        // Just for this one test, undo the temp dir thing and
+        // check that the reverse URL retrieval works.
+        // This test, unlike the others, is a bit implementation and
+        // configuration dependent.
+        ThemeDirectory.swapPath(null);
+        File file = ThemeDirectory.getFile("gotcha");
+        assertEquals("conf/theme", file.getParent());
+    }
+
     @Test public void testCheck() {
         // make sure tempDir doesn't exist.
         tempDir.delete();
