@@ -13,7 +13,6 @@ import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.services.Utilities;
-import play.db.jpa.JPA;
 import play.i18n.Messages;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
@@ -98,6 +97,7 @@ public class CustomImageTest extends UnitTest {
     @AfterClass
     public static void cleanupClass() throws IOException {
         context.restoreAuthorization();
+        // clean temp dir
         for (File file : tempDir.listFiles()) {
             file.delete();
         }
@@ -186,7 +186,7 @@ public class CustomImageTest extends UnitTest {
             FileFilter imageFilter = new WildcardFileFilter(AppConfig.CIName.LEFT_LOGO.toString().replace("_","-")+"*");
             File[] foundFiles = ThemeDirectory.listFiles(imageFilter);
             for (File file : foundFiles) {
-                if (! (custom1xFile!=null && file.compareTo(file1x)==0) || (custom2xFile!=null && file.compareTo(file2x)==0)) {
+                if ((custom1xFile==null || file.compareTo(file1x)!=0) && (custom2xFile==null || file.compareTo(file2x)!=0)) {
                     fail("Found customized image file in theme directory that should not be there: '"+file.getPath()+"'");
                 }
             }
@@ -492,7 +492,15 @@ public class CustomImageTest extends UnitTest {
         assertCustomImageState(urlJpg1x, null, "300", "168", fileJpgLarge, null, 0);
     }
 
-    // not tested: CustomImage.tallerHeight(name1, name2).
+    // trivial, but why not
+    @Test public void testTallerHeight() throws IOException {
+        CustomImage.replaceFile(AppConfig.CIName.LEFT_LOGO, false, fileJpgLarge);
+        CustomImage.replaceFile(AppConfig.CIName.RIGHT_LOGO, false, filePngSmall);
+        assertEquals(168, CustomImage.tallerHeight(AppConfig.CIName.LEFT_LOGO, AppConfig.CIName.RIGHT_LOGO));
+
+        CustomImage.replaceFile(AppConfig.CIName.RIGHT_LOGO, false, filePngOdd);
+        assertEquals(378, CustomImage.tallerHeight(AppConfig.CIName.LEFT_LOGO, AppConfig.CIName.RIGHT_LOGO));
+    }
 
     // Not tested: CustomImage.fileDescription.
     // It's just a very simple combination of other methods which *are* tested, but would be annoyingly wordy to test directly.

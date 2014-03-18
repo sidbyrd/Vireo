@@ -243,7 +243,7 @@ public final class CustomImage {
             }
 
             // Save new file.
-            final File newFile = ThemeDirectory.createFile(CustomImage.standardFilename(name, is2x, extension));
+            final File newFile = ThemeDirectory.getFile(CustomImage.standardFilename(name, is2x, extension));
             FileUtils.copyFile(file, newFile);
 
             // Set 2x metadata

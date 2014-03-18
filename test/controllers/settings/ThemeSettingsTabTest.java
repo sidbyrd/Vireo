@@ -197,8 +197,6 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
     //TODO
     // split up the giant testUploadingImage() test
     // focus here on testing interface bits, not CI function.
-    // add resources and uncomment that one test
-    // test ThemeDirectory
 
 	/**
 	 * Test various cases and orderings of uploading and deleting custom images, both the 1x

@@ -2,17 +2,17 @@ package org.tdl.vireo.theme;
 
 import org.apache.commons.lang.StringUtils;
 import play.Logger;
-import play.libs.Files;
 import play.mvc.Router;
-import play.vfs.VirtualFile;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
-import java.nio.file.Path;
 
 /**
- * Handles basic operations involving the theme assets directory
+ * Handles basic operations involving the theme assets directory.
+ * Useful for abstracting where that dir actually is (for example, it
+ * could be an application.conf option someday), and even more importantly,
+ * for easily translating back and forth between file paths and the URLs those
+ * files are served at, according to the 'routes' configs.
  */
 public class ThemeDirectory {
 
@@ -51,7 +51,8 @@ public class ThemeDirectory {
      * Swaps out the normal path to the theme dir for another one.
      * Intended to be used with a temp dir for testing.
      * @param newPath the new directory to swap in
-     * @return the previous path that was swapped out
+     * @return the previous data, to be used later to restore state. Note, this is
+     * not a sneaky way to call the non-public getPath(). It might be null.
      */
     public static String swapPath(String newPath) {
         String oldPath = path;
@@ -80,7 +81,7 @@ public class ThemeDirectory {
      * @return File for the resource
      */
     public static File fileForUrl(String url) {
-        return new File(getPath() + StringUtils.substringAfter(url, URL_PREFIX));
+        return new File(getPath()+File.separatorChar+StringUtils.substringAfter(url, URL_PREFIX));
     }
 
     /**
@@ -91,7 +92,7 @@ public class ThemeDirectory {
      */
     public static String urlForFile(File file) {
         //return Router.reverse(VirtualFile.fromRelativePath(file.getPath()));
-        return URL_PREFIX +StringUtils.substringAfter(file.getPath(), getPath());
+        return URL_PREFIX+StringUtils.substringAfter(file.getPath(), getPath()+File.separatorChar);
     }
 
     /**
@@ -101,7 +102,7 @@ public class ThemeDirectory {
      * @return a File reference to the named file
      */
     public static File getFile(String filename) {
-        return new File(getPath()+filename);
+        return new File(getPath()+File.separatorChar+filename);
     }
 
     /**
@@ -117,25 +118,12 @@ public class ThemeDirectory {
     }
 
     /**
-     * Creates a new File in the theme directory.
-     * Note: this is just a Java File reference, not an actual file on
-     * disk yet.
-     * @param filename the name of the file relative to the theme directory
-     * @return the new file
-     */
-    public static File createFile(String filename) {
-        Logger.info("*** create "+getPath()+filename);
-        return new File(getPath()+filename);
-    }
-
-    /**
      * Deletes a file from the theme directory, if it exists.
      * @param filename the name of the file relative to the theme directory
      */
     public static void deleteFile(String filename) {
-        final File file = new File(getPath() + filename);
+        final File file = new File(getPath()+File.separatorChar+filename);
         if (file.exists()){
-            Logger.info("*** delete "+getPath()+filename);
             if (!file.delete()) {
                 // Can't delete. Probably not a real problem except for some wasted disk space--at least not yet--but do log it.
                 Logger.error("theme-dir: could not delete existing file " + file.getAbsolutePath());
