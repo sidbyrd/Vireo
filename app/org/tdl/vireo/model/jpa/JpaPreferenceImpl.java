@@ -44,7 +44,7 @@ public class JpaPreferenceImpl extends JpaAbstractModel<JpaPreferenceImpl> imple
 			throw new IllegalArgumentException("All preferences must be associated with a person.");
 		
 		if (name == null || name.length() == 0)
-			throw new IllegalArgumentException("Preference name's are required");
+			throw new IllegalArgumentException("Preference names are required");
 		
 		assertAdministratorOrOwner(person);
 		
@@ -85,7 +85,7 @@ public class JpaPreferenceImpl extends JpaAbstractModel<JpaPreferenceImpl> imple
 	public void setName(String name) {
 		
 		if (name == null || name.length() == 0)
-			throw new IllegalArgumentException("Preference name's are required");
+			throw new IllegalArgumentException("Preference names are required");
 		
 		assertAdministratorOrOwner(person);
 		

@@ -290,7 +290,9 @@ public class LDAPAuthenticationMethodImpl extends
     /**
      * LDAP is usually single-institution, so if this is set, all users
      * will get this value set as their institutional identifier (as long
-     * as they don't already have a different one set).
+     * as they don't already have a different one set). The person.institutionalIdentidier
+     * property doesn't really seem to be currently used for much, so this
+     * is mostly just here for completeness.
      * @param valueInstitutionalIdentifier a boilerplate inst. id. to set
      */
     public void setValueInstitutionalIdentifier(String valueInstitutionalIdentifier) {

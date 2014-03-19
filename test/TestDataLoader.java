@@ -895,7 +895,7 @@ public class TestDataLoader extends Job {
 				JPA.em().clear();
 				JPA.em().getTransaction().begin();
 				
-				// Reload persistant objects
+				// Reload persistent objects
 				embargos = settingRepo.findAllEmbargoTypes();
 				reviewer = personRepo.findPersonByEmail("jdimaggio@gmail.com");
 				

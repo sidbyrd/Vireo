@@ -2,7 +2,7 @@
 *{
     The Proquest/UMI export format. Use this format when publishing records to
     Proquest for inclusion in their database of Thesis and Dissertations. There 
-    are a mirad of options at the top of this file that you can use to
+    are a myriad of options at the top of this file that you can use to
     customise the export generated metadata. This ranges from embargo settings,
     publication identifiers, and whether to release contact information for the
     student.
@@ -40,7 +40,7 @@
     // begin with a lower case school identifier such as khust or emory,
     // followed by a colon, and then the school's own unique identifier. In 
     // this case the vireo submission id will be appended to this prefix.
-    String external_id_prefix = "vireo:";
+    String external_id_prefix = "rice:";
 
     // #### Institutional Code
     // Proquest assignes each instutition a code, supply that code on the

@@ -33,7 +33,7 @@ import play.vfs.VirtualFile;
 /**
  * Generic packager that uses a the standard play templating system to generate
  * manifests for packages. Each packaged produced will consist of a
- * manifest file, along with a series of files. This packaged is ziped together
+ * manifest file, along with a series of files. This packaged is zipped together
  * into a single bundle ready for deposit.
  * 
  * The values that define what format, which files, etc, are all injected by
@@ -103,7 +103,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 	@Override
 	public ExportPackage generatePackage(Submission submission) {
 		if (attachmentTypes.size() == 0 ) {
-			throw new IllegalArgumentException("Unable to generate package because not attachment types have been defined.");
+			throw new IllegalArgumentException("Unable to generate package because no attachment types have been defined.");
 		}
 		
 		// Check that we have everything that we need.

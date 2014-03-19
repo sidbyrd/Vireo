@@ -263,7 +263,7 @@ public interface Person extends AbstractModel {
 
 	/**
 	 * 
-	 * @param department
+	 * @param degree
 	 *            The new degree
 	 */
 	public void setCurrentDegree(String degree);

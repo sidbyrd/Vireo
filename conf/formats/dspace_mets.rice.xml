@@ -285,8 +285,8 @@
             
             <!-- Supplemental and Source Documents -->
             
-            #{list items:sub.getAttachmentsByType(org.tdl.vireo.model.AttachmentType.SUPPLEMENTAL,org.tdl.vireo.model.AttachmentType.SOURCE), as:'attachment'}
-            <file GROUPID="piper-mets-file-group-${ attachment.getType().ordinal() }"
+            #{list items:sub.getAttachmentsByType(org.tdl.vireo.model.AttachmentType.SUPPLEMENTAL,org.tdl.vireo.model.AttachmentType.SOURCE), as:'attachment'} 
+            <file GROUPID="piper-mets-file-group-${ attachment.getType().ordinal() }" 
                   ID="piper-mets-file-${ attachment.getId() }" 
                   MIMETYPE="${ attachment.getMimeType()?.escapeXml()?.raw() }"
                   SEQ="${ sub.getAttachmentsByType(org.tdl.vireo.model.AttachmentType.SUPPLEMENTAL,org.tdl.vireo.model.AttachmentType.SOURCE).indexOf(attachment) + 2 }">
@@ -331,7 +331,7 @@
             
             <!-- Bitstream divs for each supplemental and source document -->
             
-            #{list items:sub.getAttachmentsByType(org.tdl.vireo.model.AttachmentType.SUPPLEMENTAL,org.tdl.vireo.model.AttachmentType.SOURCE), as:'attachment'}
+            #{list items:sub.getAttachmentsByType(org.tdl.vireo.model.AttachmentType.SUPPLEMENTAL,org.tdl.vireo.model.AttachmentType.SOURCE), as:'attachment'} 
             <div ID="piper-mets-div-${ attachment.getId() }" 
                  TYPE="DSpace Content Bitstream">
                  <ftpr FILEID="piper-mets-file-${ attachment.getId() }"/>
