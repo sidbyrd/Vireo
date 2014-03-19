@@ -11,7 +11,6 @@ import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.services.Utilities;
 import org.tdl.vireo.theme.CustomImage;
-import org.tdl.vireo.theme.CustomImageTest;
 import org.tdl.vireo.theme.ThemeDirectory;
 import play.db.jpa.JPA;
 import play.modules.spring.Spring;
@@ -167,7 +166,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
      * @param response the HTTP Response in which to check
      * @param errorText the error text to check for, or null to assert no error
      */
-    private static void assertErrorMessage(Response response, String errorText) {
+    private static void assertFlashCookie(Response response, String errorText) {
         final String flash = response.cookies.get("PLAY_FLASH").value;
         if (errorText != null) {
             errorText = errorText.replace(' ','+');
@@ -187,7 +186,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // no error, and image data should stay default
 		assertStatus(302,response);
-        assertErrorMessage(response, null);
+        assertFlashCookie(response, null);
         assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
     }
 
@@ -204,7 +203,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // deleted 1x and failed to add 2x, so we should be back at default
 		assertStatus(302,response);
-        assertErrorMessage(response, null);
+        assertFlashCookie(response, null);
         assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
     }
 
@@ -219,7 +218,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // should have both images and no errors
 		assertStatus(302,response);
-        assertErrorMessage(response, null);
+        assertFlashCookie(response, null);
         assertFalse(CustomImage.isDefault(CIName.LEFT_LOGO));
         assertTrue(CustomImage.is2xSeparate(CIName.LEFT_LOGO));
     }
@@ -238,7 +237,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // back at default
 		assertStatus(302,response);
-        assertErrorMessage(response, null);
+        assertFlashCookie(response, null);
         assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
     }
 
@@ -258,7 +257,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // should have 2x only, and it should be the new JPG instead of the old PNG
 		assertStatus(302,response);
-        assertErrorMessage(response, null);
+        assertFlashCookie(response, null);
         assertTrue(CustomImage.is1xScaled(CIName.LEFT_LOGO));
         assertEquals("jpg", StringUtils.substringAfterLast(CustomImage.url(CIName.LEFT_LOGO, true), "."));
     }
@@ -286,7 +285,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // should be rejected, and image data should stay default
 		assertStatus(302,response);
-        assertErrorMessage(response, "maximum image size");
+        assertFlashCookie(response, "maximum image size");
         assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
     }
 
@@ -301,7 +300,7 @@ public class ThemeSettingsTabTest extends AbstractVireoFunctionalTest {
 
         // should be rejected, and image data should stay default
 		assertStatus(302,response);
-        assertErrorMessage(response, "must be even");
+        assertFlashCookie(response, "must be even");
 
        assertTrue(CustomImage.isDefault(CIName.LEFT_LOGO));
     }

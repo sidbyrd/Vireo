@@ -8,10 +8,10 @@ import java.io.File;
 import java.io.FileFilter;
 
 /**
- * Handles basic operations involving the theme assets directory.
+ * Handles basic operations involving the theme assets directory
  * Useful for abstracting where that dir actually is (for example, it
  * could be an application.conf option someday), and even more importantly,
- * for easily translating back and forth between file paths and the URLs those
+ * for translating back and forth between file paths and the URLs those
  * files are served at, according to the 'routes' configs.
  */
 public class ThemeDirectory {

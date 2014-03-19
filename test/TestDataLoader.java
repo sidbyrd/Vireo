@@ -525,7 +525,10 @@ public class TestDataLoader extends Job {
 				if (depositsDir.exists())
 					FileUtils.deleteQuietly(depositsDir);
 
-                // mock theme directory / custom image stuff here, if you care
+                // Clean theme stuff if desired. But since theme Configurations will be default
+                // anyway, no need to stomp the harmless files left from running in non-test mode.
+                //CustomImage.reset(CIName.LEFT_LOGO);
+                //CustomImage.reset(CIName.RIGHT_LOGO);
 
 				loadPeople();
 				loadSettings();
