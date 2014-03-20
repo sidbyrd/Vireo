@@ -173,8 +173,14 @@ public class StringVariableReplacement {
      * This searches a string for Variable names bracketed by {} characters. If a corresponding value is present
      * in parameters, it is substituted for the variable name, otherwise the variable name is removed. If a
      * single {} scope contains a chain of multiple variable names separated by ||, then the entire chain will
-     * be replaced with the value of the leftmost variable for which a non-null substitution was available (or
-     * with nothing if none were available).
+     * be replaced with the value of the leftmost variable for which a non-null substitution is available. If the
+     * last thing in the chain, before the closing '}', is plain text with no { or ||, then it will be treated
+     * as a default fallback value when no variables match. If there is no default and no matches, the entire
+     * chain will be replaced with an empty value.
+     *
+     * Example: "Welcome, {FULL_NAME||LAST_NAME||Name Missing}." has two variables and a default value in one
+     * fallback chain.
+     *
      * @param string a String containing {}-bracketed Variable names to be replaced, singly or in fallback chains
      * @param parameters a Map of the Variable names to be replaced with their corresponding values. Keys which
      * do not correspond to an actual Variable will be ignored.
@@ -202,9 +208,10 @@ public class StringVariableReplacement {
             // something is invalid, in which case it wasn't a substitution after all.
             int validChain = 0; // 0==not done, -1==invalid, 1==valid
             int chainPos = pos+1; // just after opening '{'
+            boolean firstLoop = true;
             while (validChain == 0) {
 
-                // A valid fallback chain has a Variable name here.
+                // A valid fallback chain has a Variable name here (or a default value).
                 boolean foundVariable = false;
                 for (Variable var : Variable.values()) {
                     final String varName = var.name();
@@ -220,6 +227,22 @@ public class StringVariableReplacement {
                         break;
                     }
                 }
+                if (!foundVariable && !firstLoop) {
+                    // No Variable name. Would it be valid as a default value?
+                    final int endPos = string.indexOf('}', chainPos);
+                    if (endPos!=-1) {
+                        final String defaultValue = string.substring(chainPos, endPos);
+                        if (!defaultValue.contains(FALLBACK) && !defaultValue.contains("{")) { // invalid if contains special stuff
+                            // It's valid.
+                            if (replacement == null) {
+                                replacement = defaultValue;
+                            }
+                            beingReplaced.append(defaultValue);
+                            chainPos = endPos; // the next char will be the '}'
+                            foundVariable = true;
+                        }
+                    }
+                }
 
                 // Done looking for variable name. What was found?
                 if (foundVariable && chainPos+FALLBACK.length()<=length && string.substring(chainPos, chainPos+FALLBACK.length()).equals(FALLBACK)) {
@@ -227,13 +250,14 @@ public class StringVariableReplacement {
                     beingReplaced.append(FALLBACK);
                     chainPos += FALLBACK.length();
                 } else if (foundVariable && chainPos+1 <= length && string.substring(chainPos, chainPos+1).equals("}")) {
-                    // Substitution end token right after variable name. Chain came to a valid end.
+                    // Substitution end token right after variable name/default value. Chain came to a valid end.
                     beingReplaced.append('}');
                     validChain = 1; // stop: success
                 } else {
                     // Invalid chain text before chain came to valid end. Cancel and treat at plain text.
                     validChain = -1; // stop: failure
                 }
+                firstLoop = false;
             }
 
             // Account for what we just consumed and replaced, then move on to the next '{'
