@@ -118,7 +118,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 			
 			//Customize Entry Name
 			String entryNameTemplate = entryName;
-			String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
+			String customEntryName = StringVariableReplacement.applyParameterSubstitutionWithFallback(entryName, parameters);
 			
 			File pkg = null;
 			

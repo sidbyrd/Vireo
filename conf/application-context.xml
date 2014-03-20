@@ -498,6 +498,7 @@
     </bean>
     <bean id="OnBaseExport" class="org.tdl.vireo.export.impl.FilePackagerImpl" scope="prototype">
         <property name="displayName" value="OnBase administrative docs export"/>
+        <property name="entryName" value="{STUDENT_ID||STUDENT_NETID||STUDENT_EMAIL}"/>
         <property name="attachmentTypeNames">
 	        <map>
 	        	<entry key="ADMINISTRATIVE">
