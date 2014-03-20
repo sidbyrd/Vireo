@@ -184,7 +184,6 @@ public class StringVariableReplacement {
         if (string==null) {
             return null;
         }
-        Logger.info("***************************************");
 
         StringBuilder result = new StringBuilder();
         final int length = string.length();
@@ -194,9 +193,7 @@ public class StringVariableReplacement {
         // Check string in chunks starting with each '{'
         while (pos != -1) {
             // Append everything from the end of the previous substitution to just before the current '{'
-            Logger.info("appendBefore=["+prevPos+'-'+pos+']');
             result.append(string.substring(prevPos, pos));
-            Logger.info("up to '" + result.toString() + "' and then open {");
 
             String beingReplaced = "{";
             String replacement = null;
@@ -205,64 +202,54 @@ public class StringVariableReplacement {
             // something is invalid, in which case it wasn't a substitution after all.
             int keepGoing = 0;
             int subPos = pos+1; // just after opening '{'
-
             while (keepGoing == 0) {
-                Logger.info("  looking with subpos="+subPos);
                 boolean foundParam = false;
                 for (Variable var : Variable.values()) {
                     final String varName = var.name();
                     if (subPos+varName.length()<=length && string.substring(subPos, subPos+var.name().length()).equals(var.name())) {
-                        // do substitution
+                        // Do substitution (if a previous substitution in this chain hasn't already been done).
                         if (replacement == null) {
                             replacement = parameters.get(varName);
                         }
+                        // Either way, mark the original text as replaced.
                         beingReplaced += varName;
                         subPos += varName.length();
 
+                        // Done testing which parameter this is.
                         foundParam = true;
-                        Logger.info("  param="+varName);
-                        break; // done looking for which parameter this is
+                        break;
                     }
                 }
-                Logger.info("  done with subpos="+subPos);
                 if (foundParam && subPos+FALLBACK.length()<=length && string.substring(subPos, subPos+FALLBACK.length()).equals(FALLBACK)) {
                     // Fallback token right after valid parameter name. Keep going.
                     beingReplaced += FALLBACK;
                     subPos += FALLBACK.length();
-                    Logger.info("  fallback");
                 } else if (foundParam && subPos+1 <= length && string.substring(subPos, subPos+1).equals("}")) {
                     // Substitution end token right after valid parameter name. We made it.
                     beingReplaced += '}';
-                    Logger.info("found end }");
                     keepGoing = 1; // success
                 } else {
                     // Something was invalid before substitution fallback chain came to a clean end.
-                    Logger.info("didn't find param : foundParam="+foundParam);
-                    if (subPos+1 <= length) {
-                        Logger.info("string[subpos, subpos+1] = '"+string.substring(subPos, subPos+1)+'\'');
-                    } else {
-                        Logger.info("subpos+1="+subPos+1+" > length="+length);
-                    }
                     keepGoing = -1; // failure
                 }
             }
 
             if (keepGoing == -1) {
-                // it may be a '{', but it didn't actually start a valid substitution
+                // It may be a '{', but it didn't actually start a valid substitution.
                 replacement = beingReplaced;
             }
 
-            // account for what we just consumed (in 'string') and what we just produced (in 'result').
-            Logger.info("append=" + replacement);
-            result.append(replacement);
-            Logger.info("  up to '"+result.toString()+'\'');
+            // Account for what we just consumed (in 'string') and what we just produced (in 'result').
+            if (replacement!=null) { // null is legit result for chain with no supplied replacements, but don't actually append it.
+                result.append(replacement);
+            }
             prevPos = pos+beingReplaced.length();
 
-            // move to next chunk that starts with a '{'
+            // Move to next chunk that starts with a '{'.
             pos = string.indexOf('{', prevPos);
         }
         
-        // append leftover
+        // append leftovers
         result.append(string.substring(prevPos));
         return result.toString();
     }
