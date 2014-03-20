@@ -5,9 +5,11 @@ import org.junit.Test;
 import org.tdl.vireo.model.MockPerson;
 import org.tdl.vireo.model.MockSubmission;
 import org.tdl.vireo.security.impl.LDAPAuthenticationMethodImpl;
+import org.tdl.vireo.state.MockState;
 import play.test.UnitTest;
 import org.tdl.vireo.services.StringVariableReplacement.Variable;
 
+import java.io.File;
 import java.util.Map;
 
 public class StringVariableReplacementTest extends UnitTest {
@@ -27,7 +29,57 @@ public class StringVariableReplacementTest extends UnitTest {
         sub.submitter = nobody;
     }
 
-    // Tests for new methods added to class. Existing methods remain untested.
+    @Test public void testSetParameters_completeness() {
+        // test that all Variables get a value, and that nothing else does.
+        sub.setStudentFirstName("Zanoni");
+        sub.setStudentMiddleName("the");
+        sub.setStudentLastName("Ineffable");
+        sub.setStudentBirthYear(1842);
+        sub.setDocumentTitle("title");
+        sub.setDocumentType("type");
+        final MockState state = new MockState();
+        state.displayName = "status";
+        sub.setState(state);
+        sub.setGraduationYear(2014);
+        sub.setGraduationMonth(2);
+        final MockPerson assignee = new MockPerson();
+        assignee.firstName = "first";
+        assignee.lastName = "last";
+        sub.setAssignee(assignee);
+        sub.setCommitteeEmailHash("whatever");
+
+        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        assertEquals("Zanoni Ineffable", params.remove(Variable.FULL_NAME.name()));
+        assertEquals("Zanoni", params.remove(Variable.FIRST_NAME.name()));
+        assertEquals("Ineffable", params.remove(Variable.LAST_NAME.name()));
+        assertEquals("S01234", params.remove(Variable.STUDENT_ID.name()));
+        assertEquals("nobody", params.remove(Variable.STUDENT_NETID.name()));
+        assertEquals("nobody@gmail.com", params.remove(Variable.STUDENT_EMAIL.name()));
+        assertEquals("title", params.remove(Variable.DOCUMENT_TITLE.name()));
+        assertEquals("type", params.remove(Variable.DOCUMENT_TYPE.name()));
+        assertEquals("status", params.remove(Variable.SUBMISSION_STATUS.name()));
+        assertEquals("March, 2014", params.remove(Variable.GRAD_SEMESTER.name()));
+        assertEquals("first last", params.remove(Variable.SUBMISSION_ASSIGNED_TO.name()));
+        assertTrue(params.remove(Variable.STUDENT_URL.name()).endsWith("submit"));
+        assertTrue(params.remove(Variable.ADVISOR_URL.name()).endsWith("/advisor/whatever/review"));
+        assertEquals(File.separator, params.remove(Variable.SEPARATOR.name()));
+        assertEquals(0, params.size()); // make sure there aren't any non-Variable things in there.
+    }
+
+    @Test public void testSetParameters_gradYearNoMonth() {
+        sub.setGraduationYear(2014);
+        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        assertEquals("2014", params.remove(Variable.GRAD_SEMESTER.name()));
+    }
+
+    @Test public void testSetParameters_minimal() {
+        sub = new MockSubmission(); // as empty as possible
+        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        assertEquals("n/a", params.remove(Variable.SUBMISSION_ASSIGNED_TO.name()));
+        params.remove(Variable.STUDENT_URL.name());
+        params.remove(Variable.SEPARATOR.name());
+        assertEquals(0, params.size()); // that should be all
+    }
 
     @Test public void testFallback_tokensNoVars() {
         final Map<String, String> params = StringVariableReplacement.setParameters(sub);
@@ -121,6 +173,28 @@ public class StringVariableReplacementTest extends UnitTest {
         assertEquals(test, resultWithFallback); // invalid chain, unchanged
     }
 
+    @Test public void testFallback_rogueVar() {
+        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        params.put("ROGUE", "rogue");
+
+        String test = "This {"+Variable.STUDENT_ID+FB+"ROGUE"+FB+"default} is a standard var.";
+        String resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals("This S01234 is a standard var.", resultWithFallback);
+
+        test = "This {"+Variable.FULL_NAME+FB+"ROGUE"+FB+"default} is a rogue var.";
+        resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals("This rogue is a rogue var.", resultWithFallback);
+
+        params.remove("ROGUE");
+        // same test, but rogue var is now invalid.
+        resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals(test, resultWithFallback); // unchanged
+
+        test = "This {"+Variable.FULL_NAME+FB+"ROGUE} is a rogue var turned default.";
+        resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals("This ROGUE is a rogue var turned default.", resultWithFallback);
+    }
+
     @Test public void testFallback_var_default_default() {
         final Map<String, String> params = StringVariableReplacement.setParameters(sub);
 
@@ -145,12 +219,12 @@ public class StringVariableReplacementTest extends UnitTest {
         assertEquals("default", resultWithFallback);
     }
 
-    @Test public void testFallback_noise() {
+    @Test public void testFallback_braceNoise() {
         final Map<String, String> params = StringVariableReplacement.setParameters(sub);
-        final String test = "}{"+Variable.STUDENT_ID+"}{";
+        final String test = "{}}{{"+Variable.STUDENT_ID+"}{";
         assertTrue(params.containsKey(Variable.STUDENT_ID.name()));
         final String resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
-        assertEquals("}S01234{", resultWithFallback); // unchanged
+        assertEquals("{}}{S01234{", resultWithFallback); // unchanged
     }
 
     @Test public void testFallback_malformed() {
@@ -212,12 +286,12 @@ public class StringVariableReplacementTest extends UnitTest {
         String test = "{STUDENT_NETID}This has no FB tokens but does have vars like {STUDENT_ID} and {STUDENT_EMAIL}";
         String resultNoFallback = StringVariableReplacement.applyParameterSubstitution(test, params);
         String resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
-        assertEquals(resultNoFallback, resultWithFallback); // same
+        assertEquals(resultNoFallback, resultWithFallback); // same as no fallback version
 
         // starts and ends with plain text, back-to-back vars in the middle
         test = "This tests vars like {STUDENT_NETID}{STUDENT_ID} back-to-back in the middle.";
         resultNoFallback = StringVariableReplacement.applyParameterSubstitution(test, params);
         resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
-        assertEquals(resultNoFallback, resultWithFallback); // same
+        assertEquals(resultNoFallback, resultWithFallback); // same as no fallback version
     }
 }

@@ -1,5 +1,7 @@
 package org.tdl.vireo.services;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.TransformerUtils;
 import org.tdl.vireo.model.NameFormat;
 import org.tdl.vireo.model.Preference;
 import org.tdl.vireo.model.Submission;
@@ -9,8 +11,7 @@ import play.mvc.Router.ActionDefinition;
 
 import java.io.File;
 import java.text.DateFormatSymbols;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This service allows for the manipulation of strings--both setting parameters and handling 
@@ -50,8 +51,21 @@ public class StringVariableReplacement {
         /** advisor submission review URL */
         ADVISOR_URL,
         /** File separator for current platform */
-        SEPARATOR
+        SEPARATOR;
+
+        /**
+         * Gets all the names of these Variables.
+         * Unmodifiable and created only once for efficiency.
+         * @return Set of all Variable names.
+         */
+        public static Collection<String> names() {
+            return namesLazyInit.names;
+        }
+        private static class namesLazyInit {
+            private static final Collection<String>names = Collections.unmodifiableCollection(CollectionUtils.collect(Arrays.asList(Variable.values()), TransformerUtils.stringValueTransformer()));
+        }
     }
+
     /** A token that, used between two other strings from the list above inside a variable name scope,
         indicates fallback substitution (see applyParameterSubstitutionWithFallback() ). */
     public static final String FALLBACK = "||";
@@ -150,7 +164,7 @@ public class StringVariableReplacement {
 	 * @param string
 	 * 		A string containing values to be replaced.
 	 * @param parameters
-	 * 		A map of the strings to be replaced with their corresponding value 
+	 * 		A map of the strings to be replaced with their corresponding value
 	 * @return
 	 * 		The new string, or null if the input string was null
 	 */
@@ -170,7 +184,7 @@ public class StringVariableReplacement {
 	}
 
     /**
-     * This searches a string for Variable names bracketed by {} characters. If a corresponding value is present
+     * This searches a string for variable names bracketed by {} characters. If a corresponding value is present
      * in parameters, it is substituted for the variable name, otherwise the variable name is removed. If a
      * single {} scope contains a chain of multiple variable names separated by ||, then the entire chain will
      * be replaced with the value of the leftmost variable for which a non-null substitution is available. If the
@@ -178,12 +192,18 @@ public class StringVariableReplacement {
      * as a default fallback value when no variables match. If there is no default and no matches, the entire
      * chain will be replaced with an empty value.
      *
+     * You may use variable names that are not in Variable.names() only if you make sure the appropriate entry is
+     * in the parameters map. Otherwise, names of such rogue variables cannot be recognized as such when they lack
+     * a mapped value--this will cause the entire {} variable fallback scope containing the unrecognized variable
+     * name to be considered invalid and treated as only plain text (unless the rogue variable name is at the end,
+     * in which case it may be treated as a valid fallback default value). Except for oddball use, consider adding
+     * any oft-used variable names to the Variable enum.
+     *
      * Example: "Welcome, {FULL_NAME||LAST_NAME||Name Missing}." has two variables and a default value in one
      * fallback chain.
      *
      * @param string a String containing {}-bracketed Variable names to be replaced, singly or in fallback chains
-     * @param parameters a Map of the Variable names to be replaced with their corresponding values. Keys which
-     * do not correspond to an actual Variable will be ignored.
+     * @param parameters a Map of the variable names to be replaced with their corresponding values.
      * @return the new string with replacements / eliminations done, or null if the input string was null.
      */
     public static String applyParameterSubstitutionWithFallback(String string, Map<String, String> parameters) {
@@ -198,37 +218,38 @@ public class StringVariableReplacement {
 
         // Check string in chunks starting with each '{'
         while (pos != -1) {
+            // Time to build list of all possible variable names: mostly static, plus any rogues that are only in parameters.
+            final Collection<String> varNames = new LinkedHashSet<String>(Variable.names()); // linked for fast iteration
+            varNames.addAll(parameters.keySet()); // set operation: if no rogue variable names are in parameters, this adds nothing.
+
             // Append everything from the end of the previous substitution to just before the current '{'
             result.append(string.substring(prevPos, pos));
-
-            final StringBuilder beingReplaced = new StringBuilder("{");
-            String replacement = null;
 
             // Possible substitution starting at this '{'. Check, and keep checking until '}' or
             // something is invalid, in which case it wasn't a substitution after all.
             int validChain = 0; // 0==not done, -1==invalid, 1==valid
+            boolean firstLoop = true; // to prevent a default value from being first
             int chainPos = pos+1; // just after opening '{'
-            boolean firstLoop = true;
+            String replacement = null;
+
             while (validChain == 0) {
 
                 // A valid fallback chain has a Variable name here (or a default value).
                 boolean foundVariable = false;
-                for (Variable var : Variable.values()) {
-                    final String varName = var.name();
-                    if (chainPos+varName.length()<=length && string.substring(chainPos, chainPos+var.name().length()).equals(var.name())) {
+                for (String varName : varNames) {
+                    if (chainPos+varName.length()<=length && string.substring(chainPos, chainPos+varName.length()).equals(varName)) {
                         // Do substitution (if a previous substitution in this chain hasn't already been done).
                         if (replacement == null) {
                             replacement = parameters.get(varName);
                         }
-                        // Either way, mark the Variable name as replaced.
-                        beingReplaced.append(varName);
+                        // Either way, mark the variable name as replaced.
                         chainPos += varName.length();
                         foundVariable = true;
-                        break;
+                        break; // from searching list of variable names
                     }
                 }
                 if (!foundVariable && !firstLoop) {
-                    // No Variable name. Would it be valid as a default value?
+                    // No variable name. Would it be valid as a default value?
                     final int endPos = string.indexOf('}', chainPos);
                     if (endPos!=-1) {
                         final String defaultValue = string.substring(chainPos, endPos);
@@ -237,21 +258,19 @@ public class StringVariableReplacement {
                             if (replacement == null) {
                                 replacement = defaultValue;
                             }
-                            beingReplaced.append(defaultValue);
                             chainPos = endPos; // the next char will be the '}'
                             foundVariable = true;
                         }
                     }
                 }
 
-                // Done looking for variable name. What was found?
+                // Done looking for variable name. Where to next?
                 if (foundVariable && chainPos+FALLBACK.length()<=length && string.substring(chainPos, chainPos+FALLBACK.length()).equals(FALLBACK)) {
                     // Fallback token right after valid variable name. Keep consuming the fallback chain.
-                    beingReplaced.append(FALLBACK);
                     chainPos += FALLBACK.length();
                 } else if (foundVariable && chainPos+1 <= length && string.substring(chainPos, chainPos+1).equals("}")) {
                     // Substitution end token right after variable name/default value. Chain came to a valid end.
-                    beingReplaced.append('}');
+                    chainPos += 1; // for closing '}'
                     validChain = 1; // stop: success
                 } else {
                     // Invalid chain text before chain came to valid end. Cancel and treat at plain text.
@@ -262,12 +281,11 @@ public class StringVariableReplacement {
 
             // Account for what we just consumed and replaced, then move on to the next '{'
             if (validChain == -1) {
-                replacement = beingReplaced.toString();
-            }
-            if (replacement!=null) { // null is legit result for chain with no supplied replacements, but don't actually append it.
+                result.append(string.substring(pos, chainPos)); // the failed fallback chain unaltered
+            } else if (replacement!=null) { // null is legit result for chain with no supplied replacements, but don't actually append it.
                 result.append(replacement);
             }
-            prevPos = pos+beingReplaced.length();
+            prevPos = chainPos;
             pos = string.indexOf('{', prevPos);
         }
         
