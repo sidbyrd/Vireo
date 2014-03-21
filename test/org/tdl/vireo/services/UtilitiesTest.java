@@ -41,7 +41,7 @@ public class UtilitiesTest extends UnitTest {
     }
 
     @Test public void testFileWithNameAndContents() throws IOException {
-        final File file = Utilities.fileWithNameAndContents("you can see my insides!", "testing.txt");
+        final File file = Utilities.fileWithNameAndContents("testing.txt", "you can see my insides!");
         assertEquals("testing.txt", file.getName());
         assertEquals("you can see my insides!", Utilities.fileToString(file));
         FileUtils.deleteQuietly(file); // should already be marked deleteOnExit, but why wait?

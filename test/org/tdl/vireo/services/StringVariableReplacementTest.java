@@ -203,6 +203,21 @@ public class StringVariableReplacementTest extends UnitTest {
         assertEquals(test, resultWithFallback); // invalid chain, unchanged
     }
 
+    @Test public void testFallback_no_null_yes() {
+        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        params.put(Variable.DOCUMENT_TITLE.name(), null);
+
+        String test = "Null is allowed {"+Variable.DOCUMENT_TYPE+FB+Variable.DOCUMENT_TITLE+FB+Variable.STUDENT_ID+"} but won't match.";
+        String resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals("Null is allowed S01234 but won't match.", resultWithFallback);
+
+        params.put("ROGUE", null);
+
+        test = "Even with a rogue var {"+Variable.DOCUMENT_TYPE+FB+"ROGUE"+FB+Variable.STUDENT_ID+'}';
+        resultWithFallback = StringVariableReplacement.applyParameterSubstitutionWithFallback(test, params);
+        assertEquals("Even with a rogue var S01234", resultWithFallback);
+    }
+
     @Test public void testFallback_firstAndLast() {
         final Map<String, String> params = StringVariableReplacement.setParameters(sub);
 

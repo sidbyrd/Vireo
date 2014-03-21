@@ -31,7 +31,7 @@ import play.test.UnitTest;
 /**
  * Test the multiple template packager.
  * 
- * Since there is expected to be lots of various formats, this test just runs
+ * Since there are expected to be lots of various formats, this test just runs
  * through the basics. It checks that the files were created and not much more.
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
@@ -116,40 +116,33 @@ public class MultipleTemplatePackagerImplTest extends UnitTest {
 	 */
 	@Test
 	public void testPackager() throws IOException, JDOMException {
-
 		// Test all the template packagers
-		Map<String,MultipleTemplatePackagerImpl> packagers = Spring.getBeansOfType(MultipleTemplatePackagerImpl.class);
+		MultipleTemplatePackagerImpl packager = (MultipleTemplatePackagerImpl)Spring.getBean("DSpaceSimpleArchive");
 		
-		for (MultipleTemplatePackagerImpl packager : packagers.values()) {
-			
-			ExportPackage pkg = packager.generatePackage(sub);
-			
-			assertNotNull(pkg);
-			assertEquals(packager.format,pkg.getFormat());
-			
-			
-			
-			
-			File exportFile = pkg.getFile();
-			assertNotNull(exportFile);
-			assertTrue("Package file does not exist", exportFile.exists());
-			assertTrue("Package file is not readable", exportFile.canRead());
-			
-			Map<String, File> fileMap = getFileMap(exportFile);
-			
-			// There should be three files
-			assertTrue(fileMap.containsKey("LASTNAME-SELECTEDDOCUMENTTYPE-2002.pdf"));
-			assertTrue(fileMap.containsKey("fluff.jpg"));
-			
-			// Check that each of the templates exist
-			for (String name : packager.templates.keySet()) {
-				assertTrue(fileMap.containsKey(name));
-			}
-			
-			// Cleanup
-			pkg.delete();
-			assertFalse(exportFile.exists());
-		}
+        ExportPackage pkg = packager.generatePackage(sub);
+        assertNotNull(pkg);
+        assertEquals(packager.format,pkg.getFormat());
+
+        File exportFile = pkg.getFile();
+        assertNotNull(exportFile);
+        assertTrue("Package file does not exist", exportFile.exists());
+        assertTrue("Package file is not readable", exportFile.canRead());
+        assertTrue("Package should be a directory: "+exportFile.getPath(), exportFile.isDirectory());
+
+        Map<String, File> fileMap = getFileMap(exportFile);
+
+        // There should be three files
+        assertTrue(fileMap.containsKey("LASTNAME-SELECTEDDOCUMENTTYPE-2002.pdf"));
+        assertTrue(fileMap.containsKey("fluff.jpg"));
+
+        // Check that each of the templates exist
+        for (String name : packager.templates.keySet()) {
+            assertTrue(fileMap.containsKey(name));
+        }
+
+        // Cleanup
+        pkg.delete();
+        assertFalse(exportFile.exists());
 	}
 	
 	
@@ -214,7 +207,7 @@ public class MultipleTemplatePackagerImplTest extends UnitTest {
 	}
 
 	/**
-	 * Read a file and return it's contents as a string.
+	 * Read a file and return its contents as a string.
 	 * 
 	 * @param file
 	 *            The file to be read.

@@ -1,14 +1,20 @@
 package org.tdl.vireo.export.impl;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.BeanNameAware;
 import org.tdl.vireo.export.Packager;
 import org.tdl.vireo.model.Attachment;
 import org.tdl.vireo.model.AttachmentType;
+import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.services.StringVariableReplacement;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSubstitutionWithFallback;
 
@@ -115,6 +121,70 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      */
     public void setPackageType(PackageType packageType) {
         this.packageType = packageType;
+    }
+
+    /**
+     * For each applicable attachment, copy it to a customized entry in a zip archive.
+     * @param zos the zip archive to write to
+     * @param submission the submission being packaged
+     * @param parameters string replacement parameters corresponding to submission, but already extracted.
+     * @throws IOException if something couldn't be copied
+     */
+    void writeAttachmentsToZip(ZipOutputStream zos, Submission submission, Map<String, String> parameters) throws IOException {
+        // Add all the attachments
+        for(Attachment attachment : submission.getAttachments()) {
+            // Do we include this type?
+            if (!attachmentTypes.contains(attachment.getType())) {
+                continue;
+            }
+
+            // Process custom options for filename and file directory
+            String fileName = getAttachmentFileName(attachment, parameters);
+            String dirName = getAttachmentDirectoryName(attachment, parameters);
+
+            // Copy file from attachment into zip archive
+            ZipEntry ze = new ZipEntry(dirName+fileName);
+            zos.putNextEntry(ze);
+
+            FileInputStream in = null;
+            try {
+                in = new FileInputStream(attachment.getFile());
+                byte[] buf = new byte[1024];
+                int len;
+                while ((len = in.read(buf)) > 0) {
+                    zos.write(buf, 0, len);
+                }
+            } finally {
+                if (in != null) { in.close(); }
+            }
+
+            zos.closeEntry();
+        }
+    }
+
+    /**
+     * For each applicable attachment, copy it to a customized entry in a zip archive.
+     * @param pkg the directory to write to
+     * @param submission the submission being packaged
+     * @param parameters string replacement parameters corresponding to submission, but already extracted.
+     * @throws IOException if something couldn't be copied
+     */
+    void writeAttachmentsToDir(File pkg, Submission submission, Map<String, String> parameters) throws IOException {
+        // Add all the attachments
+        for(Attachment attachment : submission.getAttachments()) {
+            // Do we include this type?
+            if (!attachmentTypes.contains(attachment.getType())) {
+                continue;
+            }
+
+            // Process custom options for filename and file directory
+            String fileName = getAttachmentFileName(attachment, parameters);
+            String dirName = getAttachmentDirectoryName(attachment, parameters);
+
+            // Copy file from attachment into package directory
+            File exportFile = new File(pkg.getPath()+dirName, fileName);
+            FileUtils.copyFile(attachment.getFile(), exportFile);
+        }
     }
 
     /**

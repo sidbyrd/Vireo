@@ -46,52 +46,20 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 			throw new IllegalArgumentException("Unable to generate a package because the submission is null, or has not been persisted.");
         }
 		
+        // Set String replacement parameters
+        Map<String, String> parameters = setParameters(submission);
+
 		try {
-			// Set String replacement parameters
-			Map<String, String> parameters = setParameters(submission);
-
-			// Customize Entry Name
-            String customEntryName = applyParameterSubstitutionWithFallback(entryName, parameters);
-
 			File pkg = null;
 			
 			//Check the package type set in the spring configuration
             if (packageType==PackageType.zip) {
 				pkg = File.createTempFile("file-export-", ".zip");
-
                 ZipOutputStream zos = null;
-                FileInputStream in = null;
                 try {
                     zos = new ZipOutputStream(new FileOutputStream(pkg));
-                    byte[] buf = new byte[1024];
-                    int len;
-
-                    // Add all the attachments
-                    for(Attachment attachment : submission.getAttachments()) {
-                        // Do we include this type?
-                        if (!attachmentTypes.contains(attachment.getType())) {
-                            continue;
-                        }
-
-                        // Process custom options for filename and file directory
-                        String fileName = getAttachmentFileName(attachment, parameters);
-                        String dirName = getAttachmentDirectoryName(attachment, parameters);
-
-                        // Copy file from attachment into zip archive
-                        ZipEntry ze = new ZipEntry(dirName+fileName);
-                        zos.putNextEntry(ze);
-
-                        in = new FileInputStream(attachment.getFile());
-                        while ((len = in.read(buf)) > 0) {
-                            zos.write(buf, 0, len);
-                        }
-                        in.close();
-                        in=null;
-
-                        zos.closeEntry();
-                    }
+                    writeAttachmentsToZip(zos, submission, parameters);
                 } finally {
-                    if (in!=null) { IOUtils.closeQuietly(in); }
                     if (zos!=null) { IOUtils.closeQuietly(zos); }// also closes wrapped fos
                 }
             } else if (packageType==PackageType.dir) {
@@ -99,26 +67,13 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
                 pkg.delete();
                 pkg.mkdir();
 
-                // Add all the attachments
-                for(Attachment attachment : submission.getAttachments()) {
-                    // Do we include this type?
-                    if (!attachmentTypes.contains(attachment.getType())) {
-                        continue;
-                    }
-
-                    // Process custom options for filename and file directory
-                    String fileName = getAttachmentFileName(attachment, parameters);
-                    String dirName = getAttachmentDirectoryName(attachment, parameters);
-
-                    // Copy file from attachment into package directory
-                    File exportFile = new File(pkg.getPath()+dirName, fileName);
-                    FileUtils.copyFile(attachment.getFile(), exportFile);
-                }
+                writeAttachmentsToDir(pkg, submission, parameters);
             } else {
                 throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
             }
 
 			// Create the package
+            String customEntryName = applyParameterSubstitutionWithFallback(entryName, parameters);
 			return new FilePackage(submission, pkg, customEntryName);
 			
 		} catch (IOException ioe) {
