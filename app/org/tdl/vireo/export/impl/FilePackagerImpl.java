@@ -54,6 +54,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 			
 			//Check the package type set in the spring configuration
             if (packageType==PackageType.zip) {
+                // Create output zip archive
 				pkg = File.createTempFile("file-export-", ".zip");
                 ZipOutputStream zos = null;
                 try {
@@ -63,7 +64,8 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
                     if (zos!=null) { IOUtils.closeQuietly(zos); }// also closes wrapped fos
                 }
             } else if (packageType==PackageType.dir) {
-				pkg = File.createTempFile("file-export-", ".dir"); // actually a directory
+                // Create output directory
+				pkg = File.createTempFile("file-export-", ".dir");
                 pkg.delete();
                 pkg.mkdir();
 

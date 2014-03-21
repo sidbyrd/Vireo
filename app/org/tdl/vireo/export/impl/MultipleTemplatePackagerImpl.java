@@ -180,7 +180,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         VirtualFile templateFile = templates.get(templateName);
 
         //customize after retrieving the template file
-        String customTemplateName = StringVariableReplacement.applyParameterSubstitution(templateName, parameters);
+        String customTemplateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
 
         Map<String, Object> templateBinding = new HashMap<String,Object>();
         templateBinding.put("sub", submission);
@@ -274,13 +274,14 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         // Set String Replacement Parameters
         Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
         // Customize Entry Name
-        String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
+        String customEntryName = StringVariableReplacement.applyParameterSubstitutionWithFallback(entryName, parameters);
 
 		try {
 			File pkg;
 			
 			// Check the package type set in the spring configuration
             if (packageType==PackageType.zip) {
+                // Create output zip archive
 				pkg = File.createTempFile("template-export-", ".zip");
                 ZipOutputStream zos = null;
                 try {
@@ -292,7 +293,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
                 }
             } else if (packageType==PackageType.dir) {
                 if (attachmentTypes.isEmpty() && templates.size()==1) {
-					// There's only one file, so export as a single file.
+					// There's only one template and nothing else, so export as a single file.
                     final String[] templateResults = renderTemplate(templates.keySet().iterator().next(), submission, customEntryName, parameters);
                     String templateName = templateResults[0];
                     final String templateRendered = templateResults[1];
@@ -305,7 +306,8 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
                     pkg = File.createTempFile("template-export", extension);
                     FileUtils.writeStringToFile(pkg, templateRendered);
                 } else {
-                    pkg = File.createTempFile("template-export-", ".dir"); // actually a directory
+                    // Create output directory
+                    pkg = File.createTempFile("template-export-", ".dir");
                     pkg.delete();
                     pkg.mkdir();
 

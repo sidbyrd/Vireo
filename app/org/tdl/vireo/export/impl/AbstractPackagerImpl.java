@@ -8,6 +8,7 @@ import org.tdl.vireo.model.Attachment;
 import org.tdl.vireo.model.AttachmentType;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.services.StringVariableReplacement;
+import play.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,6 +17,9 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.customName;
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.directory;
+import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
 import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSubstitutionWithFallback;
 
 /**
@@ -30,12 +34,29 @@ import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSub
  */
 public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 
-    /** Supported package types. Spring makes this easy. */
+    /** Supported package types. */
     public enum PackageType {
-        /** all files in a single filesystem directory */
+        /** All files will go in a filesystem directory */
         dir,
-        /** all files in a single .zip archive file */
+
+        /** All files will go in a single .zip archive file */
         zip
+    }
+
+    /** These are keys in a java.util.Properties that gets associated with an attachment
+     * type via setAttachmentTypeNames().
+     */
+    public enum AttachmentPropertyKey {
+        /** For each applicable attachment, this key's associated Properties value will be
+         * customized with StringValueReplacement and then used as the filename for the attachment.
+         */
+        customName,
+
+        /** For each applicable attachment, this key's associated Properties value will be
+         * customized with StringValueReplacement and then used as the directory within the
+         * output package where the attachment will be exported.
+         */
+        directory
     }
 
 	/* Spring injected parameters */
@@ -124,7 +145,8 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
     }
 
     /**
-     * For each applicable attachment, copy it to a customized entry in a zip archive.
+     * For each applicable attachment, copy it to a customized entry in a zip archive. The file to
+     * write may have a customized name and/or go in a customized subdirectory in the zip archive.
      * @param zos the zip archive to write to
      * @param submission the submission being packaged
      * @param parameters string replacement parameters corresponding to submission, but already extracted.
@@ -143,6 +165,8 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
             String dirName = getAttachmentDirectoryName(attachment, parameters);
 
             // Copy file from attachment into zip archive
+            // (Zip entries include directory name, so we don't have to do some sort of mkdir equivalent
+            //  first. It's allowed to make an entry for the directory first, but it doesn't seem required.)
             ZipEntry ze = new ZipEntry(dirName+fileName);
             zos.putNextEntry(ze);
 
@@ -163,7 +187,8 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
     }
 
     /**
-     * For each applicable attachment, copy it to a customized entry in a zip archive.
+     * For each applicable attachment, copy it to a customized file in a directory. The file to
+     * write may have a customized name and/or go in a customized subdirectory within the dir.
      * @param pkg the directory to write to
      * @param submission the submission being packaged
      * @param parameters string replacement parameters corresponding to submission, but already extracted.
@@ -182,7 +207,9 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
             String dirName = getAttachmentDirectoryName(attachment, parameters);
 
             // Copy file from attachment into package directory
-            File exportFile = new File(pkg.getPath()+dirName, fileName);
+            File exportFileSubdir= new File(pkg.getPath()+File.separator+dirName);
+            exportFileSubdir.mkdir(); // make sure it exists, if it didn't already.
+            File exportFile = new File(exportFileSubdir, fileName);
             FileUtils.copyFile(attachment.getFile(), exportFile);
         }
     }
@@ -196,14 +223,11 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      */
     String getAttachmentFileName(Attachment attachment, Map<String, String> parameters) {
         String fileName = attachment.getName();
-        final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty("customName");
+        final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty(customName.name());
         if (pattern!=null) {
-            final String extension = FilenameUtils.getExtension(fileName);
-            if (!parameters.containsKey(StringVariableReplacement.Variable.FILE_NAME.name())) {
-                String baseName = FilenameUtils.getExtension(fileName);
-                parameters.put(StringVariableReplacement.Variable.FILE_NAME.name(), baseName);
-            }
-            fileName = applyParameterSubstitutionWithFallback(pattern, parameters)+'.'+extension;
+            parameters.put(FILE_NAME.name(), FilenameUtils.getBaseName(fileName));
+            fileName = applyParameterSubstitutionWithFallback(pattern, parameters)+'.'+FilenameUtils.getExtension(fileName);
+            parameters.remove(FILE_NAME.name());
         }
         return fileName;
     }
@@ -218,13 +242,11 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      */
     String getAttachmentDirectoryName(Attachment attachment, Map<String, String> parameters) {
         String dirName = "";
-        final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty("directory");
+        final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty(directory.name());
         if (pattern!=null) {
-            if (!parameters.containsKey(StringVariableReplacement.Variable.FILE_NAME.name())) {
-                String baseName = FilenameUtils.getExtension(attachment.getName());
-                parameters.put(StringVariableReplacement.Variable.FILE_NAME.name(), baseName);
-            }
-            dirName = applyParameterSubstitutionWithFallback(pattern, parameters)+ File.separator;
+            parameters.put(FILE_NAME.name(), FilenameUtils.getBaseName(attachment.getName()));
+            dirName = applyParameterSubstitutionWithFallback(pattern, parameters)+File.separator;
+            parameters.remove(FILE_NAME.name());
         }
         return dirName;
     }
