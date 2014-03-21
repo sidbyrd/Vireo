@@ -11,7 +11,7 @@ import org.tdl.vireo.search.SearchFilter;
  * generating an export. The client is only responsible for reading the
  * ChunkStream and writing the result to a file somewhere. The generation of the
  * export will occur on a background thread, but the caller needs to handle the
- * output generated. This probably means delievering it to the clients browser
+ * output generated. This probably means delivering it to the client's browser
  * using an algorithm like:
  * 
  * ChunkStream stream = exportService.export(package,filter);

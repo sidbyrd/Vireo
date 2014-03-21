@@ -1,6 +1,8 @@
 package org.tdl.vireo.services;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import play.Play;
 
 import java.io.*;
@@ -99,7 +101,7 @@ public class Utilities {
      * @throws IOException if couldn't be created
      */
     public static File blankFileWithSize(int filesize, String extension) throws IOException {
-        File file = File.createTempFile("blank", '.'+extension);
+        File file = File.createTempFile("blank-", '.'+extension);
         file.deleteOnExit();
 
         OutputStream os = new FileOutputStream(file);
@@ -113,5 +115,47 @@ public class Utilities {
         }
 
         return file;
+    }
+
+    /**
+     * Writes a simple temporary test file with an exact filename (not a base
+     * filename followed by gibberish like a normal temp file) and with simple
+     * string contents.
+     * @param filename the name of the file to create (no path)
+     * @param contents a string to write to the contents of the new file, or
+     * null if you don't want to bother.
+     * @return temp file with given name and string contents
+     * @throws IOException if couldn't be created
+     */
+    public static File fileWithNameAndContents(String filename, String contents) throws IOException {
+        File tempDir = java.nio.file.Files.createTempDirectory(null).toFile();
+        tempDir.deleteOnExit();
+
+        File file = new File(tempDir, filename);
+        file.deleteOnExit();
+
+        // Write the string contents if desired.
+        if (contents != null) {
+            FileUtils.writeStringToFile(file, contents, "UTF-8");
+        }
+
+        return file;
+    }
+
+    /**
+     * Just a wrapper for a wrapper: Handles the fileInputStream finally{close} block
+     * for org.apache.commons.io.IOUtils.toString(file, encoding).
+     * @param file file to read
+     * @return contents of the file as a UTF-8 string
+     * @throws IOException if couldn't read
+     */
+    public static String fileToString(File file) throws IOException {
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(file);
+            return IOUtils.toString(in, "UTF-8");
+        } finally {
+            if (in != null) { in.close(); }
+        }
     }
 }

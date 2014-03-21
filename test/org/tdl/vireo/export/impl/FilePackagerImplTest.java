@@ -1,22 +1,11 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.jdom.Document;
-import org.jdom.JDOMException;
-import org.jdom.input.SAXBuilder;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.model.DegreeLevel;
 import org.tdl.vireo.model.Person;
 import org.tdl.vireo.model.RoleType;
 import org.tdl.vireo.model.Submission;
@@ -24,16 +13,32 @@ import org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl;
 import org.tdl.vireo.model.jpa.JpaSettingsRepositoryImpl;
 import org.tdl.vireo.model.jpa.JpaSubmissionRepositoryImpl;
 import org.tdl.vireo.security.SecurityContext;
-
+import org.tdl.vireo.services.Utilities;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
 
+import java.io.*;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+
+import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
+import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_EMAIL;
+
 /**
  * Test the generic template package.
- * 
- * Since it is expected that there will be multiple beans may be defined for
- * this type. All defined beans will be tested.
- * 
+ *
+ * Originally, the idea was to test whatever beans were configured in Spring. But then the test always tested
+ * that what came out matched what the default configuration should produce. So in essence, we were testing
+ * that the config was still default, not that the packer worked in all cases.
+ *
+ * Now we just manually create one packager that matches the default config. It still isn't a thorough
+ * unit testing, but it's as good as before, plus proper configuration independence is restored.
+ *
+ * If someone would like to add more tests to thoroughly test all the function of FilePackagerImpl, not just
+ * some of what is used by the default config, that would be welcome.
+ *
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
  * 
  */
@@ -45,8 +50,10 @@ public class FilePackagerImplTest extends UnitTest {
 	public static JpaSubmissionRepositoryImpl subRepo = Spring.getBeanOfType(JpaSubmissionRepositoryImpl.class);
 	public static JpaSettingsRepositoryImpl settingRepo = Spring.getBeanOfType(JpaSettingsRepositoryImpl.class);
 
-	public Person person;
-	public Submission sub;
+	private Person person;
+	private Submission sub;
+    private FilePackagerImpl packager;
+    private ExportPackage pkg;
 	
 	/**
 	 * Set up a submission so we can test packaging it up.
@@ -58,19 +65,20 @@ public class FilePackagerImplTest extends UnitTest {
 		sub = subRepo.createSubmission(person);
 				
 		// Create some attachments
-		File tmpDir = createNewTempDir();
-		File bottle_pdf = createAndWriteFile(tmpDir, "bottle.pdf", "bottle.pdf: This is not really a pdf file.");
-		File fluff_jpg = createAndWriteFile(tmpDir, "fluff.jpg", "fluff.jpg: This is not really a jpg file.");
-		
+		File bottle_pdf = Utilities.fileWithNameAndContents("bottle.pdf", "bottle");
+        File fluff_jpg = Utilities.fileWithNameAndContents("fluff.jpg", "fluff");
+
 		sub.addAttachment(bottle_pdf, AttachmentType.PRIMARY);
 		sub.addAttachment(fluff_jpg, AttachmentType.SUPPLEMENTAL);
-		
+
 		sub.save();
-		
-		bottle_pdf.delete();
-		fluff_jpg.delete();
-		tmpDir.delete();
-		
+
+        FileUtils.deleteQuietly(bottle_pdf);
+        FileUtils.deleteQuietly(fluff_jpg);
+
+        // shared test subjects
+        packager = new FilePackagerImpl();
+        pkg = null;
 	}
 	
 	/**
@@ -81,131 +89,191 @@ public class FilePackagerImplTest extends UnitTest {
 		sub.delete();
 		person.delete();
 		context.restoreAuthorization();
-	}
-	
-	/**
-	 * Test each packager handling of the submission. We check that basic things
-	 * are there, the files, a manifest, and that the manifest contains
-	 * important pieces of metadata.
-	 */
-	@Test
-	public void testPackager() throws IOException, JDOMException {
 
-		// Test all the template packagers
-		Map<String,FilePackagerImpl> packagers = Spring.getBeansOfType(FilePackagerImpl.class);
-		
-		for (FilePackagerImpl packager : packagers.values()) {
-			
-			ExportPackage pkg = packager.generatePackage(sub);
-			
-			assertNotNull(pkg);
-			assertEquals("File System",pkg.getFormat());
-			assertNull(pkg.getMimeType());
-			
-			
-			
-			
-			File exportFile = pkg.getFile();
-			assertNotNull(exportFile);
-			assertTrue("Package file does not exist", exportFile.exists());
-			assertTrue("Package file is not readable", exportFile.canRead());
-			
-			assertTrue(exportFile.isDirectory());
-			
-			// The export is a directory of multiple files
-			Map<String, File> fileMap = getFileMap(exportFile);
-			
-			// There should be three files
-			assertTrue(fileMap.containsKey("PRIMARY-DOCUMENT.pdf"));
-			assertTrue(fileMap.containsKey("fluff.jpg"));			
-			
-			// Cleanup
-			pkg.delete();
-			assertFalse(exportFile.exists());
-		}
-	}
-	
-	
-	/**
-	 * Create a temporary working directory
-	 * 
-	 * @return the File object pointing to the created directory
-	 */
-	public File createNewTempDir() throws IOException {
-		File tempDir = File.createTempFile("packager-tester", ".dat");
-		tempDir.delete();
-		tempDir.mkdir();
-
-		assertTrue(tempDir.exists());
-		assertTrue(tempDir.isDirectory());
-
-		return tempDir;
+        if (pkg!=null) {
+            pkg.delete();
+        }
 	}
 
+    // Test the standard File Packager in default configuration
+	@Test public void testGeneratePackage_default_dir() throws IOException {
+        // packager.setEntryName( -default- );
+        // packager.setPackageType( -default==dir- );
+        LinkedHashMap<String, Properties> props = new LinkedHashMap<String, Properties>(3);
+        props.put("PRIMARY", new Properties());
+        props.put("SUPPLEMENTAL", new Properties());
+        props.put("SOURCE", new Properties());
+        packager.setAttachmentTypeNames(props);
+
+        pkg = packager.generatePackage(sub);
+
+        assertNotNull(pkg);
+        assertEquals("File System",pkg.getFormat());
+        assertNull(pkg.getMimeType());
+
+        File exportFile = pkg.getFile();
+        assertNotNull(exportFile);
+        assertTrue("Package file does not exist", exportFile.exists());
+        assertTrue("Package file is not readable", exportFile.canRead());
+        assertTrue("Package should be a directory", exportFile.isDirectory());
+
+        // The export is a directory of multiple files
+        Map<String, String> fileMap = getDirectoryFileContents(exportFile);
+
+        // There should be two files with the correct filenames and contents
+        assertTrue(fileMap.containsKey("PRIMARY-DOCUMENT.pdf"));
+        assertEquals("bottle", fileMap.get("PRIMARY-DOCUMENT.pdf"));
+        assertTrue(fileMap.containsKey("fluff.jpg"));
+        assertEquals("fluff", fileMap.get("fluff.jpg"));
+	}
+
+    // Test the standard File Packager in default configuration, but with zip output
+	@Test public void testGeneratePackage_default_zip() throws IOException {
+        // packager.setEntryName( -default- );
+        packager.setPackageType(FilePackagerImpl.PackageType.zip);
+        LinkedHashMap<String, Properties> props = new LinkedHashMap<String, Properties>(3);
+        props.put("PRIMARY", new Properties());
+        props.put("SUPPLEMENTAL", new Properties());
+        props.put("SOURCE", new Properties());
+        packager.setAttachmentTypeNames(props);
+
+        pkg = packager.generatePackage(sub);
+
+        assertNotNull(pkg);
+        assertEquals("File System",pkg.getFormat());
+        assertNull(pkg.getMimeType());
+
+        File exportFile = pkg.getFile();
+        assertNotNull(exportFile);
+        assertTrue("Package file does not exist", exportFile.exists());
+        assertTrue("Package file is not readable", exportFile.canRead());
+        assertFalse("Package should not be a directory", exportFile.isDirectory());
+        assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
+
+        // The export is a zipped directory of multiple files
+        Map<String, String> fileMap = getZipFileContents(exportFile);
+
+        // There should be two files with the correct filenames and contents
+        assertTrue(fileMap.containsKey("PRIMARY-DOCUMENT.pdf"));
+        assertEquals("bottle", fileMap.get("PRIMARY-DOCUMENT.pdf"));
+        assertTrue(fileMap.containsKey("fluff.jpg"));
+        assertEquals("fluff", fileMap.get("fluff.jpg"));
+	}
+
+    // Test using entryName, custom filenames, and custom dirnames, with zipped output
+	@Test public void testGeneratePackage_custom_zip() throws IOException {
+        packager.setEntryName("entry-{"+STUDENT_EMAIL+"}-notvar-{"+FILE_NAME+'}');
+        packager.setPackageType(FilePackagerImpl.PackageType.zip);
+        LinkedHashMap<String, Properties> props = new LinkedHashMap<String, Properties>(3);
+        Properties primaryProps = new Properties();
+//primaryProps.setProperty("");
+        props.put("PRIMARY", new Properties());
+        props.put("SUPPLEMENTAL", new Properties());
+        props.put("SOURCE", new Properties());
+        packager.setAttachmentTypeNames(props);
+
+        pkg = packager.generatePackage(sub);
+
+        assertNotNull(pkg);
+        assertEquals("File System", pkg.getFormat());
+        assertNull(pkg.getMimeType());
+        assertEquals("entry-email@email.com-notvar-", pkg.getEntryName());
+
+        File exportFile = pkg.getFile();
+        assertNotNull(exportFile);
+        assertTrue("Package file does not exist", exportFile.exists());
+        assertTrue("Package file is not readable", exportFile.canRead());
+        assertFalse("Package should not be a directory", exportFile.isDirectory());
+        assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
+
+        // The export is a zipped directory of multiple files
+        Map<String, String> fileMap = getZipFileContents(exportFile);
+
+        // There should be two files with the correct filenames and contents
+        assertTrue(fileMap.containsKey("PRIMARY-DOCUMENT.pdf"));
+        assertEquals("bottle", fileMap.get("PRIMARY-DOCUMENT.pdf"));
+        assertTrue(fileMap.containsKey("fluff.jpg"));
+        assertEquals("fluff", fileMap.get("fluff.jpg"));
+	}
+
 	/**
-	 * Creates a Hashmap of file names to file pointers in a given directory
+	 * Creates a map of file names to their contents as strings
+     * Maybe don't call this on non-test files that aren't short and simple.
 	 * 
 	 * @param targetDir
 	 *            the source directory be parsed
-	 * @return a map of file names to file pointers
+	 * @return a map of file names to their string contents
+     * @throws IOException if something can't be read
 	 */
-	public Map<String, File> getFileMap(File targetDir) 
-	{
+	public Map<String, String> getDirectoryFileContents(File targetDir) throws IOException {
 		File[] contents = targetDir.listFiles();
-		Map<String, File> fileMap = new HashMap<String, File>();
+		Map<String, String> fileContentsMap = new HashMap<String, String>(contents.length);
 		for (File file : contents) {
-			fileMap.put(file.getName(), file);
+			fileContentsMap.put(file.getName(), Utilities.fileToString(file));
 		}
-		return fileMap;
-	}
-	
-	/**
-	 * Create a new file within the parent directory and fill it with some data.
-	 * 
-	 * @param directory
-	 *            The parent directory
-	 * @param fileName
-	 *            The name of the file to create.
-	 * @param data
-	 *            The data to put into the file, or null for no data.
-	 * @return The file pointer of the newly created file.
-	 */
-	public static File createAndWriteFile(File directory, String fileName, String data) throws IOException {
-		
-		File file = new File(directory.getCanonicalPath()+File.separator+fileName);
-		file.createNewFile();
-		
-		// Write some some data so the file is not empty.
-		if (data != null) {
-			FileWriter fw = new FileWriter(file);
-			fw.write(data);
-			fw.close();
-		}
-		
-		return file;
-		
+		return fileContentsMap;
 	}
 
-	/**
-	 * Read a file and return it's contents as a string.
-	 * 
-	 * @param file
-	 *            The file to be read.
-	 * @return The contents of the file.
-	 */
-	public static String readFile(File file) throws IOException {
-		StringBuffer fileData = new StringBuffer(1000);
-		BufferedReader reader = new BufferedReader(new FileReader(file));
-		char[] buf = new char[1024];
-		int numRead = 0;
-		
-		while ((numRead = reader.read(buf)) != -1) {
-			String readData = String.valueOf(buf, 0, numRead);
-			fileData.append(readData);
-			buf = new char[1024];
-		}
-		reader.close();
-		return fileData.toString();
-	}
-	
+    /**
+     * Creates a map of file names to their contents as strings, reading from a
+     * zip file with several files inside.
+     * Maybe don't call this on non-test files that aren't short and simple.
+     *
+     * @param zip the source zip directory be parsed
+     * @return a map of file names to their string contents
+     * @throws IOException if something can't be read
+     */
+    public Map<String, String> getZipFileContents(File zip) throws IOException {
+        Map<String, String> fileContentsMap = new HashMap<String, String>(2);
+        byte[] buffer = new byte[128];
+
+        ZipFile zf = null;
+        try {
+            zf = new ZipFile(zip);
+            final Enumeration<? extends ZipEntry> entries = zf.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                final String filename = entry.getName();
+
+                // read from entry into string
+                InputStream zis = zf.getInputStream(entry);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                int len=0;
+                while ((len = zis.read(buffer)) > 0) {
+                    out.write(buffer, 0, len);
+                }
+                final String contents = out.toString("UTF-8");
+
+                // got it
+                fileContentsMap.put(filename, contents);
+            }
+        } finally {
+            if (zf!=null) { zf.close(); }
+        }
+        return fileContentsMap;
+    }
+
+    // slower, for pre-Java 1.7
+    public Map<String, String> getZipFileContentsOld(File zip) throws IOException {
+        Map<String, String> fileContentsMap = new HashMap<String, String>(2);
+        ZipInputStream zis = null;
+        byte[] buffer = new byte[128];
+        try {
+            zis = new ZipInputStream(new FileInputStream(zip));
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                final String filename = entry.getName();
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                int len=0;
+                while ((len = zis.read(buffer)) > 0) {
+                    out.write(buffer, 0, len);
+                }
+                final String contents = out.toString("UTF-8");
+                fileContentsMap.put(filename, contents);
+            }
+        } finally {
+            if (zis!=null) { zis.close(); }
+        }
+        return fileContentsMap;
+    }
 }

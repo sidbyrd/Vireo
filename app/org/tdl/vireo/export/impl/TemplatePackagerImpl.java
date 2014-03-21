@@ -1,9 +1,6 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -16,6 +13,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.tools.ant.types.resources.Files;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.Attachment;
@@ -38,7 +36,7 @@ import play.vfs.VirtualFile;
 /**
  * Generic packager that uses a the standard play templating system to generate
  * manifests for packages. Each packaged produced will consist of a
- * manifest file, along with a series of files. This packaged is ziped together
+ * manifest file, along with a series of files. This packaged is zipped together
  * into a single bundle ready for deposit.
  * 
  * The values that define what format, which files, etc, are all injected by
@@ -52,17 +50,13 @@ import play.vfs.VirtualFile;
  */
 public class TemplatePackagerImpl extends AbstractPackagerImpl {
 		
-	/* Spring injected paramaters */
+	/* Spring injected parameters */
 	public VirtualFile templateFile = null;
 	public String mimeType = null;
 	public String format = null;
 	public String manifestName = "mets.xml";
-	public String entryName = null;
-	public List<AttachmentType> attachmentTypes = new ArrayList<AttachmentType>();
-	public LinkedHashMap<String, Properties> attachmentAttributes = new LinkedHashMap<String, Properties>();
 	public Map<String,Object> templateArguments = null;
-	public String packageType = "dir";
-	
+
 	// Repositories to be injected into template for convenience
 	public PersonRepository personRepo;
 	public SubmissionRepository subRepo;
@@ -109,17 +103,7 @@ public class TemplatePackagerImpl extends AbstractPackagerImpl {
 	public void setProquestVocabularyRepository(ProquestVocabularyRepository proquestRepo) {
 		this.proquestRepo = proquestRepo;
 	}
-	
-	/**
-	 * (OPTIONAL) Inject the package type for the export.
-	 * 
-	 * @param packageType
-	 * 			Package Type (directory, zip, etc)
-	 */
-	public void setPackageType(String packageType) {
-		this.packageType = packageType;
-	}
-	
+
 	/**
 	 * (REQUIRED) Set the template for generating the manifest file. This
 	 * parameter is always required.
@@ -180,43 +164,6 @@ public class TemplatePackagerImpl extends AbstractPackagerImpl {
 	}
 	
 	/**
-	 * (OPTIONAL) Set the name of the entry. The default will be
-	 * submission_{submission ID}, but this can be customized
-	 * in application-context.xml.
-	 * 
-	 * @param entryName
-	 * 			The name of the entry.
-	 */
-	public void setEntryName(String entryName) {
-		this.entryName = entryName;
-	}
-	
-	/**
-	 * (OPITONAL) Set the attachment types which will be included in the
-	 * package. Since not all attachments should be deposited, this allows the
-	 * package to filter which files to include. They must be the exact name
-	 * (all uppercase) of types listed in the AttachmentType enum.
-	 * 
-	 * If no types are specified then no attachments will be included.
-	 * 
-	 * @param attachmentTypeNames
-	 *            List of attachment types to include.
-	 */
-	public void setAttachmentTypeNames(LinkedHashMap<String, Properties> attachmentTypeNames) {
-		
-		this.attachmentTypes = new ArrayList<AttachmentType>();
-		this.attachmentAttributes = new LinkedHashMap<String, Properties>();
-		
-		if (attachmentTypeNames != null ) {
-			this.attachmentAttributes = attachmentTypeNames;
-			for (String name : attachmentTypeNames.keySet()) {
-				AttachmentType type = AttachmentType.valueOf(name);
-				this.attachmentTypes.add(type);
-			}
-		}
-	}
-	
-	/**
 	 * (OPTIONAL) Set a list of arguments which may be accessed as variables in
 	 * the template syntax. The variable "sub" will always be the submission
 	 * which is being packaged.
@@ -252,12 +199,10 @@ public class TemplatePackagerImpl extends AbstractPackagerImpl {
 			parameters = StringVariableReplacement.setParameters(submission);
 			
 			// Customize Manifest Name
-			String manifestNameTemplate = manifestName;
-			manifestName = StringVariableReplacement.applyParameterSubstitution(manifestName, parameters);
+			String customManifestName = StringVariableReplacement.applyParameterSubstitution(manifestName, parameters);
 			
-			// Cusotmize Entry Name			
-			String entryNameTemplate = entryName;
-			String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);			
+			// Customize Entry Name
+			String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
 			
 			// Generate the manifest.
 			Map<String, Object> templateBinding = new HashMap<String,Object>();
@@ -266,9 +211,9 @@ public class TemplatePackagerImpl extends AbstractPackagerImpl {
 			templateBinding.put("subRepo",subRepo);
 			templateBinding.put("settingRepo",settingRepo);
 			templateBinding.put("proquestRepo",proquestRepo);
-			templateBinding.put("packageType", packageType);						
-			templateBinding.put("manifestName",manifestName);
-			templateBinding.put("entryName", entryName);
+			templateBinding.put("packageType", packageType.name());
+			templateBinding.put("manifestName",customManifestName);
+			templateBinding.put("entryName", customEntryName);
 			templateBinding.put("format", format);
 			templateBinding.put("mimeType", mimeType);
 			templateBinding.put("attachmentTypes", attachmentTypes);
@@ -279,172 +224,96 @@ public class TemplatePackagerImpl extends AbstractPackagerImpl {
 			
 			File pkg = null;
 			
-			//Check the package type set in the spring configuration.
-			if(packageType.equals("zip")) {
-					
-					pkg = File.createTempFile("template-export-", ".zip");
-					
-					FileOutputStream fos = new FileOutputStream(pkg);
-					ZipOutputStream zos = new ZipOutputStream(fos);
-					
-					// Copy the manifest
-					File manifestFile = new File(manifestName);
-					FileUtils.writeStringToFile(manifestFile, manifest);
-					
-					ZipEntry ze = new ZipEntry(manifestName);
+			//Check the package type set in the spring configuration
+            if (packageType==PackageType.zip) {
+				pkg = File.createTempFile("template-export-", ".zip");
+
+                ZipOutputStream zos = null;
+                FileInputStream in = null;
+                try {
+                    zos = new ZipOutputStream(new FileOutputStream(pkg));
+                    byte[] buf = new byte[1024];
+                    int len;
+
+                    // Copy the manifest into the zip archive as a new entry
+					ZipEntry ze = new ZipEntry(customManifestName);
 					zos.putNextEntry(ze);
-					FileInputStream in = new FileInputStream(manifestFile);
-					
-					byte[] buf = new byte[1024];
-					int len;
-					while ((len = in.read(buf)) > 0) {
-						zos.write(buf, 0, len);						
-					}
-					
-					in.close();
-					zos.closeEntry();
-					
-					manifestFile.delete();
-					
-					if (attachmentTypes.size() > 0 ) {
-						
-						// Add all the attachments
-						for(Attachment attachment : submission.getAttachments())
-						{
-							// Do we include this type?
-							if (!attachmentTypes.contains(attachment.getType()))
-								continue;
-			
-								/* The string substitution only works on items we can retrieve from the submission
-								 *		so we have to get the file name for each attachment here in the attachment loop.
-								 */
-								String shortFileName = attachment.getName().replaceAll("."+FilenameUtils.getExtension(attachment.getName()), "");
-							
-								String fileName = attachment.getName();
-								
-								// Attachment Name Customization
-								if(attachmentAttributes.get(attachment.getType().name()).get("customName")!=null) {
-									fileName = attachmentAttributes.get(attachment.getType().name()).get("customName")+"."+FilenameUtils.getExtension(attachment.getName());									
-									fileName = fileName.replace("{FILE_NAME}", shortFileName);
-									fileName = StringVariableReplacement.applyParameterSubstitution(fileName, parameters);
-								}
-								
-								File exportFile = null;
-								
-								// Check for custom directory structure set in spring.
-								Boolean hasDir = false;
-								
-								if(attachmentAttributes.get(attachment.getType().name()).get("directory")!=null) {
-									String dirName = (String) attachmentAttributes.get(attachment.getType().name()).get("directory");
-									dirName = dirName.replace("{FILE_NAME}", shortFileName);
-									dirName = StringVariableReplacement.applyParameterSubstitution(dirName, parameters);
-									exportFile = new File(dirName,fileName);
-									fileName = dirName + fileName;
-									hasDir = true;
-								} else {
-									exportFile = new File(fileName);
-								}
-																
-								FileUtils.copyFile(
-										attachment.getFile(),
-										exportFile
-										);
-								ze = new ZipEntry(fileName);
-								zos.putNextEntry(ze);
-								in = new FileInputStream(exportFile);
-								
-								while ((len = in.read(buf)) > 0) {
-									zos.write(buf, 0, len);
-								}
-								
-								in.close();
-								zos.closeEntry();
-								
-								//cleaning up either temp directory or temp files
-								if(hasDir) {
-									FileUtils.deleteDirectory(exportFile.getParentFile());
-								} else {
-									exportFile.delete();
-								}				
-						}
-					
-					zos.close();
-					fos.close();
-					
-				} 
-					
-			} else {
-				
-				if (attachmentTypes.size() > 0 ) {
-					
-					// The package has more than one file, so export as a directory.
-					pkg = File.createTempFile("template-export-", ".dir");
-					pkg.delete();
-					pkg.mkdir();
+
+                    InputStream manifestStream = IOUtils.toInputStream(manifest, "UTF-8");
+                    while ((len = manifestStream.read(buf)) > 0) {
+                        zos.write(buf, 0, len);
+                    }
+                    zos.closeEntry();
+
+                    // Add all the attachments
+                    for(Attachment attachment : submission.getAttachments()) {
+                        // Do we include this type?
+                        if (!attachmentTypes.contains(attachment.getType())) {
+                            continue;
+                        }
+
+                        // Process custom options for filename and file directory
+                        String fileName = getAttachmentFileName(attachment, parameters);
+                        String dirName = getAttachmentDirectoryName(attachment, parameters);
+
+                        // Copy file from attachment into zip archive
+                        ze = new ZipEntry(dirName+fileName);
+                        zos.putNextEntry(ze);
+
+                        in = new FileInputStream(attachment.getFile());
+                        while ((len = in.read(buf)) > 0) {
+                            zos.write(buf, 0, len);
+                        }
+                        in.close();
+                        in=null;
+
+                        zos.closeEntry();
+                    }
+                } finally {
+                    if (in!=null) { IOUtils.closeQuietly(in); }
+                    if (zos!=null) { IOUtils.closeQuietly(zos); }// also closes wrapped fos
+                }
+            } else if (packageType==PackageType.dir) {
+                if (!attachmentTypes.isEmpty()) {
+                    pkg = File.createTempFile("template-export-", ".dir"); // actually a directory
+                    pkg.delete();
+                    pkg.mkdir();
 
 					// Copy the manifest
-					File manifestFile = new File(pkg.getPath(),manifestName);
+					File manifestFile = new File(pkg, customManifestName);
 					FileUtils.writeStringToFile(manifestFile, manifest);
 
-					// Add all the attachments
-					for(Attachment attachment : submission.getAttachments())
-					{
-						// Do we include this type?
-						if (!attachmentTypes.contains(attachment.getType()))
-							continue;
-						
-						/* The string substitution only works on items we can retrieve from the submission
-						 *		so we have to get the file name for each attachment here in the attachment loop.
-						 */
-						String shortFileName = attachment.getName().replaceAll("."+FilenameUtils.getExtension(attachment.getName()), "");
-						
-						String fileName = attachment.getName(); 
-						
-						// Customize Attachment Name
-						if(attachmentAttributes.get(attachment.getType().name()).get("customName")!=null) {
-							fileName = attachmentAttributes.get(attachment.getType().name()).get("customName")+"."+FilenameUtils.getExtension(attachment.getName());
-							fileName = fileName.replace("{FILE_NAME}", shortFileName);
-							fileName = StringVariableReplacement.applyParameterSubstitution(fileName, parameters);
-						}						
-						
-						// Check for Custom Directory Structure.
-						String pkgPath = pkg.getPath();						
-						
-						if(attachmentAttributes.get(attachment.getType().name()).get("directory")!=null) {
-							String dirName = (String) attachmentAttributes.get(attachment.getType().name()).get("directory");
-							dirName = dirName.replace("{FILE_NAME}", shortFileName);
-							dirName = StringVariableReplacement.applyParameterSubstitution(dirName, parameters);
-							pkgPath = pkgPath + File.separator + dirName;
-						}
-							
-						File exportFile = new File(pkgPath, fileName);
-							
-						FileUtils.copyFile(
-							attachment.getFile(),
-							exportFile
-							);
-						
-					} //End for loop
-					
-				} else {
-					
+                    // Add all the attachments
+                    for(Attachment attachment : submission.getAttachments()) {
+                        // Do we include this type?
+                        if (!attachmentTypes.contains(attachment.getType())) {
+                            continue;
+                        }
+
+                        // Process custom options for filename and file directory
+                        String fileName = getAttachmentFileName(attachment, parameters);
+                        String dirName = getAttachmentDirectoryName(attachment, parameters);
+
+                        // Copy file from attachment into package directory
+                        File exportFile = new File(pkg.getPath()+dirName, fileName);
+                        FileUtils.copyFile(attachment.getFile(), exportFile);
+                    }
+                } else {
 					// There's only one file, so export as a single file.
-					String extension = FilenameUtils.getExtension(manifestName);
+					String extension = FilenameUtils.getExtension(customManifestName);
 					if (extension.length() > 0)
 						extension = "."+extension;
-					
+
 					pkg = File.createTempFile("template-export", extension);
 					FileUtils.writeStringToFile(pkg, manifest);
-				}
-			}
-		
-			// Reset Manifest and Entry Name Placeholders
-			this.setManifestName(manifestNameTemplate);
-			this.setEntryName(entryNameTemplate);
-			
+                }
+            } else {
+                throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
+            }
+
 			// Create the actual package!
 			return new TemplatePackage(submission, mimeType, format, pkg, customEntryName);
-			
+
 		} catch (IOException ioe) {
 			throw new RuntimeException("Unable to generate package",ioe);
 		}

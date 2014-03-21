@@ -166,13 +166,13 @@ public class ExportServiceImpl implements ExportService {
 			if (context.getPerson() != null) {
 				
 				if (!context.isReviewer())
-					throw new SecurityException("Not authorized to preform export operation.");
+					throw new SecurityException("Not authorized to perform export operation.");
 				
 				this.personId = context.getPerson().getId();
 			} else {
 				
 				if (!context.isAuthorizationActive())
-					throw new SecurityException("Not authorized to preform export operation.");
+					throw new SecurityException("Not authorized to perform export operation.");
 
 				this.personId = null;
 			}
@@ -237,7 +237,7 @@ public class ExportServiceImpl implements ExportService {
 								zipFile(entryName, pkg.getFile(), zos);
 							}
 						} finally {
-							// Ensure the package isdeleted.
+							// Ensure the package is deleted.
 							pkg.delete();
 						}
 						
@@ -252,7 +252,7 @@ public class ExportServiceImpl implements ExportService {
 						meta.getProgress().completed++;
 					}
 				} finally {
-					// Ensure the ziparchive is closed.
+					// Ensure the zip archive is closed.
 					try {
 						zos.close();
 					} catch (Exception e) {

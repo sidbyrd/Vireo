@@ -50,6 +50,8 @@ public class StringVariableReplacement {
         STUDENT_URL,
         /** advisor submission review URL */
         ADVISOR_URL,
+        /** not filled by setParameters(), but used by FilePackager. Represents attachment filename. */
+        FILE_NAME,
         /** File separator for current platform */
         SEPARATOR;
 

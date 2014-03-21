@@ -1,5 +1,6 @@
 package org.tdl.vireo.services;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
@@ -13,25 +14,16 @@ public class UtilitiesTest extends UnitTest {
 
     // I added these methods, so I'm testing them. The methods that were already in Utilities remain untested.
 
-    @Test public void testGetResourceFile() throws IOException {
-        final File textFile = Utilities.getResourceFile("SampleTextDocument.txt");
-        FileInputStream in = null;
-        try {
-            in = new FileInputStream(textFile);
-            final String contents = IOUtils.toString(in, "UTF-8");
-            assertEquals("UTF-8 ≠ 💩.\n", contents);
-        } finally {
-            if (in != null) {
-                in.close();
-            }
-            textFile.delete(); // should already be marked deleteOnExit, but let's make sure.
-        }
+    @Test public void testGetResourceFile_and_fileToString() throws IOException {
+        final File file = Utilities.getResourceFile("SampleTextDocument.txt");
+        assertEquals("UTF-8 ≠ 💩.\n", Utilities.fileToString(file));
+        FileUtils.deleteQuietly(file); // should already be marked deleteOnExit, but why wait?
     }
 
     @Test public void testGetResourceFileWithExtension() throws IOException {
         final File textFile = Utilities.getResourceFileWithExtension("SampleTextDocument.txt", ".pdf");
         assertEquals("pdf", FilenameUtils.getExtension(textFile.getName()));
-        textFile.delete(); // should already be marked deleteOnExit, but let's make sure.
+        FileUtils.deleteQuietly(textFile); // should already be marked deleteOnExit, but let's make sure.
     }
 
     @Test public void testBlankFileWithSize() throws IOException {
@@ -39,12 +31,19 @@ public class UtilitiesTest extends UnitTest {
         assertEquals("txt", FilenameUtils.getExtension(zero.getName()));
         assertTrue(zero.exists());
         assertEquals(0, zero.length());
-        zero.delete(); // should already be marked deleteOnExit, but let's make sure.
+        FileUtils.deleteQuietly(zero); // should already be marked deleteOnExit, but let's make sure.
 
         final File clarke = Utilities.blankFileWithSize(2001, "empty");
         assertEquals("empty", FilenameUtils.getExtension(clarke.getName()));
         assertTrue(clarke.exists());
         assertEquals(2001, clarke.length());
-        clarke.delete(); // should already be marked deleteOnExit, but let's make sure.
+        FileUtils.deleteQuietly(clarke); // should already be marked deleteOnExit, but let's make sure.
+    }
+
+    @Test public void testFileWithNameAndContents() throws IOException {
+        final File file = Utilities.fileWithNameAndContents("you can see my insides!", "testing.txt");
+        assertEquals("testing.txt", file.getName());
+        assertEquals("you can see my insides!", Utilities.fileToString(file));
+        FileUtils.deleteQuietly(file); // should already be marked deleteOnExit, but why wait?
     }
 }
