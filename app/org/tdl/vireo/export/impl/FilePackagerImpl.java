@@ -1,28 +1,20 @@
 package org.tdl.vireo.export.impl;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.tdl.vireo.export.ExportPackage;
-import org.tdl.vireo.model.Attachment;
-import org.tdl.vireo.model.AttachmentType;
 import org.tdl.vireo.model.Submission;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.services.StringVariableReplacement.*;
 
 /**
- * Generic packager that uses a the standard play templating system to generate
- * manifests for packages. Each packaged produced will consist of a
- * manifest file, along with a series of files. This packaged is zipped together
- * into a single bundle ready for deposit.
+ * Generic packager that exports attachment files only without any manifest. Each
+ * package produced will be either a directory, or a zip archive of a directory.
  * 
  * The values that define what format, which files, etc, are all injected by
  * spring. This allows for many different package formats to be created by just
@@ -91,24 +83,12 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 	 * file we've built along with some basic metadata.
 	 * 
 	 */
-	public static class FilePackage implements ExportPackage {
-
-		// Members
-		public final Submission submission;
-		public final File file;
-		public final String entryName;
+	public static class FilePackage extends AbstractExportPackage implements ExportPackage {
 
 		public FilePackage(Submission submission, File file, String entryName) {
-			this.submission = submission;
-			this.file = file;
-			this.entryName = entryName;
+			super(submission, file, entryName);
 		}
 
-		@Override
-		public Submission getSubmission() {
-			return submission;
-		}
-		
 		@Override
 		public String getMimeType() {
 			return null;
@@ -118,41 +98,6 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 		public String getFormat() {
 			return "File System";
 		}
-
-		@Override
-		public File getFile() {
-			return file;
-		}
-		
-		@Override
-		public String getEntryName() {
-			return entryName;
-		}
-
-		@Override
-		public void delete() {
-			if (file != null && file.exists()) {
-
-				if (file.isDirectory()) {
-					try {
-						FileUtils.deleteDirectory(file);
-					} catch (IOException ioe) {
-						throw new RuntimeException("Unable to cleanup export package: " + file.getAbsolutePath(),ioe);
-					}
-				} else {
-					file.delete();
-				}
-
-			}
-		}
-
-		/**
-		 * If we do get garbage collected, delete the file resource.
-		 */
-		public void finalize() {
-			delete();
-		}
-
 	}
 	
 }

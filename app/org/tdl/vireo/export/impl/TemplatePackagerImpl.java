@@ -26,7 +26,8 @@ public class TemplatePackagerImpl extends MultipleTemplatePackagerImpl {
 		
 	/* Spring injected parameters */
 	public String manifestName = "mets.xml";
-    // also manifestTemplate path, which is injected via setter but is stored elsewhere.
+    // also manifestTemplatePath, which is injected via setter here but is stored using
+    // the mechanisms of the superclass.
 
 	/**
 	 * (REQUIRED) Set the template for generating the manifest file. This
@@ -42,15 +43,6 @@ public class TemplatePackagerImpl extends MultipleTemplatePackagerImpl {
         arg.put(manifestName, templatePath);
 		setTemplatePaths(arg);
 	}
-
-    @Override
-    public void setTemplatePaths(Map<String, String> templates) {
-        if (templates.size() != 1) {
-            throw new IllegalArgumentException("A TemplatePackagerImpl can ony have exactly one template.");
-        }
-        manifestName = templates.entrySet().iterator().next().getKey();
-        super.setTemplatePaths(templates);
-    }
 
 	/**
 	 * (OPTIONAL) Set the name of the manifest file file. This will vary between
@@ -70,10 +62,29 @@ public class TemplatePackagerImpl extends MultipleTemplatePackagerImpl {
         templates.put(manifestName, oldTemplate);
 	}
 	
+    /**
+     * (ALTERNATE FORM) Configure the manifest template path and name at the same
+     * time via a Map from name to filename. Calling this (with exactly one entry
+     * in the Map) yields the same result as calling both setManifestName() and
+     * setManifestTemplatePath().
+     *
+     * @param templates
+     *            A map from filenames to templates paths.
+     * @throws IllegalArgumentException if templates does not contain exactly one entry.
+     */
+    @Override
+    public void setTemplatePaths(Map<String, String> templates) {
+        if (templates.size() != 1) {
+            throw new IllegalArgumentException("A TemplatePackagerImpl can ony have exactly one template.");
+        }
+        manifestName = templates.entrySet().iterator().next().getKey();
+        super.setTemplatePaths(templates);
+    }
+
 	/**
 	 * (OPTIONAL) Set a list of arguments which may be accessed as variables in
 	 * the template syntax. The variable "sub" will always be the submission
-	 * which is being packaged.
+	 * which is being packaged. This is an alternate name for setTemplateArguments().
 	 * 
 	 * @param arguments
 	 *            Template arguments

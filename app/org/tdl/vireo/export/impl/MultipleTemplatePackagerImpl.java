@@ -176,7 +176,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
      * @return two strings. index 0 is the filename to use for the rendered template (which can be overridden
      * by subclasses), and index 1 is the rendered template contents.
      */
-    private String[] renderTemplate(String templateName, Submission submission, String customEntryName, Map<String, String> parameters) {
+    protected String[] renderTemplate(String templateName, Submission submission, String customEntryName, Map<String, String> parameters) {
         VirtualFile templateFile = templates.get(templateName);
 
         //customize after retrieving the template file
@@ -216,8 +216,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
      * @param parameters string replacement parameters corresponding to submission, but already extracted.
      * @throws IOException if something couldn't be copied
      */
-    void writeTemplatesToZip(ZipOutputStream zos, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
-        // Generate each of the export files
+    protected void writeTemplatesToZip(ZipOutputStream zos, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
         for (String templateName : templates.keySet()) {
             final String[] templateResults = renderTemplate(templateName, submission, customEntryName, parameters);
             templateName = templateResults[0]; // customized
@@ -245,8 +244,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
      * @param parameters string replacement parameters corresponding to submission, but already extracted.
      * @throws IOException if something couldn't be copied
      */
-    void writeTemplatesToDir(File pkg, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
-        // Generate each of the export files
+    protected void writeTemplatesToDir(File pkg, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
         for (String templateName : templates.keySet()) {
             final String[] templateResults = renderTemplate(templateName, submission, customEntryName, parameters);
             templateName = templateResults[0]; // customized
@@ -289,7 +287,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
                     writeTemplatesToZip(zos, submission, customEntryName, parameters);
                     writeAttachmentsToZip(zos, submission, parameters);
                 } finally {
-                    if (zos!=null) { IOUtils.closeQuietly(zos); }// also closes wrapped fos
+                    if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
                 }
             } else if (packageType==PackageType.dir) {
                 if (attachmentTypes.isEmpty() && templates.size()==1) {
@@ -333,28 +331,18 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	 * file we've built along with some basic metadata.
 	 * 
 	 */
-	public static class TemplatePackage implements ExportPackage {
+	public static class TemplatePackage extends AbstractExportPackage implements ExportPackage {
 
 		// Members
-		public final Submission submission;
 		public final String mimeType;
 		public final String format;
-		public final File file;
-		public final String entryName;
 
 		public TemplatePackage(Submission submission, String mimeType, String format, File file, String entryName) {
-			this.submission = submission;
+            super(submission, file, entryName);
 			this.mimeType = mimeType;
 			this.format = format;
-			this.file = file;
-			this.entryName = entryName;
 		}
 
-		@Override
-		public Submission getSubmission() {
-			return submission;
-		}
-		
 		@Override
 		public String getMimeType() {
 			return mimeType;
@@ -364,41 +352,6 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 		public String getFormat() {
 			return format;
 		}
-
-		@Override
-		public File getFile() {
-			return file;
-		}
-		
-		@Override
-		public String getEntryName() {
-			return entryName;
-		}
-
-		@Override
-		public void delete() {
-			if (file != null && file.exists()) {
-
-				if (file.isDirectory()) {
-					try {
-						FileUtils.deleteDirectory(file);
-					} catch (IOException ioe) {
-						throw new RuntimeException("Unable to cleanup export package: " + file.getAbsolutePath(),ioe);
-					}
-				} else {
-					file.delete();
-				}
-
-			}
-		}
-
-		/**
-		 * If we do get garbage collected, delete the file resource.
-		 */
-		public void finalize() {
-			delete();
-		}
-
 	}
 	
 }
