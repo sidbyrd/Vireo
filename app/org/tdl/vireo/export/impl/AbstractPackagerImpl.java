@@ -33,7 +33,9 @@ import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSub
  */
 public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 
-    /** Supported package types. */
+    /**
+     * Supported package types for setPackageType().
+     */
     public enum PackageType {
         /** All files will go in a filesystem directory */
         dir,
@@ -42,16 +44,19 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         zip
     }
 
-    /** These are keys in a java.util.Properties that gets associated with an attachment
+    /**
+     * These are keys in a java.util.Properties that gets associated with an attachment
      * type via setAttachmentTypeNames().
      */
     public enum AttachmentPropertyKey {
-        /** For each applicable attachment, this key's associated Properties value will be
+        /**
+         * For each applicable attachment, this key's associated Properties value will be
          * customized with StringValueReplacement and then used as the filename for the attachment.
          */
         customName,
 
-        /** For each applicable attachment, this key's associated Properties value will be
+        /**
+         * For each applicable attachment, this key's associated Properties value will be
          * customized with StringValueReplacement and then used as the directory within the
          * output package where the attachment will be exported.
          */
@@ -104,8 +109,13 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      *
      * If no types are specified then no attachments will be included.
      *
-     * @param attachmentTypeNames
-     *            List of attachment types to include.
+     * For each attachment type, the associated Properties object contains
+     * keys which customize the output of the attachment files. Allowable
+     * keys are those listed in the AttachmentPropertyKey enum, or no keys for no
+     * customization.
+     *
+     * @param attachmentTypeNames Name of attachment types to include, each mapped
+     *  to customization properties for that type.
      */
     public void setAttachmentTypeNames(LinkedHashMap<String, Properties> attachmentTypeNames) {
 
@@ -135,10 +145,10 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
     }
 
     /**
-     * (OPTIONAL) Inject the package type for the export.
+     * (OPTIONAL) Set the type of packaging that will be generated.
      *
-     * @param packageType
-     * 			Package Type (directory, zip, etc)
+     * @param packageType which packaging type to use. Allowable values
+     * can be found in the PackageType enum.
      */
     public void setPackageType(PackageType packageType) {
         this.packageType = packageType;
