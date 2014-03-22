@@ -264,7 +264,6 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 	 *
 	 * This is the class that represents the actual package. It contains the
 	 * file we've built along with some basic metadata.
-	 *
 	 */
 	public static abstract class AbstractExportPackage implements ExportPackage {
 

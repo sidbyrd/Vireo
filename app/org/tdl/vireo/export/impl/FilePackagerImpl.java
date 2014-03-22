@@ -35,7 +35,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 		
 		// Check that we have everything that we need.
 		if (submission == null || submission.getId() == null) {
-			throw new IllegalArgumentException("Unable to generate a package because the submission is null, or has not been persisted.");
+			throw new IllegalArgumentException("Unable to generate package because the submission is null or has not been persisted.");
         }
 		
         // Set String replacement parameters
@@ -44,7 +44,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 		try {
 			File pkg = null;
 			
-			//Check the package type set in the spring configuration
+			// Check the package type set in the spring configuration
             if (packageType==PackageType.zip) {
                 // Create output zip archive
 				pkg = File.createTempFile("file-export-", ".zip");
@@ -53,7 +53,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
                     zos = new ZipOutputStream(new FileOutputStream(pkg));
                     writeAttachmentsToZip(zos, submission, parameters);
                 } finally {
-                    if (zos!=null) { IOUtils.closeQuietly(zos); }// also closes wrapped fos
+                    if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
                 }
             } else if (packageType==PackageType.dir) {
                 // Create output directory
@@ -81,7 +81,6 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 	 * 
 	 * This is the class that represents the actual package. It contains the
 	 * file we've built along with some basic metadata.
-	 * 
 	 */
 	public static class FilePackage extends AbstractExportPackage implements ExportPackage {
 

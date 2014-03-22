@@ -329,7 +329,6 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	 * 
 	 * This is the class that represents the actual package. It contains the
 	 * file we've built along with some basic metadata.
-	 * 
 	 */
 	public static class TemplatePackage extends AbstractExportPackage implements ExportPackage {
 
@@ -353,5 +352,4 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 			return format;
 		}
 	}
-	
 }
