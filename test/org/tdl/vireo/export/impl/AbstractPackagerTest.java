@@ -4,6 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.tdl.vireo.export.ExportPackage;
+import org.tdl.vireo.export.Packager;
 import org.tdl.vireo.model.*;
 import org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl;
 import org.tdl.vireo.model.jpa.JpaSettingsRepositoryImpl;
@@ -119,6 +120,30 @@ public abstract class AbstractPackagerTest extends UnitTest {
         LinkedHashMap<String, Properties> old = packager.attachmentAttributes;
         old.put(attachmentType.name(), props);
         packager.setAttachmentTypeNames(old);
+    }
+
+    /**
+     * Assert that package directories, files, and file contents are as expected for stock setup(), and packager
+     * including PRIMARY and SUPPLEMENTAL with no Properties customization.
+     * Return a map for all leftover files that weren't checked, probably manifest files.
+     * @param exportFile the exported package's getFile()
+     * @param type dir or zip
+     * @throws IOException if can't read
+     */
+    public Map<String, String> beyondStandardContents(File exportFile, AbstractPackagerImpl.PackageType type) throws IOException {
+        Map<String, String> fileMap = null;
+        if (type== AbstractPackagerImpl.PackageType.dir) {
+            fileMap = getDirectoryFileContents(exportFile);
+        } else if (type== AbstractPackagerImpl.PackageType.zip) {
+            fileMap = getZipFileContents(exportFile);
+        } else {
+            fail("Unknown package type");
+        }
+        assertTrue(fileMap.containsKey(primaryDocName+".pdf"));
+        assertEquals("bottle", fileMap.remove(primaryDocName+".pdf"));
+        assertTrue(fileMap.containsKey("fluff.jpg"));
+        assertEquals("fluff", fileMap.remove("fluff.jpg"));
+        return fileMap;
     }
 
 	/**

@@ -29,7 +29,7 @@ import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_
 public class FilePackagerImplTest extends AbstractPackagerTest {
 
     // Test the standard File Packager in default configuration
-	@Test public void testGeneratePackage_default_dir() throws IOException {
+	@Test public void testGeneratePackage_stock_dir() throws IOException {
         FilePackagerImpl packager = new FilePackagerImpl();
         // packager.setEntryName( -default- );
         // packager.setPackageType( -default==dir- );
@@ -42,6 +42,7 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         assertNotNull(pkg);
         assertEquals("File System",pkg.getFormat());
         assertNull(pkg.getMimeType());
+        assertNull(pkg.getEntryName());
 
         // test main package directory file
         File exportFile = pkg.getFile();
@@ -51,16 +52,12 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         assertTrue("Package should be a directory", exportFile.isDirectory());
 
         // test all expected filenames and file contents
-        Map<String, String> fileMap = getDirectoryFileContents(exportFile);
-        assertTrue(fileMap.containsKey(primaryDocName+".pdf"));
-        assertEquals("bottle", fileMap.remove(primaryDocName+".pdf"));
-        assertTrue(fileMap.containsKey("fluff.jpg"));
-        assertEquals("fluff", fileMap.remove("fluff.jpg"));
-        assertEquals(0, fileMap.size()); // should be nothing else left
+        Map<String, String> fileMap = beyondStandardContents(exportFile, AbstractPackagerImpl.PackageType.dir);
+        assertEquals(0, fileMap.size()); // correct number of leftover files == 0
 	}
 
     // Test the standard File Packager in default configuration, but with zip output
-	@Test public void testGeneratePackage_default_zip() throws IOException {
+	@Test public void testGeneratePackage_stock_zip() throws IOException {
         FilePackagerImpl packager = new FilePackagerImpl();
         // packager.setEntryName( -default- );
         packager.setPackageType(zip);
@@ -73,6 +70,7 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         assertNotNull(pkg);
         assertEquals("File System",pkg.getFormat());
         assertNull(pkg.getMimeType());
+        assertNull(pkg.getEntryName());
 
         // test main package zip file
         File exportFile = pkg.getFile();
@@ -83,12 +81,8 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
 
         // test all expected filenames and file contents
-        Map<String, String> fileMap = getZipFileContents(exportFile);
-        assertTrue(fileMap.containsKey(primaryDocName+".pdf"));
-        assertEquals("bottle", fileMap.remove(primaryDocName+".pdf"));
-        assertTrue(fileMap.containsKey("fluff.jpg"));
-        assertEquals("fluff", fileMap.remove("fluff.jpg"));
-        assertEquals(0, fileMap.size()); // should be nothing else left
+        Map<String, String> fileMap = beyondStandardContents(exportFile, AbstractPackagerImpl.PackageType.zip);
+        assertEquals(0, fileMap.size()); // correct number of leftover files == 0
 	}
 
     // Test using entryName, custom filenames, and custom dirnames, with both "dir" and "zip" output.

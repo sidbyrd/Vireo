@@ -1,41 +1,16 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.jdom.JDOMException;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.tdl.vireo.export.ExportPackage;
-import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.model.DegreeLevel;
-import org.tdl.vireo.model.Person;
-import org.tdl.vireo.model.RoleType;
-import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl;
-import org.tdl.vireo.model.jpa.JpaSettingsRepositoryImpl;
-import org.tdl.vireo.model.jpa.JpaSubmissionRepositoryImpl;
-import org.tdl.vireo.proquest.ProquestVocabularyRepository;
-import org.tdl.vireo.security.SecurityContext;
-
-import play.Logger;
 import play.modules.spring.Spring;
-import play.test.UnitTest;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Map;
 
 /**
  * Test the multiple template packager.
- * 
- * Since there are expected to be lots of various formats, this test just runs
- * through the basics. It checks that the files were created and not much more.
- * 
- * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
- * 
  */
 public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
 
