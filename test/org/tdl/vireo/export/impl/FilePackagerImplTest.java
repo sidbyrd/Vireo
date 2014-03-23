@@ -105,14 +105,14 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
 
         // test all expected directories, filenames and file contents
         fileMap = getZipFileContents(exportFile);
-        if (fileMap.containsKey(primaryFileDir)); {
+        if (fileMap.containsKey(primaryFileDir)) {
             // explicit directory entries in zip files are optional
             assertEquals(null, fileMap.remove(primaryFileDir));
         }
         assertTrue(fileMap.containsKey(primaryFileName));
         assertEquals("bottle", fileMap.remove(primaryFileName));
 
-        if (fileMap.containsKey(supplementalFileDir)); {
+        if (fileMap.containsKey(supplementalFileDir)) {
             // explicit directory entries in zip files are optional
             assertEquals(null, fileMap.remove(supplementalFileDir));
         }

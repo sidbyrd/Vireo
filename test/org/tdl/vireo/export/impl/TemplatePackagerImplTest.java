@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.tdl.vireo.model.AttachmentType;
 import org.tdl.vireo.services.Utilities;
 import org.w3c.dom.Document;
+import play.exceptions.TemplateNotFoundException;
 
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.ParserConfigurationException;
@@ -211,6 +212,111 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         assertEquals("0285", xpath.evaluate("/DISS_submission/DISS_description/DISS_categorization/DISS_category[1]/DISS_cat_code", manifest).trim());
         assertEquals("last name_first name.pdf", xpath.evaluate("/DISS_submission/DISS_content/DISS_binary", manifest).trim());
     }
+
+    @Test public void testSetManifestNameAndPath() {
+        // test default
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("mets.xml")); // default manifest name
+        assertNull(packager.templates.get("mets.xml"));
+
+        // set path
+        packager.setManifestTemplatePath("conf/formats/vireo.xml");
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("mets.xml"));
+        assertEquals("vireo.xml", packager.templates.get("mets.xml").toString());
+
+        // change path
+        packager.setManifestTemplatePath("conf/formats/qdc.xml");
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("mets.xml"));
+        assertEquals("qdc.xml", packager.templates.get("mets.xml").toString());
+
+        // change name
+        packager.setManifestName("name2");
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("name2"));
+        assertEquals("qdc.xml", packager.templates.get("name2").toString());
+
+        // error - change path to non-existent file
+        try {
+            packager.setManifestTemplatePath("conf/formats/nope.xml");
+            fail("Should not accept non-existent template file");
+        } catch (TemplateNotFoundException e) { /**/ }
+        // nothing changed
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("name2"));
+        assertEquals("qdc.xml", packager.templates.get("name2").toString());
+    }
+
+    @Test public void testSetTemplatePaths() {
+        final Map<String, String> templatePaths = new HashMap<String, String>(2);
+
+        // zero is error
+        try {
+            packager.setTemplatePaths(templatePaths);
+            fail("Should not accept zero template paths");
+        } catch (IllegalArgumentException e) { /**/ }
+        // test default
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("mets.xml")); // default manifest name
+        assertNull(packager.templates.get("mets.xml"));
+
+        // single works
+        templatePaths.put("name1", "conf/formats/vireo.xml");
+        packager.setTemplatePaths(templatePaths);
+        assertEquals(1, packager.templates.size());
+        assertTrue(packager.templates.containsKey("name1"));
+        assertEquals("vireo.xml", packager.templates.get("name1").toString());
+
+        // double is error
+        templatePaths.put("name2", "conf/formats/qdc.xml");
+        try {
+            packager.setTemplatePaths(templatePaths);
+            fail("Should not accept multiple template paths");
+        } catch (IllegalArgumentException e) { /**/ }
+    }
+
+    @Test public void testGeneratePackageErrors() {
+        // error - no manifest template file set.
+        try {
+            packager.generatePackage(sub);
+            fail("Should not package with no template path");
+        } catch (IllegalStateException e) {
+            assertEquals("Unable to generate package because no manifest template path has been defined.", e.getMessage());
+        }
+
+        // error - no manifest name file set.
+        // it's set from the beginning, but we can unset it.
+        packager.setManifestName(null);
+        try {
+            packager.generatePackage(sub);
+            fail("Should not package with no manifest name");
+        } catch (IllegalStateException e) {
+            assertEquals("Unable to generate package because no manifest name has been defined.", e.getMessage());
+        }
+    }
+
+    // set templatearguments (superclass)
+    // set manifesttemplatearguments
+/*
+        templateBinding.put("packageType", packageType.name());
+        templateBinding.put("format", format);
+        templateBinding.put("mimeType", mimeType);
+        templateBinding.put("entryName", customEntryName);
+        templateBinding.put("attachmentTypes", attachmentTypes);
+        templateBinding.put("manifestName", customTemplateName);
+     */
+
+    
+    // repeats from multipletemplatepackager:
+    // error - submission == null
+    // error - templates empty
+    // error - no format
+    // custom entry
+    // single-template, type dir
+    // single template, type zip
+
+
 
 ///////////////////////////// helpers ///////////////////////////////
 

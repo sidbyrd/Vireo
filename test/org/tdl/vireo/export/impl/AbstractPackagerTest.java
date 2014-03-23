@@ -59,9 +59,6 @@ public abstract class AbstractPackagerTest extends UnitTest {
         xpath = XPathFactory.newInstance().newXPath();
     }
 
-	/**
-	 * Set up a submission so we can test packaging it up.
-	 */
 	@Before
 	public void setup() throws IOException {
 		context.turnOffAuthorization();
@@ -178,6 +175,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
     /**
      * Assert that package directories, files, and file contents are as expected for stock setup(), and packager
      * including PRIMARY and SUPPLEMENTAL with no Properties customization.
+     * @param packager packager (to check which attachment types should be present)
      * @param fileMap map of filenames to file contents
      * @throws IOException if can't read
      */
@@ -224,7 +222,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * @throws IOException if something can't be read
 	 */
     public static Map<String, String> getDirectoryFileContents(File targetDir) throws IOException {
-        Logger.info("list dir: " + targetDir.getPath());
+        Logger.debug("list dir: " + targetDir.getPath());
         return getDirectoryFileContents(targetDir, "");
     }
 	private static Map<String, String> getDirectoryFileContents(File targetDir, String prefix) throws IOException {
@@ -237,7 +235,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
             } else {
                 fileContentsMap.putAll(getDirectoryFileContents(file, prefix+file.getName()+File.separator));
             }
-            Logger.info("  '" + prefix + file.getName() + "' => '" + (contents == null ? "null" : contents) + "'");
+            Logger.debug("  '" + prefix + file.getName() + "' => '" + (contents == null ? "null" : contents) + "'");
             fileContentsMap.put(prefix+file.getName(), contents);
 		}
 		return fileContentsMap;
@@ -258,7 +256,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * @throws IOException if something can't be read
      */
     public static Map<String, String> getZipFileContents(File zip) throws IOException {
-        Logger.info("list zip: " + zip.getPath());
+        Logger.debug("list zip: " + zip.getPath());
 
         Map<String, String> fileContentsMap = new HashMap<String, String>(2);
         byte[] buffer = new byte[128];
@@ -276,7 +274,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
                     // read from entry into string
                     InputStream zis = zf.getInputStream(entry);
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    int len=0;
+                    int len;
                     while ((len = zis.read(buffer)) > 0) {
                         out.write(buffer, 0, len);
                     }
@@ -284,7 +282,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
                 }
 
                 // got it
-                Logger.info("  '" + filename + "' => '" + (contents == null ? "null" : contents) + "'");
+                Logger.debug("  '" + filename + "' => '" + (contents == null ? "null" : contents) + "'");
                 fileContentsMap.put(filename, contents);
             }
         } finally {

@@ -25,9 +25,9 @@ import java.util.Map;
 public class TemplatePackagerImpl extends MultipleTemplatePackagerImpl {
 		
 	/* Spring injected parameters */
-	public String manifestName = "mets.xml";
-    // also manifestTemplatePath, which is injected via setter here but is stored using
-    // the mechanisms of the superclass.
+	public String manifestName = "mets.xml"; // Play's freaky classloader calls my own setter to initialize this instead of just writing the value directly to the field, so this.templates.get("mets.xml")==null. Watch out!
+    // also manifestTemplatePath, which is injected via setter here but is stored in
+    // the fields of the superclass.
 
 	/**
 	 * (REQUIRED) Set the template for generating the manifest file. This
@@ -97,8 +97,12 @@ public class TemplatePackagerImpl extends MultipleTemplatePackagerImpl {
     @Override
 	public ExportPackage generatePackage(Submission submission) {
 
-		if (manifestName == null)
+		if (manifestName == null) {
 			throw new IllegalStateException("Unable to generate package because no manifest name has been defined.");
+        }
+        if (templates.get(manifestName) == null) {
+            throw new IllegalStateException("Unable to generate package because no manifest template path has been defined.");
+        }
 
         return super.generatePackage(submission);
 	}

@@ -1,16 +1,12 @@
 package org.tdl.vireo.export.impl;
 
-import org.jdom.JDOMException;
 import org.junit.Before;
 import org.junit.Test;
-import org.tdl.vireo.model.AttachmentType;
 import org.w3c.dom.Document;
-import play.modules.spring.Spring;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import static org.tdl.vireo.model.AttachmentType.*;
@@ -77,6 +73,26 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
 
         assertEquals(0, fileMap.size()); // no leftover files
     }
+
+    // mimetype
+    // different template paths
+    // custom template arguments
+/*
+        templateBinding.put("packageType", packageType.name());
+        templateBinding.put("format", format);
+        templateBinding.put("entryName", customEntryName);
+        templateBinding.put("attachmentTypes", attachmentTypes);
+        templateBinding.put("template", customTemplateName);
+        templateBinding.put("templates", templates);
+     */
+    // zip format
+    // error - submission == null
+    // error - templates empty
+    // error - no format
+    // custom entry
+    // single-template, type dir
+    // double template, type dir
+    // single template, type zip
 
 //////////////////////////////// helpers /////////////////////////////
     

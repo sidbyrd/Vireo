@@ -121,22 +121,13 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 			VirtualFile templateFile = Play.getVirtualFile(templatePath);
 			
     		// Blow up at construction time if template not found.
-			if ( templatePath == null || !templateFile.exists()) {
-				throw new TemplateNotFoundException(templatePath);
+			if ( templatePath == null || templateFile==null || !templateFile.exists()) {
+				throw new TemplateNotFoundException("path="+templatePath+", file="+templateFile);
             }
 			
 			this.templates.put(name, templateFile);
 		}
 	}
-
-    /**
-     * Accessor for something that is really an implementation detail.
-     * Included for easy testing.
-     * @return template names => template filenames
-     */
-    public Map<String, VirtualFile> getTemplates() {
-        return templates;
-    }
 
 	/**
 	 * (REQUIRED) Set the format descriptor of this package. This will vary
@@ -166,8 +157,6 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
     /**
      * Executes the named template for a specific submission, its string replacement parameters, and its
      * already-customized entry name.
-     * Provides an opportunity for subclasses to override the template name as bound to the 'manifestName'
-     * template parameter, and in the returned filename.
      * @param templateName the name of the template to execute
      * @param submission the submission to customize for
      * @param customEntryName the entry name to use. Basically string replacement on this.entryName, but it's
