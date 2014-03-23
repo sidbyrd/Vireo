@@ -36,24 +36,12 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         addAttachmentType(packager, AttachmentType.PRIMARY, null, null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
-        pkg = packager.generatePackage(sub);
-
-        // test package properties
-        assertNotNull(pkg);
-        assertEquals("File System",pkg.getFormat());
-        assertNull(pkg.getMimeType());
-        assertNull(pkg.getEntryName());
-
-        // test main package directory file
-        File exportFile = pkg.getFile();
-        assertNotNull(exportFile);
-        assertTrue("Package file does not exist", exportFile.exists());
-        assertTrue("Package file is not readable", exportFile.canRead());
-        assertTrue("Package should be a directory", exportFile.isDirectory());
+        File exportFile = generateFileAndAssertPackageBasics(packager, null);
 
         // test all expected filenames and file contents
-        Map<String, String> fileMap = beyondStandardContents(exportFile, AbstractPackagerImpl.PackageType.dir);
-        assertEquals(0, fileMap.size()); // correct number of leftover files == 0
+        Map<String, String> fileMap = getDirectoryFileContents(exportFile);
+        assertStandardAttachments(packager, fileMap);
+        assertEquals(0, fileMap.size()); // no leftover files
 	}
 
     // Test the standard File Packager in default configuration, but with zip output
@@ -64,25 +52,12 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         addAttachmentType(packager, AttachmentType.PRIMARY, null, null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
-        pkg = packager.generatePackage(sub);
-
-        // test package properties
-        assertNotNull(pkg);
-        assertEquals("File System",pkg.getFormat());
-        assertNull(pkg.getMimeType());
-        assertNull(pkg.getEntryName());
-
-        // test main package zip file
-        File exportFile = pkg.getFile();
-        assertNotNull(exportFile);
-        assertTrue("Package file does not exist", exportFile.exists());
-        assertTrue("Package file is not readable", exportFile.canRead());
-        assertFalse("Package should not be a directory", exportFile.isDirectory());
-        assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
+        File exportFile = generateFileAndAssertPackageBasics(packager, null);
 
         // test all expected filenames and file contents
-        Map<String, String> fileMap = beyondStandardContents(exportFile, AbstractPackagerImpl.PackageType.zip);
-        assertEquals(0, fileMap.size()); // correct number of leftover files == 0
+        Map<String, String> fileMap = getZipFileContents(exportFile);
+        assertStandardAttachments(packager, fileMap);
+        assertEquals(0, fileMap.size()); // no leftover files
 	}
 
     // Test using entryName, custom filenames, and custom dirnames, with both "dir" and "zip" output.
@@ -96,21 +71,7 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL,
                 "supplementalFile-{" + FILE_NAME + "}-end", /* FILE_NAME gets "fluff" */
                 "supplementalDir-{" + FILE_NAME + '}');
-        pkg = packager.generatePackage(sub);
-
-        // test package properties
-        assertNotNull(pkg);
-        assertEquals("File System", pkg.getFormat());
-        assertNull(pkg.getMimeType());
-        assertEquals("entry-email@email.com-notvar-fallback", pkg.getEntryName());
-
-        // test main package directory file
-        File exportFile = pkg.getFile();
-        assertNotNull(exportFile);
-        assertTrue("Package file does not exist", exportFile.exists());
-        assertTrue("Package file is not readable", exportFile.canRead());
-        assertTrue("Package should be a directory", exportFile.isDirectory());
-        assertTrue("Package file should end in .dir", exportFile.getName().endsWith(".dir"));
+        File exportFile = generateFileAndAssertPackageBasics(packager, "entry-email@email.com-notvar-fallback");
 
         // test all expected directories, filenames and file contents
         Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -130,29 +91,17 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         assertTrue(fileMap.containsKey(supplementalFileName));
         assertEquals("fluff", fileMap.remove(supplementalFileName));
 
-        assertEquals(0, fileMap.size()); // should be nothing else left
+        assertEquals(0, fileMap.size()); // no leftover files
 
         ////////////////////////////////////////////////////////////////////
         // Use the same setup, but do it again, this time with .zip output
         ////////////////////////////////////////////////////////////////////
 
         pkg.delete();
+        assertFalse(pkg.getFile().exists());
+
         packager.setPackageType(zip);
-        pkg = packager.generatePackage(sub);
-
-        // test package properties
-        assertNotNull(pkg);
-        assertEquals("File System", pkg.getFormat());
-        assertNull(pkg.getMimeType());
-        assertEquals("entry-email@email.com-notvar-fallback", pkg.getEntryName());
-
-        // test main package zip file
-        exportFile = pkg.getFile();
-        assertNotNull(exportFile);
-        assertTrue("Package file does not exist", exportFile.exists());
-        assertTrue("Package file is not readable", exportFile.canRead());
-        assertFalse("Package should not be a directory", exportFile.isDirectory());
-        assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
+        exportFile = generateFileAndAssertPackageBasics(packager, "entry-email@email.com-notvar-fallback");
 
         // test all expected directories, filenames and file contents
         fileMap = getZipFileContents(exportFile);
@@ -160,7 +109,6 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
             // explicit directory entries in zip files are optional
             assertEquals(null, fileMap.remove(primaryFileDir));
         }
-
         assertTrue(fileMap.containsKey(primaryFileName));
         assertEquals("bottle", fileMap.remove(primaryFileName));
 
@@ -168,11 +116,10 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
             // explicit directory entries in zip files are optional
             assertEquals(null, fileMap.remove(supplementalFileDir));
         }
-
         assertTrue(fileMap.containsKey(supplementalFileName));
         assertEquals("fluff", fileMap.remove(supplementalFileName));
 
-        assertEquals(0, fileMap.size()); // should be nothing else left
+        assertEquals(0, fileMap.size()); // no leftover files
 	}
 
     @Test public void testGeneratePackage_failures() {
@@ -195,5 +142,23 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         } catch (IllegalArgumentException e) {
             assertTrue("Wrong error: "+e.getMessage(), e.getMessage().contains("because the submission"));
         }
+    }
+
+
+    /**
+     * Generates the ExportPackage and saves it in field so cleanup() can clean it.
+     * Asserts that the generated package and the File it contains have all the right properties.
+     * Returns the File from the export, which will be either a zip or a dir.
+     * @param packager the packager to test
+     * @param entryName the correct entryName for the generated package
+     * @return the File from the generated package
+     */
+    public File generateFileAndAssertPackageBasics(FilePackagerImpl packager, String entryName) {
+        pkg = packager.generatePackage(sub);
+        assertEquals(entryName, pkg.getEntryName());
+        assertNotNull(pkg);
+        assertEquals("File System", pkg.getFormat());
+        assertNull(pkg.getMimeType());
+        return assertExport(pkg, packager.packageType);
     }
 }

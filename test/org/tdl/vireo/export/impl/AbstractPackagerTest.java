@@ -3,8 +3,8 @@ package org.tdl.vireo.export.impl;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.tdl.vireo.export.ExportPackage;
-import org.tdl.vireo.export.Packager;
 import org.tdl.vireo.model.*;
 import org.tdl.vireo.model.jpa.JpaPersonRepositoryImpl;
 import org.tdl.vireo.model.jpa.JpaSettingsRepositoryImpl;
@@ -12,17 +12,24 @@ import org.tdl.vireo.model.jpa.JpaSubmissionRepositoryImpl;
 import org.tdl.vireo.proquest.ProquestVocabularyRepository;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.services.Utilities;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 import play.Logger;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathFactory;
+import java.io.*;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 
 /**
  * Contains things that any tester of an AbstractPackagerImpl would want to have. Does not actually contain tests.
@@ -39,6 +46,18 @@ public abstract class AbstractPackagerTest extends UnitTest {
 	public Submission sub;
     public ExportPackage pkg;
     public String primaryDocName = null;
+
+    // XML stuff
+    static DocumentBuilder builder = null;
+    static XPath xpath = null;
+
+    @BeforeClass
+    public static void setupClass() throws ParserConfigurationException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        builder = factory.newDocumentBuilder();
+        xpath = XPathFactory.newInstance().newXPath();
+    }
 
 	/**
 	 * Set up a submission so we can test packaging it up.
@@ -68,18 +87,28 @@ public abstract class AbstractPackagerTest extends UnitTest {
 		sub.setGraduationMonth(0);
 		sub.setGraduationYear(2002);
 		sub.setDepositId("depositId");
+        sub.setDocumentLanguage("en");
 
 		// Create some attachments
 		File bottle_pdf = Utilities.fileWithNameAndContents("bottle.pdf", "bottle");
         File fluff_jpg = Utilities.fileWithNameAndContents("fluff.jpg", "fluff");
+        File license_txt = Utilities.fileWithNameAndContents("license.txt", "license");
+        File source_pdf = Utilities.fileWithNameAndContents("source.pdf", "source");
 
 		sub.addAttachment(bottle_pdf, AttachmentType.PRIMARY);
 		sub.addAttachment(fluff_jpg, AttachmentType.SUPPLEMENTAL);
+        sub.addAttachment(license_txt, AttachmentType.LICENSE);
+        sub.addAttachment(source_pdf, AttachmentType.SOURCE);
+
+        EmbargoType embargo = settingRepo.findAllEmbargoTypes().get(1);
+        sub.setEmbargoType(embargo);
 
 		sub.save();
 
         FileUtils.deleteQuietly(bottle_pdf);
         FileUtils.deleteQuietly(fluff_jpg);
+        FileUtils.deleteQuietly(license_txt);
+        FileUtils.deleteQuietly(source_pdf);
 
         // shared test subjects
         pkg = null;
@@ -97,6 +126,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
 
         if (pkg!=null) {
             pkg.delete();
+            assertFalse(pkg.getFile().exists());
         }
 	}
     
@@ -109,7 +139,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * @param customName the customName property, or null for none
      * @param directory the directory property, or null for none
      */
-    public void addAttachmentType(AbstractPackagerImpl packager, AttachmentType attachmentType, String customName, String directory) {
+    public static void addAttachmentType(AbstractPackagerImpl packager, AttachmentType attachmentType, String customName, String directory) {
         Properties props = new Properties();
         if (customName != null) {
             props.setProperty(AbstractPackagerImpl.AttachmentPropertyKey.customName.name(), customName);
@@ -123,27 +153,59 @@ public abstract class AbstractPackagerTest extends UnitTest {
     }
 
     /**
+     * Asserts that a proper export was produced
+     * @param pkg package to check
+     * @param packageType dir or zip
+     * @return the export's file
+     */
+    public static File assertExport(ExportPackage pkg, AbstractPackagerImpl.PackageType packageType) {
+        final File exportFile = pkg.getFile();
+        assertNotNull(exportFile);
+        assertTrue("Package file does not exist", exportFile.exists());
+        assertTrue("Package file is not readable", exportFile.canRead());
+        if (packageType==dir) {
+            assertTrue("Package should be a directory", exportFile.isDirectory());
+            assertTrue("Package file should end in .dir", exportFile.getName().endsWith(".dir"));
+        } else if (packageType==zip) {
+            assertFalse("Package should not be a directory", exportFile.isDirectory());
+            assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
+        } else {
+            fail("Unsupported package type");
+        }
+        return exportFile;
+    }
+
+    /**
      * Assert that package directories, files, and file contents are as expected for stock setup(), and packager
      * including PRIMARY and SUPPLEMENTAL with no Properties customization.
-     * Return a map for all leftover files that weren't checked, probably manifest files.
-     * @param exportFile the exported package's getFile()
-     * @param type dir or zip
+     * @param fileMap map of filenames to file contents
      * @throws IOException if can't read
      */
-    public Map<String, String> beyondStandardContents(File exportFile, AbstractPackagerImpl.PackageType type) throws IOException {
-        Map<String, String> fileMap = null;
-        if (type== AbstractPackagerImpl.PackageType.dir) {
-            fileMap = getDirectoryFileContents(exportFile);
-        } else if (type== AbstractPackagerImpl.PackageType.zip) {
-            fileMap = getZipFileContents(exportFile);
-        } else {
-            fail("Unknown package type");
+    public void assertStandardAttachments(AbstractPackagerImpl packager, Map<String, String> fileMap) throws IOException {
+        if (packager.attachmentTypes.contains(AttachmentType.LICENSE)) {
+            assertTrue(fileMap.containsKey("license.txt"));
+            assertEquals("license", fileMap.remove("license.txt"));
         }
-        assertTrue(fileMap.containsKey(primaryDocName+".pdf"));
-        assertEquals("bottle", fileMap.remove(primaryDocName+".pdf"));
-        assertTrue(fileMap.containsKey("fluff.jpg"));
-        assertEquals("fluff", fileMap.remove("fluff.jpg"));
-        return fileMap;
+        if (packager.attachmentTypes.contains(AttachmentType.ADMINISTRATIVE)) {
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.ARCHIVED)) {
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.FEEDBACK)) {
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.PRIMARY)) {
+            assertTrue(fileMap.containsKey(primaryDocName+".pdf"));
+            assertEquals("bottle", fileMap.remove(primaryDocName+".pdf"));
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.SOURCE)) {
+            assertTrue(fileMap.containsKey("source.pdf"));
+            assertEquals("source", fileMap.remove("source.pdf"));
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.SUPPLEMENTAL)) {
+            assertTrue(fileMap.containsKey("fluff.jpg"));
+            assertEquals("fluff", fileMap.remove("fluff.jpg"));
+        }
+        if (packager.attachmentTypes.contains(AttachmentType.UNKNOWN)) {
+        }
     }
 
 	/**
@@ -161,11 +223,11 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * "myDir/bar.txt" => "contents"
      * @throws IOException if something can't be read
 	 */
-    public Map<String, String> getDirectoryFileContents(File targetDir) throws IOException {
+    public static Map<String, String> getDirectoryFileContents(File targetDir) throws IOException {
         Logger.info("list dir: " + targetDir.getPath());
         return getDirectoryFileContents(targetDir, "");
     }
-	private Map<String, String> getDirectoryFileContents(File targetDir, String prefix) throws IOException {
+	private static Map<String, String> getDirectoryFileContents(File targetDir, String prefix) throws IOException {
 		File[] files = targetDir.listFiles();
 		Map<String, String> fileContentsMap = new HashMap<String, String>(files.length);
 		for (File file : files) {
@@ -195,7 +257,7 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * "myDir/bar.txt" => "contents"
      * @throws IOException if something can't be read
      */
-    public Map<String, String> getZipFileContents(File zip) throws IOException {
+    public static Map<String, String> getZipFileContents(File zip) throws IOException {
         Logger.info("list zip: " + zip.getPath());
 
         Map<String, String> fileContentsMap = new HashMap<String, String>(2);
@@ -229,5 +291,21 @@ public abstract class AbstractPackagerTest extends UnitTest {
             if (zf!=null) { zf.close(); }
         }
         return fileContentsMap;
+    }
+
+    /**
+     * Asserts the existence, name, and XML validity of the named XML file included in the export.
+     * Removes the file contents from the map and returns its XML Document contents
+     * for further examination.
+     * @param fileMap map of filename to file contents
+     * @param manifestName name of file in the map
+     * @return parsed XML contents of the file
+     * @throws IOException if can't read file
+     * @throws org.xml.sax.SAXException if not valid XML
+     */
+    public static Document getFileXML(Map<String, String> fileMap, String manifestName) throws IOException, SAXException {
+        assertTrue(fileMap.containsKey(manifestName));
+        final String manifest = fileMap.remove(manifestName);
+        return builder.parse(new ByteArrayInputStream(manifest.getBytes("UTF-8")));
     }
 }

@@ -53,7 +53,7 @@ ${ attachment.getName() }	bundle:LICENSE
     #{/list}
     #{/if}
 
-    <!-- dc.contributor.advisor = Committee Memmbers who are flagged as chair (may be multiple) -->
+    <!-- dc.contributor.advisor = Committee Members who are flagged as chair (may be multiple) -->
     #{list items:sub.getCommitteeMembers(), as:'member'} 
     #{if member.hasRole("Chair","Co-Chair","Supervisor","Co-Supervisor","Advisor") } 
     <dcvalue element="contributor" qualifier="advisor">
@@ -81,7 +81,7 @@ ${ attachment.getName() }	bundle:LICENSE
 			out.print(sub.getGraduationYear());
 			if (sub.getGraduationMonth() != null) {
 			    out.print("-");
-			    // Jaunary=0, December=11
+			    // January=0, December=11
 			    out.print(String.format("%02d",sub.getGraduationMonth()+1));
 			}
 		}% 
@@ -114,7 +114,7 @@ ${ attachment.getName() }	bundle:LICENSE
     
     <!-- dc.language.iso = Document Language -->
     #{if sub.getDocumentLanguage() != null }
-    <dim:field mdschema="dc" element="language" qualifier="iso">${sub.getDocumentLanguage()}</dim:field>
+    <dcvalue element="language" qualifier="iso">${sub.getDocumentLanguage()}</dcvalue>
     #{/if}
     
     <!-- dc.type.material = "text" // constant -->
@@ -130,7 +130,7 @@ ${ attachment.getName() }	bundle:LICENSE
     </dcvalue>
     #{/if}
     
-    <!-- dc.description.proveance = Embargo Notes -->
+    <!-- dc.description.provenance = Embargo Notes -->
        #{if sub.getEmbargoType() != null } 
        
        #{if sub.getEmbargoType().getDuration() == null } 
@@ -159,7 +159,7 @@ ${ attachment.getName() }	bundle:LICENSE
        #{/elseif} 
        #{else} 
        <dcvalue element="description" qualifier="provenance">
-           Submission originaly under the a zero month embargo labeled '${ sub.getEmbargoType().getName()?.escapeXml()?.raw() }'.
+           Submission originally under the a zero month embargo labeled '${ sub.getEmbargoType().getName()?.escapeXml()?.raw() }'.
        </dcvalue>
        #{/else}
 
