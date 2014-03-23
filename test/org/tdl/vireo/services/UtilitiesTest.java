@@ -8,6 +8,7 @@ import play.test.UnitTest;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class UtilitiesTest extends UnitTest {
@@ -24,6 +25,13 @@ public class UtilitiesTest extends UnitTest {
         final File textFile = Utilities.getResourceFileWithExtension("SampleTextDocument.txt", ".pdf");
         assertEquals("pdf", FilenameUtils.getExtension(textFile.getName()));
         FileUtils.deleteQuietly(textFile); // should already be marked deleteOnExit, but let's make sure.
+    }
+
+    @Test public void testGetResourceFile_failure() throws IOException {
+        try {
+            final File textFile = Utilities.getResourceFile("nope.txt");
+            fail("Should load file that doesn't exist");
+        } catch (FileNotFoundException e) { /**/ }
     }
 
     @Test public void testBlankFileWithSize() throws IOException {

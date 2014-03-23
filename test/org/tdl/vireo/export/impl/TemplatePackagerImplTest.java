@@ -16,6 +16,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
+import static org.tdl.vireo.model.AttachmentType.PRIMARY;
+import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_NETID;
+
 /**
  * Creates several TemplatePackagers with known configurations designed to test all the functions of a FilePackagerImpl,
  * generates the output, and asserts that it's all as expected. Also tests a recreation of a representative sample of
@@ -54,6 +58,37 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         packager.subRepo = subRepo;
         packager.settingRepo = settingRepo;
         packager.proquestRepo = proquestRepo;
+    }
+    @Test public void testAllTemplateVariables() throws Exception {
+        // configure with test template that uses every available template variable
+        packager.setFormat("testFormat");
+        packager.setMimeType("application/xml");
+        packager.setEntryName("custom-{" + STUDENT_NETID + "}");
+        packager.setManifestTemplatePath("test/org/tdl/vireo/export/impl/TestTemplatePackagerVars.xml");
+        packager.setManifestName("test.xml");
+        addAttachmentType(packager, PRIMARY, null, null);
+        final File exportFile = generateFileAndAssertPackageBasics(packager, "custom-netid");
+
+        // test that it's just a manifest
+        final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
+        assertStandardAttachments(packager, fileMap);
+        final Document manifest = getFileXML(fileMap, "test.xml");
+        assertEquals(0, fileMap.size()); // no leftover files
+
+        // Test injected vars
+        assertEquals(String.valueOf(sub.hashCode()), xpath.evaluate("/test/sub", manifest));
+        assertEquals(String.valueOf(subRepo.hashCode()), xpath.evaluate("/test/subRepo", manifest));
+        assertEquals(String.valueOf(personRepo.hashCode()), xpath.evaluate("/test/personRepo", manifest));
+        assertEquals(String.valueOf(settingRepo.hashCode()), xpath.evaluate("/test/settingRepo", manifest));
+        assertEquals(String.valueOf(proquestRepo.hashCode()), xpath.evaluate("/test/proquestRepo", manifest));
+
+        // Test vars from packager
+        assertEquals(dir.name(), xpath.evaluate("/test/packageType", manifest));
+        assertEquals("testFormat", xpath.evaluate("/test/format", manifest));
+        assertEquals("application/xml", xpath.evaluate("/test/mimeType", manifest));
+        assertEquals("custom-netid", xpath.evaluate("/test/entryName", manifest));
+        assertEquals(PRIMARY.name(), xpath.evaluate("/test/attachmentType[1]", manifest));
+        assertEquals("test.xml", xpath.evaluate("/test/manifestName", manifest));
     }
 
     // Test the standard VireoExport packager in default configuration
@@ -96,7 +131,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         Map<String, Object> templateArgs = new HashMap<String, Object>(1);
         templateArgs.put("agent", "Vireo DSpace METS packager");
         packager.setManifestTemplateArguments(templateArgs);
-        addAttachmentType(packager, AttachmentType.PRIMARY, null, null);
+        addAttachmentType(packager, PRIMARY, null, null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.LICENSE, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
@@ -122,7 +157,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         packager.setFormat("http://purl.org/dc/elements/1.1/");
         packager.setManifestTemplatePath("conf/formats/qdc.xml");
         packager.setManifestName("metadata.xml");
-        addAttachmentType(packager, AttachmentType.PRIMARY, null, null);
+        addAttachmentType(packager, PRIMARY, null, null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.LICENSE, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
@@ -176,7 +211,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         packager.setManifestTemplatePath("conf/formats/ProquestUMI.xml");
         packager.setManifestName("{LAST_NAME}_{FIRST_NAME}_DATA.xml");
         packager.setEntryName("upload_{LAST_NAME}_{FIRST_NAME}");
-        addAttachmentType(packager, AttachmentType.PRIMARY, "{LAST_NAME}_{FIRST_NAME}", null);
+        addAttachmentType(packager, PRIMARY, "{LAST_NAME}_{FIRST_NAME}", null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, "supp_file_{FILE_NAME}", "{LAST_NAME}_{FIRST_NAME}_media{SEPARATOR}");
         addAttachmentType(packager, AttachmentType.LICENSE, null, "{LAST_NAME}_{FIRST_NAME}_permission{SEPARATOR}");
         final File exportFile = generateFileAndAssertPackageBasics(packager, "upload_last name_first name");
@@ -250,6 +285,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
 
     @Test public void testSetTemplatePaths() {
         final Map<String, String> templatePaths = new HashMap<String, String>(2);
+        // This method is left over from superclass, but it's there and overridden to behave in single-template context.
 
         // zero is error
         try {
@@ -294,28 +330,8 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         } catch (IllegalStateException e) {
             assertEquals("Unable to generate package because no manifest name has been defined.", e.getMessage());
         }
+        // additional errors tested in MultipleTemplatePackagerTest
     }
-
-    // set templatearguments (superclass)
-    // set manifesttemplatearguments
-/*
-        templateBinding.put("packageType", packageType.name());
-        templateBinding.put("format", format);
-        templateBinding.put("mimeType", mimeType);
-        templateBinding.put("entryName", customEntryName);
-        templateBinding.put("attachmentTypes", attachmentTypes);
-        templateBinding.put("manifestName", customTemplateName);
-     */
-
-    
-    // repeats from multipletemplatepackager:
-    // error - submission == null
-    // error - templates empty
-    // error - no format
-    // custom entry
-    // single-template, type dir
-    // single template, type zip
-
 
 
 ///////////////////////////// helpers ///////////////////////////////

@@ -53,7 +53,8 @@ public class Utilities {
      *
      * @param filePath The path, relative to the classpath, of the file to reference.
      * @return A Java File object reference.
-     * @throws java.io.IOException
+     * @throws FileNotFoundException if file not found
+     * @throws IOException if can't read or write
      */
     public static File getResourceFile(String filePath) throws IOException {
         // use the original file's correct extension
@@ -66,8 +67,9 @@ public class Utilities {
      *
      * @param filePath The path, relative to the classpath, of the file to reference.
      * @param extension the file extension for the created temp file
-     * @return A Java File object reference.
-     * @throws IOException
+     * @return A Java File object reference, or null if file not found
+     * @throws FileNotFoundException if file not found
+     * @throws IOException if can't read or write
      */
     public static File getResourceFileWithExtension(String filePath, String extension) throws IOException {
         File file = File.createTempFile("resource", '.'+extension);
@@ -76,9 +78,14 @@ public class Utilities {
         // While we're packaged by play we have to ask Play for the inputstream instead of the classloader.
         //InputStream is = DSpaceCSVIngestServiceImplTests.class
         //		.getResourceAsStream(filePath);
-        InputStream is = Play.classloader.getResourceAsStream(filePath);
-        OutputStream os = new FileOutputStream(file);
+        InputStream is = null;
+        OutputStream os = null;
         try {
+            is = Play.classloader.getResourceAsStream(filePath);
+            if (is==null) {
+                throw new FileNotFoundException("Couldn't find resource "+filePath);
+            }
+            os = new FileOutputStream(file);
             // Copy the file out of the jar into a temporary space.
             byte[] buffer = new byte[1024];
             int len;
@@ -86,8 +93,8 @@ public class Utilities {
                 os.write(buffer, 0, len);
             }
         } finally {
-            is.close();
-            os.close();
+            if (is!=null) { is.close(); }
+            if (os!=null) { os.close(); }
         }
 
         return file;
