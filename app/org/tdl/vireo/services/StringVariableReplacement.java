@@ -50,7 +50,9 @@ public class StringVariableReplacement {
         STUDENT_URL,
         /** advisor submission review URL */
         ADVISOR_URL,
-        /** not filled by setParameters(), but used by FilePackager. Represents attachment filename. */
+        /** submission id. Useful for ExportPackage entry name */
+        SUBMISSION_ID,
+        /** not filled by setParameters(), but used by Packagers. Represents attachment filename. */
         FILE_NAME,
         /** File separator for current platform. This should never be needed and could cause problems if used improperly */
         @Deprecated
@@ -157,6 +159,8 @@ public class StringVariableReplacement {
 
         //noinspection deprecation
         parameters.put(Variable.SEPARATOR.name(), File.separator);
+
+        parameters.put(Variable.SUBMISSION_ID.name(), String.valueOf(sub.getId()));
 		
 		return parameters;
 		

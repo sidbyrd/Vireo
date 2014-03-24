@@ -47,6 +47,7 @@ public class StringVariableReplacementTest extends UnitTest {
         assignee.lastName = "last";
         sub.setAssignee(assignee);
         sub.setCommitteeEmailHash("whatever");
+        sub.id=999L;
 
         Map<String, String> params = StringVariableReplacement.setParameters(sub);
         assertEquals("Zanoni Ineffable", params.remove(Variable.FULL_NAME.name()));
@@ -62,6 +63,7 @@ public class StringVariableReplacementTest extends UnitTest {
         assertEquals("first last", params.remove(Variable.SUBMISSION_ASSIGNED_TO.name()));
         assertTrue(params.remove(Variable.STUDENT_URL.name()).endsWith("submit"));
         assertTrue(params.remove(Variable.ADVISOR_URL.name()).endsWith("/advisor/whatever/review"));
+        assertEquals("999", params.remove(Variable.SUBMISSION_ID.name()));
         assertEquals(File.separator, params.remove(Variable.SEPARATOR.name()));
         assertEquals(0, params.size()); // make sure there aren't any non-Variable things in there.
     }
@@ -77,6 +79,7 @@ public class StringVariableReplacementTest extends UnitTest {
         Map<String, String> params = StringVariableReplacement.setParameters(sub);
         assertEquals("n/a", params.remove(Variable.SUBMISSION_ASSIGNED_TO.name()));
         params.remove(Variable.STUDENT_URL.name());
+        assertEquals(String.valueOf(sub.getId()), params.remove(Variable.SUBMISSION_ID.name()));
         params.remove(Variable.SEPARATOR.name());
         assertEquals(0, params.size()); // that should be all
     }

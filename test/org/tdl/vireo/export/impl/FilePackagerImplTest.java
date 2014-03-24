@@ -144,6 +144,7 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
         }
     }
 
+////////////////////////// helper /////////////////////////////
 
     /**
      * Generates the ExportPackage and saves it in field so cleanup() can clean it.
