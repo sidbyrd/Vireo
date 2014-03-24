@@ -7,7 +7,6 @@ import org.tdl.vireo.model.AttachmentType;
 import org.tdl.vireo.services.Utilities;
 import org.w3c.dom.Document;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;

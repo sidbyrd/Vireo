@@ -311,19 +311,14 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 			
 			// Produce the correct output format.
             if (packageType==dir && attachmentTypes.isEmpty() && templates.size()==1) {
-                // Instead of exporting a dir with nothing but a single template file in it, just export the file.
                 String templateName = templates.keySet().iterator().next();
-                final String templateRendered = renderTemplate(templateName, submission, customEntryName);
-                // now customize the template name
-                templateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
-
-                // It's a file, not a dir, so it needs a file type.
+                // Only one template to export, so instead of a dir, just make one file (with correct extension).
                 String extension = FilenameUtils.getExtension(templateName);
-                if (extension.length() > 0) {
-                    extension = "."+extension;
-                }
-                pkg = File.createTempFile("template-export", extension);
-                FileUtils.writeStringToFile(pkg, templateRendered);
+                pkg = File.createTempFile("template-export", (extension.length()>0?'.':"")+extension);
+
+                // Render the one template directly to the package file.
+                // (No need for templateName customization since the Depositor will change its base filename anyway.)
+                FileUtils.writeStringToFile(pkg, renderTemplate(templateName, submission, customEntryName));
 
             } else if (packageType==dir) {
                 // Create output directory

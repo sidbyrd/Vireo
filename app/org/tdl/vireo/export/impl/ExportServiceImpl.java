@@ -1,21 +1,6 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
 import org.tdl.vireo.error.ErrorLog;
 import org.tdl.vireo.export.ChunkStream;
 import org.tdl.vireo.export.ExportPackage;
@@ -31,14 +16,15 @@ import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.search.SearchDirection;
 import org.tdl.vireo.search.SearchFilter;
 import org.tdl.vireo.search.SearchOrder;
-import org.tdl.vireo.search.SearchResult;
 import org.tdl.vireo.search.Searcher;
 import org.tdl.vireo.security.SecurityContext;
-
 import play.Logger;
 import play.db.jpa.JPA;
 import play.jobs.Job;
-import play.modules.spring.Spring;
+
+import java.io.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 
 /**
@@ -225,16 +211,14 @@ public class ExportServiceImpl implements ExportService {
 
 						ExportPackage pkg = packager.generatePackage(sub);
 						try {
-							String entryName = null;
-							if(pkg.getEntryName()!=null){
-								entryName = pkg.getEntryName();
-							} else {
-								entryName = archiveFolder + "submission_" + sub.getId();
-							}							
+							String entryName = pkg.getEntryName();
+							if (entryName == null) {
+								entryName = "submission_" + sub.getId();
+							}
 							if (pkg.getFile().isDirectory()) {
-								zipDirectory(entryName + File.separator, pkg.getFile(), zos);
+								zipDirectory(archiveFolder + entryName + File.separator, pkg.getFile(), zos);
 							} else {
-								zipFile(entryName, pkg.getFile(), zos);
+								zipFile(archiveFolder + entryName, pkg.getFile(), zos);
 							}
 						} finally {
 							// Ensure the package is deleted.
