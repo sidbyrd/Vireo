@@ -66,14 +66,14 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
     @Test public void testAllTemplateVariables() throws Exception {
         packager.setFormat("testFormat");
         packager.setMimeType("application/xml");
-        packager.setEntryName("custom-{"+STUDENT_NETID+"}");
+        packager.setEntryName("custom-{"+STUDENT_NETID+ '}');
         packager.setManifestTemplatePath("test/org/tdl/vireo/export/impl/TestSingleTemplate.xml");
         packager.setManifestName("test-{"+LAST_NAME+"}.xml");
         Map<String, Object> templateArgs = new HashMap<String, Object>(1);
         templateArgs.put("customArg", "verified");
         packager.setManifestTemplateArguments(templateArgs);
         addAttachmentType(packager, PRIMARY, null, null);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, "custom-netid");
+        final File exportFile = generateFileAndAssertPackageBasics("custom-netid");
 
         // Test directories and files
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -109,7 +109,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         for (AttachmentType at : AttachmentType.values()) {
             addAttachmentType(packager, at, null, null);
         }
-        final File exportFile = generateFileAndAssertPackageBasics(packager, null);
+        final File exportFile = generateFileAndAssertPackageBasics(null);
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -125,7 +125,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         assertEquals(sub.getDocumentAbstract(), xpath.evaluate("/submission/documentAbstract", manifest));
         Iterator<String> subjects = sub.getDocumentSubjects().iterator();
         for (int i=1; subjects.hasNext(); i++) { // xpath uses 1-based indexing. Sigh.
-            assertEquals(subjects.next(), xpath.evaluate("/submission/documentSubjects/documentSubject["+i+"]", manifest).trim());
+            assertEquals(subjects.next(), xpath.evaluate("/submission/documentSubjects/documentSubject["+i+ ']', manifest).trim());
         }
     }
 
@@ -143,7 +143,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.LICENSE, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, null);
+        final File exportFile = generateFileAndAssertPackageBasics(null);
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -169,7 +169,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, null, null);
         addAttachmentType(packager, AttachmentType.LICENSE, null, null);
         addAttachmentType(packager, AttachmentType.SOURCE, null, null);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, null);
+        final File exportFile = generateFileAndAssertPackageBasics(null);
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -222,7 +222,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         addAttachmentType(packager, PRIMARY, "{LAST_NAME}_{FIRST_NAME}", null);
         addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, "supp_file_{FILE_NAME}", "{LAST_NAME}_{FIRST_NAME}_media");
         addAttachmentType(packager, AttachmentType.LICENSE, null, "{LAST_NAME}_{FIRST_NAME}_permission");
-        final File exportFile = generateFileAndAssertPackageBasics(packager, "upload_last name_first name");
+        final File exportFile = generateFileAndAssertPackageBasics("upload_last name_first name");
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -352,11 +352,10 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
      * Generates the ExportPackage and saves it in field so cleanup() can clean it.
      * Asserts that the generated package and the File it contains have all the right properties.
      * Returns the File from the export, which will be either a zip or a dir.
-     * @param packager the packager to test
      * @param entryName the correct entryName for the generated package
      * @return the File from the generated package
      */
-    public File generateFileAndAssertPackageBasics(TemplatePackagerImpl packager, String entryName) {
+    public File generateFileAndAssertPackageBasics(String entryName) {
         pkg = packager.generatePackage(sub);
         assertEquals(entryName, pkg.getEntryName());
         assertNotNull(pkg);

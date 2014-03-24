@@ -150,6 +150,30 @@ public class FileDepositorImplTest extends UnitTest {
 		depositFile.delete();
 	}
 
+    /**
+     * Test that the depositor respects the custom entry name if the package has one.
+     */
+    @Test
+    public void testEntryName() throws IOException {
+        MockDepositLocation location = getDepositLocation();
+
+        MockExportPackage pkg = new MockExportPackage();
+        pkg.file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+        pkg.mimeType = "application/zip";
+        pkg.format = "http://purl.org/net/sword-types/METSDSpaceSIP";
+        pkg.submission = new MockSubmission();
+        pkg.entryName = "entryName.test";
+
+        String depositID = depositor.deposit(location, pkg);
+
+        assertNull(depositID);
+
+        File depositFile = new File(depositor.baseDir.getPath()+File.separator+"entryName.test");
+        assertTrue(depositFile.exists());
+
+        depositFile.delete();
+    }
+
 	/**
 	 * @return A basic deposit location.
 	 */

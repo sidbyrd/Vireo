@@ -72,7 +72,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
                 }
 
             } else {
-                throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
+                throw new RuntimeException("Packager: unsupported package type '"+packageType+'\'');
             }
 
 			// Create the package
@@ -90,7 +90,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 	 * This is the class that represents the actual package. It contains the
 	 * file we've built along with some basic metadata.
 	 */
-	public static class FilePackage extends AbstractExportPackage implements ExportPackage {
+	public static class FilePackage extends AbstractExportPackage {
 
 		public FilePackage(Submission submission, File file, String entryName) {
 			super(submission, file, entryName);

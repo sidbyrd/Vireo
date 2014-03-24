@@ -68,8 +68,8 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 	/* Spring injected parameters */
     public String beanName;
     public String displayName;
-	public List<AttachmentType> attachmentTypes = new ArrayList<AttachmentType>();
-	public LinkedHashMap<String, Properties> attachmentAttributes = new LinkedHashMap<String, Properties>();
+	public List<AttachmentType> attachmentTypes = new ArrayList<AttachmentType>(0);
+	public LinkedHashMap<String, Properties> attachmentAttributes = new LinkedHashMap<String, Properties>(0);
 	public String entryName = null;
 	public PackageType packageType = PackageType.dir;
 
@@ -117,43 +117,41 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      * customization.
      *
      * @param attachmentTypeNames Name of attachment types to include, each mapped
-     *  to customization properties for that type.
+     *  to customization properties for that type, or empty Map to include no attachments.
      */
     public void setAttachmentTypeNames(LinkedHashMap<String, Properties> attachmentTypeNames) {
+        // Make list of attachment names, then fill it.
+        attachmentTypes = new ArrayList<AttachmentType>(attachmentTypeNames.size());
+        for (Map.Entry<String, Properties> entry: attachmentTypeNames.entrySet()) {
 
-        this.attachmentTypes = new ArrayList<AttachmentType>();
-        this.attachmentAttributes = new LinkedHashMap<String, Properties>();
-
-        if (attachmentTypeNames != null ) {
-            for (Map.Entry<String, Properties> entry: attachmentTypeNames.entrySet()) {
-
-                // Check that the properties are valid.
-                final Properties props = entry.getValue();
-                String propDirectory = props.getProperty(directory.name());
-                if (propDirectory!=null && propDirectory.endsWith(File.separator)) {
-                    // if directory name ends with /, just remove it.
-                    propDirectory = propDirectory.substring(0, propDirectory.length()-1);
-                    props.setProperty(directory.name(), propDirectory);
-                }
-                if (propDirectory!=null && propDirectory.contains(File.separator)) {
-                    this.attachmentTypes.clear(); // may have already saved some
-                    throw new IllegalArgumentException("Attachment directory name '"+propDirectory+"' cannot contain non-trailing '"+File.separator+"'.");
-                }
-                final String propCustomName = props.getProperty(customName.name());
-                if (propCustomName!=null && propCustomName.contains(File.separator)) {
-                    this.attachmentTypes.clear(); // may have already saved some
-                    throw new IllegalArgumentException("Attachment custom name '"+propCustomName+"' cannot contain '"+File.separator+"'.");
-                }
-
-                // Add the AttachmentType to separate list of just those.
-                final String name = entry.getKey();
-                AttachmentType type = AttachmentType.valueOf(name);
-                this.attachmentTypes.add(type);
+            // Check that the properties are valid.
+            final Properties props = entry.getValue();
+            String propDirectory = props.getProperty(directory.name());
+            if (propDirectory!=null && propDirectory.endsWith(File.separator)) {
+                // if directory name ends with /, just remove it.
+                propDirectory = propDirectory.substring(0, propDirectory.length()-1);
+                props.setProperty(directory.name(), propDirectory);
+            }
+            if (propDirectory!=null && propDirectory.contains(File.separator)) {
+                attachmentTypes.clear(); // if error, revert to no attachments.
+                attachmentAttributes = new LinkedHashMap<String, Properties>(0); // don't clear the method parameter, just my field.
+                throw new IllegalArgumentException("Attachment directory name '"+propDirectory+"' cannot contain non-trailing '"+File.separator+"'.");
+            }
+            final String propCustomName = props.getProperty(customName.name());
+            if (propCustomName!=null && propCustomName.contains(File.separator)) {
+                attachmentTypes.clear(); // if error, revert to no attachments.
+                attachmentAttributes = new LinkedHashMap<String, Properties>(0); // don't clear the method parameter, just my field.
+                throw new IllegalArgumentException("Attachment custom name '"+propCustomName+"' cannot contain '"+File.separator+"'.");
             }
 
-            // Save attachment Properties
-            this.attachmentAttributes = attachmentTypeNames;
+            // Add the AttachmentType to separate list of just those.
+            final String name = entry.getKey();
+            AttachmentType type = AttachmentType.valueOf(name);
+            attachmentTypes.add(type);
         }
+
+        // Save attachment Properties
+        attachmentAttributes = attachmentTypeNames;
     }
 
     /**

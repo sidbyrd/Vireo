@@ -12,12 +12,12 @@
 
     <!-- from Packager -->
     <packageType>${ packageType }</packageType>
-    <format>${ format }</format>
-    <mimeType>${ mimeType }</mimeType>
-    <entryName>${ entryName }</entryName>
+    <format>${ format.escapeXml()?.raw() }</format>
+    <mimeType>${ mimeType?.escapeXml()?.raw() }</mimeType>
+    <entryName>${ entryName?.escapeXml()?.raw() }</entryName>
     #{list items:attachmentTypes, as:'attachmentType'}
     <attachmentType>${ attachmentType.name() }</attachmentType>
     #{/list}
-    <manifestName>${ manifestName }</manifestName>
-    <custom>${ customArg }</custom>
+    <manifestName>${ manifestName.escapeXml()?.raw() }</manifestName>
+    <custom>${ customArg?.escapeXml()?.raw() }</custom>
 </test>

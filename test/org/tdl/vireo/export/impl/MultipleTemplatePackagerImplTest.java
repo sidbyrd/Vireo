@@ -41,7 +41,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
     // Also test custom entry and template names.
     @Test public void testAllTemplateVariables() throws Exception {
         packager.setFormat("testFormat");
-        packager.setEntryName("custom-{" + STUDENT_NETID + "}");
+        packager.setEntryName("custom-{" + STUDENT_NETID + '}');
         Map<String, String> templatePaths = new HashMap<String, String>(4);
         templatePaths.put("test-{"+LAST_NAME+"}.xml", "test/org/tdl/vireo/export/impl/TestMultipleTemplate.xml");
         templatePaths.put("qdc-{"+LAST_NAME+"}.xml", "conf/formats/qdc.xml");
@@ -50,7 +50,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
         templateArgs.put("customArg", "verified");
         packager.setTemplateArguments(templateArgs);
         addAttachmentType(packager, PRIMARY, null, null);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, "custom-netid");
+        final File exportFile = generateFileAndAssertPackageBasics("custom-netid");
 
         // Test files and directories in the export
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -95,7 +95,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
         addAttachmentType(packager, SUPPLEMENTAL, null, null);
         addAttachmentType(packager, LICENSE, null, null);
         addAttachmentType(packager, SOURCE, null, null);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, null);
+        final File exportFile = generateFileAndAssertPackageBasics(null);
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -136,7 +136,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
 		sub.addAttachment(suppl2, AttachmentType.SUPPLEMENTAL);
 		sub.save();
         FileUtils.deleteQuietly(suppl2);
-        final File exportFile = generateFileAndAssertPackageBasics(packager, null);
+        final File exportFile = generateFileAndAssertPackageBasics(null);
 
         // test all expected directories, filenames and file contents
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -175,7 +175,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
             packager.setTemplatePaths(templatePaths);
             addAttachmentType(packager, PRIMARY, "filename-collision-{"+LAST_NAME+'}', null); // is a .pdf
             addAttachmentType(packager, SOURCE,  "filename-collision-{"+LAST_NAME+'}', null); // is a .pdf
-            File exportFile = generateFileAndAssertPackageBasics(packager, null);
+            File exportFile = generateFileAndAssertPackageBasics(null);
 
             // We should have a four-way filename collision of two templates and two attachments.
             Map<String, String> fileMap = getExportPackageFileContents(exportFile, packageType);
@@ -190,8 +190,8 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
 
             // It isn't defined which template will be which, but they should be the first two.
             // Each template should get its original un-customized, un-de-duped template name in the template arg 'template'.
-            assertTrue((templateArg0.equals("filename-collision-last name.pdf") && templateArg1.equals("filename-collision-{" + LAST_NAME + "}.pdf")) ||
-                    (templateArg1.equals("filename-collision-last name.pdf") && templateArg0.equals("filename-collision-{" + LAST_NAME + "}.pdf")));
+            assertTrue(templateArg0.equals("filename-collision-last name.pdf") && templateArg1.equals("filename-collision-{" + LAST_NAME + "}.pdf") ||
+                       templateArg1.equals("filename-collision-last name.pdf") && templateArg0.equals("filename-collision-{" + LAST_NAME + "}.pdf"));
 
             // Get attachments
             String file2="filename-collision-last name_2.pdf";
@@ -205,8 +205,8 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
             assertEquals(0, fileMap.size()); // no leftover files
 
             // It isn't defined which attachment will be which, but they should be the second pair.
-            assertTrue( (file2contents.equals("bottle") && file3contents.equals("source")) ||
-                        (file3contents.equals("bottle") && file2contents.equals("source"))  );
+            assertTrue( file2contents.equals("bottle") && file3contents.equals("source") ||
+                        file3contents.equals("bottle") && file2contents.equals("source"));
         }
     }
 
@@ -224,7 +224,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
         addAttachmentType(packager, PRIMARY, "file-{"+FIRST_NAME+'}', "dir-{"+FIRST_NAME+'}');
 
         // fixed entry name
-        final File exportFile = generateFileAndAssertPackageBasics(packager, "entry-Annoying-Name");
+        final File exportFile = generateFileAndAssertPackageBasics("entry-Annoying-Name");
 
         // fixed attachment dir
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
@@ -294,7 +294,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
 
         // now test the same setup with the zip package format
         packager.setPackageType(zip);
-        exportFile = generateFileAndAssertPackageBasics(packager, null);
+        exportFile = generateFileAndAssertPackageBasics(null);
 
         final Map<String, String> fileMap = getZipFileContents(exportFile);
         doc = getFileXML(fileMap, "test.xml");
@@ -308,11 +308,10 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
      * Generates the ExportPackage and saves it in field so cleanup() can clean it.
      * Asserts that the generated package and the File it contains have all the right properties.
      * Returns the File from the export, which will be either a zip or a dir.
-     * @param packager the packager to test
      * @param entryName the correct entryName for the generated package
      * @return the File from the generated package
      */
-    public File generateFileAndAssertPackageBasics(MultipleTemplatePackagerImpl packager, String entryName) {
+    public File generateFileAndAssertPackageBasics(String entryName) {
         pkg = packager.generatePackage(sub);
         assertEquals(entryName, pkg.getEntryName());
         assertNotNull(pkg);

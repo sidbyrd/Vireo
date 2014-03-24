@@ -52,7 +52,7 @@ public class StringVariableReplacement {
         ADVISOR_URL,
         /** not filled by setParameters(), but used by FilePackager. Represents attachment filename. */
         FILE_NAME,
-        /** File separator for current platform. This should never be needed and could cause problems used improperly */
+        /** File separator for current platform. This should never be needed and could cause problems if used improperly */
         @Deprecated
         SEPARATOR;
 
@@ -65,7 +65,7 @@ public class StringVariableReplacement {
             return namesLazyInit.names;
         }
         private static class namesLazyInit {
-            @SuppressWarnings({"unchecked"})
+            @SuppressWarnings("unchecked")
             private static final Collection<String>names = (Collection<String>)Collections.unmodifiableCollection(CollectionUtils.collect(Arrays.asList(Variable.values()), TransformerUtils.stringValueTransformer()));
         }
     }
@@ -146,7 +146,7 @@ public class StringVariableReplacement {
 		
 		// Advisor url for reviews
 		if (sub.getCommitteeEmailHash() != null) {
-			Map<String,Object> routeArgs = new HashMap<String,Object>();
+			Map<String,Object> routeArgs = new HashMap<String,Object>(1);
 			routeArgs.put("token", sub.getCommitteeEmailHash());
 			
 			ActionDefinition advisorAction = Router.reverse("Advisor.review",routeArgs);
@@ -178,10 +178,11 @@ public class StringVariableReplacement {
 		if(string == null)
 			return null;
 		
-		for (String name : parameters.keySet()) {
-			String value = parameters.get(name);
-			
-			string = string.replaceAll("\\{"+name+"\\}", value);
+		for (Map.Entry<String, String> stringStringEntry : parameters.entrySet()) {
+            final String name =stringStringEntry.getKey();
+			final String value = stringStringEntry.getValue();
+
+			string = string.replaceAll("\\{"+ name +"\\}", value);
 		}
 	
 		return string;

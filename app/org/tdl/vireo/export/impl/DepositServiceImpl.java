@@ -1,11 +1,5 @@
 package org.tdl.vireo.export.impl;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-
 import org.tdl.vireo.error.ErrorLog;
 import org.tdl.vireo.export.DepositService;
 import org.tdl.vireo.export.Depositor;
@@ -14,23 +8,13 @@ import org.tdl.vireo.export.Packager;
 import org.tdl.vireo.job.JobManager;
 import org.tdl.vireo.job.JobMetadata;
 import org.tdl.vireo.job.JobStatus;
-import org.tdl.vireo.model.ActionLog;
-import org.tdl.vireo.model.DepositLocation;
-import org.tdl.vireo.model.Person;
-import org.tdl.vireo.model.PersonRepository;
-import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.model.SubmissionRepository;
-import org.tdl.vireo.search.SearchDirection;
-import org.tdl.vireo.search.SearchFilter;
-import org.tdl.vireo.search.SearchOrder;
-import org.tdl.vireo.search.Searcher;
+import org.tdl.vireo.model.*;
 import org.tdl.vireo.security.SecurityContext;
 import org.tdl.vireo.state.State;
-
 import play.Logger;
-import play.db.jpa.JPA;
 import play.jobs.Job;
-import play.modules.spring.Spring;
+
+import java.util.Date;
 
 
 /**
@@ -235,7 +219,7 @@ public class DepositServiceImpl implements DepositService{
 				}
 				
 			} catch (RuntimeException re) {				
-				Logger.fatal(re,"Unexepcted exception while attempting to deposit items. Aborted.");
+				Logger.fatal(re,"Unexpected exception while attempting to deposit items. Aborted.");
 				
 				if (metadata != null) {
 					metadata.setMessage(re.toString());
@@ -283,11 +267,13 @@ public class DepositServiceImpl implements DepositService{
 				ActionLog log = submission.logAction("Deposited into repository collection '"+location.getCollection()+"'");
 				log.save();
 				
-				if (depositId != null)
+				if (depositId != null) {
 					submission.setDepositId(depositId);
-					submission.setDepositDate(new Date());
-				if (successState != null)
+                }
+				submission.setDepositDate(new Date());
+				if (successState != null) {
 					submission.setState(successState);
+                }
 				
 				submission.save();
 				
@@ -311,12 +297,12 @@ public class DepositServiceImpl implements DepositService{
 					exportPackage.delete();
 			}
 		}
-		
-		
-		
-		
-		
-	};
-	
+
+
+
+
+
+	}
+
 
 }

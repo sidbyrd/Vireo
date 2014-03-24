@@ -18,8 +18,8 @@
     }% 
     <titleInfo>
         <title>${ title?.escapeXml()?.raw() }</title>
-        #{if subTitle != null} 
-        <subTitle>${subTitle}</subTitle>
+        #{if subTitle != null}
+        <subTitle>${subTitle}.escapeXml()?.raw()</subTitle>
         #{/if} 
     </titleInfo>
     #{/if} 

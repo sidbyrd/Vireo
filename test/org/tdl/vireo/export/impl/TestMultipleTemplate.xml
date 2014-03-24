@@ -12,14 +12,14 @@
 
     <!-- from Packager -->
     <packageType>${ packageType }</packageType>
-    <format>${ format }</format>
-    <entryName>${ entryName }</entryName>
+    <format>${ format.escapeXml()?.raw() }</format>
+    <entryName>${ entryName?.escapeXml()?.raw() }</entryName>
     #{list items:attachmentTypes, as:'attachmentType'}
     <attachmentType>${ attachmentType.name() }</attachmentType>
     #{/list}
-    <currentTemplate>${ template }</currentTemplate>
+    <currentTemplate>${ template.escapeXml()?.raw() }</currentTemplate>
     #{list items:templates, as:'templateEntry'}
-    <template current="${templateEntry.getKey().equals(template)?"true":"false"}">${ templateEntry.getKey() }</template>
+    <template current="${templateEntry.getKey().equals(template)?"true":"false"}">${ templateEntry.getKey().escapeXml()?.raw() }</template>
     #{/list}
-    <custom>${ customArg }</custom>
+    <custom>${ customArg?.escapeXml()?.raw() }</custom>
 </test>

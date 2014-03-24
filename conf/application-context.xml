@@ -273,70 +273,116 @@
     </bean>
     
     <!-- Package Formats -->
-    <!-- 
-    	You can assign different package types to any export. Currently there are 2 options: "dir" and "zip" structures.
-    		<property name="packageType" value="zip"/>    	
-    	If no packageType is assigned, the default is "dir".
-    	
-    	The package type applies to each submission, for example a directory structure will be:
-    		VireoExport.zip
-    			submission_1/
-    				manifest.xml
-    				primary.pdf
-    			submission_2/
-    				manifest.xml
-    				supplimental.doc
-    				
-    	and a zip structure will be:
-    		Proquest.zip
-    			submission_1.zip
-    				manifest.xml
-    				primary.pdf
-    			submission_2.zip
-    				manifest.xml
-    				supplimental.doc
-    	
-    	Certain string attributes can be customized in the export packages by using placeholder.
-    	The format of these place holders are: {LAST_NAME}, {FIRST_NAME}
-    	    	
-    	Available for Customization
-    	
-    		The Manifest Name - The name given to the XML manifest document.
-    			<property name="manifestName" value="{CUSTOMIZABLE}"/>
-    		
-    		The Entry Name - The name given to each submissions containing package type.
-    			<property name="entryName" value="{CUSTOMIZABLE}"/>
-    		
-    		Template Paths - The key value is the same as the manifest name.
-    			<property name="templatePaths">
-        			<util:map>
-		        		<entry key="{CUSTOMIZABLE}"     value="conf/formats/dspace_simple.xml"/>
-		        	</util:map>
-		        </property>
-		    
-		    Files: You can add properties to files to change the name and tell the export if they
-		    	should be placed in a directory. If there are no customization, be sure to still 
-		    	include an empty <props></props> markup.
-		    	
-		    	<property name="attachmentTypeNames">    
-			        <map>
-				        <entry key="UNKNOWN" >
-			        		<props></props>
-			        	</entry>
-			        	<entry key="PRIMARY">
-		        			<props>
-		        				<prop key="customName">{CUSTOMIZABLE}</prop>
-		        			</props>
-		        		</entry>
-		        		<entry key="SUPPLEMENTAL">
-		        			<props>
-		        				<prop key="customName">{CUSTOMIZABLE}</prop>
-		        				<prop key="directory">{CUSTOMIZABLE}</prop>
-		        			</props>
-		        		</entry>				        		
-			        </map>
-			    </property>
-		    
+    <!--
+    	Note: Certain configuration options' values, marked below as {CUSTOMIZABLE}, can be
+    	customized in the export package using the same placeholder system as email templates.
+    	Example: <property value="{LAST_NAME}, {FIRST_NAME}"/> produces "Thornton, Billy".
+
+        Configuration options:
+
+        Package Type: (optional, default is 'dir' if omitted)
+            You can assign different package types to any export.
+            Currently there are 2 options: "dir" and "zip" structures.
+
+                <property name="packageType" value="zip"/>
+
+            The package type applies to each submission within a larger export. For example, a
+            directory structure will be:
+
+                VireoExport.zip
+                    submission_1/
+                        manifest.xml
+                        primary.pdf
+                    submission_2/
+                        manifest.xml
+                        supplemental.doc
+
+            and a zip structure will be:
+                Proquest.zip
+                    submission_1.zip
+                        manifest.xml
+                        primary.pdf
+                    submission_2.zip
+                        manifest.xml
+                        supplemental.doc
+
+        Entry Name: (optional)
+            A name for the resulting export package, which may be used when depositing or
+            saving that package if applicable. (For example, SWORD deposits ignore this.)
+
+            <property name="entryName" value="{CUSTOMIZABLE}"/>
+
+        Files: (optional unless using FilePackager, in which case it's required)
+            Selects which types of attachment files (if any) are including in the export package.
+            You can add properties, per attachment type, to change the files' names and tell the
+            export if they should be placed in a directory. If there are no customizations, be
+            sure to still include an empty <props></props> markup. Inside the customizable 'props'
+            below, the additional placeholder {FILE_NAME} is available.
+
+            <property name="attachmentTypeNames">
+                <map>
+                    <entry key="UNKNOWN" >
+                        <props></props>
+                    </entry>
+                    <entry key="PRIMARY">
+                        <props>
+                            <prop key="customName">{CUSTOMIZABLE}</prop>
+                        </props>
+                    </entry>
+                    <entry key="SUPPLEMENTAL">
+                        <props>
+                            <prop key="customName">{CUSTOMIZABLE}</prop>
+                            <prop key="directory">{CUSTOMIZABLE}</prop>
+                        </props>
+                    </entry>
+                </map>
+            </property>
+
+
+        Configuration options that only apply to TemplatePackager and MultipleTemplatePackager:
+
+        Manifest Name: (required for TemplatePackager only)
+            The name given to the XML manifest document.
+
+            <property name="manifestName" value="{CUSTOMIZABLE}"/>
+
+        Manifest Template Path: (required for TemplatePackager only)
+            The template file used to produce the manifest document.
+
+            <property name="manifestName" value="{CUSTOMIZABLE}"/>
+
+        Template Paths: (required for MultipleTemplatePackager only)
+            The keys are used as the manifest names, and the values are the template files
+            used to produce the manifests.
+
+            <property name="templatePaths">
+                <util:map>
+                    <entry key="{CUSTOMIZABLE}"     value="conf/formats/dspace_simple.xml"/>
+                </util:map>
+            </property>
+
+        Format: (required)
+            A standardized name to identify the format of the export package.
+
+            <property name="format" value="http://purl.org/dc/elements/1.1/"/>
+
+        Mimetype: (optional)
+            Most configurations should not use this. For TemplatePackager exports which produce nothing
+            except one manifest, set this to the correct mimetype for the manifest.
+
+            <property name="mimeType" value="application/xml"/>
+
+        Template Arguments: (optional)
+            Creates additional values to make available to templates when creating manifest documents.
+            You can define a key here, then use it in the manifest template to access its value.
+
+            <property name="manifestTemplateArguments">
+                <util:map>
+                    <entry key="agent" value="Vireo DSpace METS packager"/>
+                    <entry key="anotherKey" value="another value"/>
+                </util:map>
+            </property>
+
      -->
     <bean id="VireoExport" class="org.tdl.vireo.export.impl.TemplatePackagerImpl" scope="prototype">
         <property name="personRepository" ref="PersonRepository"/>

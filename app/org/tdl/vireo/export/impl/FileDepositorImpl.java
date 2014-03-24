@@ -211,7 +211,7 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 		Submission submission = exportPackage.getSubmission();
 		File packageFile = exportPackage.getFile();
 		String packageName = packageFile.getName();
-		String packageExt = "."+FilenameUtils.getExtension(packageName);
+		String packageExt = '.'+FilenameUtils.getExtension(packageName);
         if (packageExt.equals(".")) {
             packageExt = ".pkg";
         }

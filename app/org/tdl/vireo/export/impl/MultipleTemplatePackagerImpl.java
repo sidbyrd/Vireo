@@ -43,9 +43,9 @@ import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	
 	/* Spring injected parameters */
-	Map<String,VirtualFile> templates = new HashMap<String,VirtualFile>(); // injected via setTemplatePaths()
+	Map<String,VirtualFile> templates = new HashMap<String,VirtualFile>(4); // injected via setTemplatePaths()
 	public String format = null;
-	public Map<String,Object> templateArguments = new HashMap<String,Object>();
+	public Map<String,Object> templateArguments = new HashMap<String,Object>(2); // not expecting very many
 
 	// Repositories to be injected into template for convenience
 	public PersonRepository personRepo;
@@ -157,11 +157,11 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	 * the template syntax. The variable "sub" will always be the submission
 	 * which is being packaged.
 	 * 
-	 * @param arguments
+	 * @param templateArguments
 	 *            Template arguments
 	 */
-	public void setTemplateArguments(Map<String,Object> arguments) {
-		templateArguments = arguments;
+	public void setTemplateArguments(Map<String,Object> templateArguments) {
+        this.templateArguments = templateArguments;
 	}
 
     /**
@@ -177,20 +177,21 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
     protected String renderTemplate(String templateName, Submission submission, String customEntryName) {
         VirtualFile templateFile = templates.get(templateName);
 
-        // We used to customize template name at this point, and pass the customized version in. But if the point of having
-        // it be a template arg is so scripts can check from a list of known names to see which one they're being called
-        // under (as the DSpaceSimpleArchive format does), having it customized would throw off the comparison. It can't
-        // be to pass in otherwise-unknown information, since all the customizations only use information available in
-        // the submission, which is passed in directly. And it can't be to make references to the customized names of
-        // other templates in a multiple template scenario, because we aren't passing other templates' names, just the
-        // current template's. And if a template wants to compare the name to a key in the 'templates' arg, those aren't
-        // customized either. No existing config I'm aware of ever relied on checking the post-customization template
-        // name anyway, which makes me think the old behavior was not so much a conscious decision as an accident. I've
-        // changed the behavior to pass the un-customized name, and only use the customized name for the output file's
-        // filename. If a template really needs the customized version, it's still free to use StringVariableReplacement
-        // to re-customize it itself.
-        
-        Map<String, Object> templateBinding = new HashMap<String,Object>();
+        // We used to customize template name at this point, and pass the customized version in. But we never customized
+        // the keys in 'templates', which are comparable information. I can't think of a reason to pass the customized
+        // template name:
+        // - to check current name against a list (as DSpaceSimpleArchive does): un-customized is more predictable.
+        // - to convey information: all the information came from 'submission', which is also passed directly.
+        // - to refer to other templates: but the 'templates' hash uses un-customized keys.
+        // - because existing configs rely on it: none of the default ones do, and I doubt any/many ever did.
+        // Reasons not to: it matches the keys in 'templates', it's more predictable for comparison, and it's easier.
+        // So I've changed it to pass the un-customized template name. The customized name will still be the filename.
+
+        // The 'templates' binding could maybe also use some thought. Currently, not a single default template uses it,
+        // and it seems odd to pass a Map from template name to VirtualFile. Should it just be a list of template names?
+        // Or even just be omitted entirely? Not sure what the use case is, but at least it seems harmless.
+
+        Map<String, Object> templateBinding = new HashMap<String,Object>(13 + templateArguments.size());
         templateBinding.put("sub", submission);
         templateBinding.put("personRepo", personRepo);
         templateBinding.put("subRepo", subRepo);
@@ -204,9 +205,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         templateBinding.put("manifestName", templateName); // dupe, key preferred by single templates
         templateBinding.put("template", templateName); // dupe, key preferred by multiple templates
         templateBinding.put("templates", templates); // only relevant if multiple templates, but harmless if single.
-        if (templateArguments != null) {
-            templateBinding.putAll(templateArguments);
-        }
+        templateBinding.putAll(templateArguments);
 
         Template template = TemplateLoader.load(templateFile);
         return template.render(templateBinding);
@@ -292,14 +291,17 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	public ExportPackage generatePackage(Submission submission) {
 
 		// Check that we have everything that we need.
-		if (submission == null || submission.getId() == null)
+		if (submission == null || submission.getId() == null) {
 			throw new IllegalArgumentException("Unable to generate a package because the submission is null, or has not been persisted.");
+        }
 
-		if (templates == null || templates.isEmpty())
+		if (templates == null || templates.isEmpty()) {
 			throw new IllegalStateException("Unable to generate package because no template file exists.");
+        }
 
-		if (format == null)
+		if (format == null) {
 			throw new IllegalStateException("Unable to generate package because no package format name has been defined.");
+        }
 
         // Set string replacement parameters
         Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
@@ -344,7 +346,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
                 }
 
             } else {
-                throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
+                throw new RuntimeException("Packager: unsupported package type '"+packageType+'\'');
             }
 
 			// Create the package
@@ -361,7 +363,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	 * This is the class that represents the actual package. It contains the
 	 * file we've built along with some basic metadata.
 	 */
-	public static class TemplatePackage extends AbstractExportPackage implements ExportPackage {
+	public static class TemplatePackage extends AbstractExportPackage {
 
 		// Members
 		public final String mimeType;
