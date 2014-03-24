@@ -1,28 +1,34 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.tdl.vireo.export.ExportPackage;
-import org.tdl.vireo.model.Attachment;
 import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.proquest.ProquestVocabularyRepository;
 import org.tdl.vireo.services.StringVariableReplacement;
-
 import play.Play;
 import play.exceptions.TemplateNotFoundException;
 import play.templates.Template;
 import play.templates.TemplateLoader;
 import play.vfs.VirtualFile;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipOutputStream;
+
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 
 /**
  * Generic packager that uses the standard play templating system to generate
@@ -36,7 +42,7 @@ import play.vfs.VirtualFile;
  */
 public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	
-	/* Spring injected paramaters */
+	/* Spring injected parameters */
 	Map<String,VirtualFile> templates = new HashMap<String,VirtualFile>(); // injected via setTemplatePaths()
 	public String format = null;
 	public Map<String,Object> templateArguments = new HashMap<String,Object>();
@@ -50,9 +56,9 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
     // this should generally stay null if there are multiple output files.
     public String mimeType = null;
 
-	/**
+    /**
 	 * Inject the repository of people and their preferences.
-	 * 
+	 *
 	 * @param personRepo
 	 *            Person Repository
 	 */
@@ -63,7 +69,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	/**
 	 * Inject the repository of submission and their related objects: committee
 	 * members, attachments, custom action values.
-	 * 
+	 *
 	 * @param subRepo
 	 *            Submission Repository
 	 */
@@ -73,17 +79,17 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 
 	/**
 	 * Inject the repository of system-wide settings & configuration.
-	 * 
+	 *
 	 * @param settingRepo
 	 *            Settings Repository
 	 */
 	public void setSettingsRepository(SettingsRepository settingRepo) {
 		this.settingRepo = settingRepo;
 	}
-	
+
 	/**
 	 * Inject the repository of proquest vocabulary.
-	 * 
+	 *
 	 * @param proquestRepo
 	 *            Proquest Vocabulary Repository
 	 */
@@ -115,9 +121,13 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 	 */
 	public void setTemplatePaths(Map<String, String> templates) {
 
-		for (String name : templates.keySet()) {
-			
-			String templatePath = templates.get(name);
+		for (Map.Entry<String, String>entry : templates.entrySet()) {
+            final String name = entry.getKey();
+            if (name.contains(File.separator)) {
+                throw new IllegalArgumentException("Template name '"+name+"' cannot contain '"+File.separator+"'.");
+            }
+
+            final String templatePath = entry.getValue();
 			VirtualFile templateFile = Play.getVirtualFile(templatePath);
 			
     		// Blow up at construction time if template not found.
@@ -157,20 +167,29 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
     /**
      * Executes the named template for a specific submission, its string replacement parameters, and its
      * already-customized entry name.
+     *
      * @param templateName the name of the template to execute
      * @param submission the submission to customize for
      * @param customEntryName the entry name to use. Basically string replacement on this.entryName, but it's
      * already done by the expected caller, so save having to duplicate the effort.
-     * @param parameters string replacement parameters corresponding to submission, but already extracted.
-     * @return two strings. index 0 is the filename to use for the rendered template (which can be overridden
-     * by subclasses), and index 1 is the rendered template contents.
+     * @return the rendered template contents as a string.
      */
-    protected String[] renderTemplate(String templateName, Submission submission, String customEntryName, Map<String, String> parameters) {
+    protected String renderTemplate(String templateName, Submission submission, String customEntryName) {
         VirtualFile templateFile = templates.get(templateName);
 
-        //customize after retrieving the template file
-        String customTemplateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
-
+        // We used to customize template name at this point, and pass the customized version in. But if the point of having
+        // it be a template arg is so scripts can check from a list of known names to see which one they're being called
+        // under (as the DSpaceSimpleArchive format does), having it customized would throw off the comparison. It can't
+        // be to pass in otherwise-unknown information, since all the customizations only use information available in
+        // the submission, which is passed in directly. And it can't be to make references to the customized names of
+        // other templates in a multiple template scenario, because we aren't passing other templates' names, just the
+        // current template's. And if a template wants to compare the name to a key in the 'templates' arg, those aren't
+        // customized either. No existing config I'm aware of ever relied on checking the post-customization template
+        // name anyway, which makes me think the old behavior was not so much a conscious decision as an accident. I've
+        // changed the behavior to pass the un-customized name, and only use the customized name for the output file's
+        // filename. If a template really needs the customized version, it's still free to use StringVariableReplacement
+        // to re-customize it itself.
+        
         Map<String, Object> templateBinding = new HashMap<String,Object>();
         templateBinding.put("sub", submission);
         templateBinding.put("personRepo", personRepo);
@@ -179,49 +198,18 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         templateBinding.put("proquestRepo", proquestRepo);
         templateBinding.put("packageType", packageType.name());
         templateBinding.put("format", format);
-        templateBinding.put("mimeType", mimeType);
+        templateBinding.put("mimeType", mimeType); // will often be null, but that's fine.
         templateBinding.put("entryName", customEntryName);
         templateBinding.put("attachmentTypes", attachmentTypes);
-        templateBinding.put("manifestName", customTemplateName);
-        templateBinding.put("template", customTemplateName);
-        templateBinding.put("templates", templates);
+        templateBinding.put("manifestName", templateName); // dupe, key preferred by single templates
+        templateBinding.put("template", templateName); // dupe, key preferred by multiple templates
+        templateBinding.put("templates", templates); // only relevant if multiple templates, but harmless if single.
         if (templateArguments != null) {
             templateBinding.putAll(templateArguments);
         }
 
         Template template = TemplateLoader.load(templateFile);
-        String[] results = new String[2];
-        results[0] = customTemplateName;
-        results[1] = template.render(templateBinding);
-        return results;
-    }
-
-    /**
-     * For each configured template, render it and write it to an entry in a zip archive.
-     * @param zos the zip archive to write to
-     * @param submission the submission being packaged
-     * @param customEntryName the entry name to use. Basically string replacement on this.entryName, but it's
-     * already done by the expected caller, so save having to duplicate the effort.
-     * @param parameters string replacement parameters corresponding to submission, but already extracted.
-     * @throws IOException if something couldn't be copied
-     */
-    protected void writeTemplatesToZip(ZipOutputStream zos, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
-        for (String templateName : templates.keySet()) {
-            final String[] templateResults = renderTemplate(templateName, submission, customEntryName, parameters);
-            templateName = templateResults[0]; // customized
-            final String templateRendered = templateResults[1];
-
-            // Copy the manifest into the zip archive as a new entry
-            ZipEntry ze = new ZipEntry(templateName);
-            zos.putNextEntry(ze);
-            InputStream manifestStream = IOUtils.toInputStream(templateRendered, "UTF-8");
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = manifestStream.read(buf)) > 0) {
-                zos.write(buf, 0, len);
-            }
-            zos.closeEntry();
-        }
+        return template.render(templateBinding);
     }
 
     /**
@@ -235,13 +223,68 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
      */
     protected void writeTemplatesToDir(File pkg, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
         for (String templateName : templates.keySet()) {
-            final String[] templateResults = renderTemplate(templateName, submission, customEntryName, parameters);
-            templateName = templateResults[0]; // customized
-            final String templateRendered = templateResults[1];
+            final String templateRendered = renderTemplate(templateName, submission, customEntryName);
+            // now customize the template name
+            templateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
+            if (templateName.contains(File.separator)) {
+                templateName = templateName.replace(File.separator, "-");
+            }
+
+            // Make sure new file isn't a duplicate name.
+            File manifestFile = new File(pkg, templateName);
+            MutableInt copyNumber = new MutableInt(1);
+            while (manifestFile.exists()) {
+                // Duplicate found.
+                manifestFile = new File(pkg, incrementFilename(templateName, copyNumber));
+            }
 
             // Copy the manifest into the pkg dir
-            File manifestFile = new File(pkg, templateName);
             FileUtils.writeStringToFile(manifestFile, templateRendered);
+        }
+    }
+
+    /**
+     * For each configured template, render it and write it to an entry in a zip archive.
+     * @param zos the zip archive to write to
+     * @param submission the submission being packaged
+     * @param customEntryName the entry name to use. Basically string replacement on this.entryName, but it's
+     * already done by the expected caller, so save having to duplicate the effort.
+     * @param parameters string replacement parameters corresponding to submission, but already extracted.
+     * @throws IOException if something couldn't be copied
+     */
+    protected void writeTemplatesToZip(ZipOutputStream zos, Submission submission, String customEntryName, Map<String, String> parameters) throws IOException {
+        for (String templateName : templates.keySet()) {
+            final String templateRendered = renderTemplate(templateName, submission, customEntryName);
+            // now customize the template name
+            templateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
+            if (templateName.contains(File.separator)) {
+                templateName = templateName.replace(File.separator, "-");
+            }
+
+            // Make sure new file isn't a duplicate name.
+            MutableInt copyNumber = new MutableInt(1);
+            ZipEntry ze = new ZipEntry(templateName);
+            while (copyNumber!=null) {
+                try {
+                    zos.putNextEntry(ze);
+                    copyNumber=null; // done
+                } catch (ZipException e) {
+                    if (!e.getMessage().contains("duplicate entry")) {
+                        throw e; // something else happened; don't catch it.
+                    }
+                    // Duplicate found. We have to rename the new one, e.g. file.txt to file_1.txt
+                    ze = new ZipEntry(incrementFilename(templateName, copyNumber));
+                }
+            }
+
+            // Copy the manifest into the zip archive as a new entry
+            InputStream manifestStream = IOUtils.toInputStream(templateRendered, "UTF-8");
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = manifestStream.read(buf)) > 0) {
+                zos.write(buf, 0, len);
+            }
+            zos.closeEntry();
         }
     }
 
@@ -258,16 +301,42 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
 		if (format == null)
 			throw new IllegalStateException("Unable to generate package because no package format name has been defined.");
 
-        // Set String Replacement Parameters
+        // Set string replacement parameters
         Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
-        // Customize Entry Name
+        // Customize entry name
         String customEntryName = StringVariableReplacement.applyParameterSubstitutionWithFallback(entryName, parameters);
 
 		try {
 			File pkg;
 			
-			// Check the package type set in the spring configuration
-            if (packageType==PackageType.zip) {
+			// Produce the correct output format.
+            if (packageType==dir && attachmentTypes.isEmpty() && templates.size()==1) {
+                // Instead of exporting a dir with nothing but a single template file in it, just export the file.
+                String templateName = templates.keySet().iterator().next();
+                final String templateRendered = renderTemplate(templateName, submission, customEntryName);
+                // now customize the template name
+                templateName = StringVariableReplacement.applyParameterSubstitutionWithFallback(templateName, parameters);
+
+                // It's a file, not a dir, so it needs a file type.
+                String extension = FilenameUtils.getExtension(templateName);
+                if (extension.length() > 0) {
+                    extension = "."+extension;
+                }
+                pkg = File.createTempFile("template-export", extension);
+                FileUtils.writeStringToFile(pkg, templateRendered);
+
+            } else if (packageType==dir) {
+                // Create output directory
+                pkg = File.createTempFile("template-export-", ".dir");
+                FileUtils.deleteQuietly(pkg);
+                if (!pkg.mkdir()) {
+                    throw new IOException("Could not create package directory '"+pkg.getPath()+'\'');
+                }
+
+                writeTemplatesToDir(pkg, submission, customEntryName, parameters);
+                writeAttachmentsToDir(pkg, submission, parameters);
+
+            } else if (packageType==zip) {
                 // Create output zip archive
 				pkg = File.createTempFile("template-export-", ".zip");
                 ZipOutputStream zos = null;
@@ -278,34 +347,12 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
                 } finally {
                     if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
                 }
-            } else if (packageType==PackageType.dir) {
-                if (attachmentTypes.isEmpty() && templates.size()==1) {
-					// There's only one template and nothing else, so export as a single file.
-                    final String[] templateResults = renderTemplate(templates.keySet().iterator().next(), submission, customEntryName, parameters);
-                    String templateName = templateResults[0];
-                    final String templateRendered = templateResults[1];
 
-                    // It's a file, not a dir, so it needs a file type.
-                    String extension = FilenameUtils.getExtension(templateName);
-                    if (extension.length() > 0) {
-                        extension = "."+extension;
-                    }
-                    pkg = File.createTempFile("template-export", extension);
-                    FileUtils.writeStringToFile(pkg, templateRendered);
-                } else {
-                    // Create output directory
-                    pkg = File.createTempFile("template-export-", ".dir");
-                    pkg.delete();
-                    pkg.mkdir();
-
-                    writeTemplatesToDir(pkg, submission, customEntryName, parameters);
-                    writeAttachmentsToDir(pkg, submission, parameters);
-                }
             } else {
                 throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
             }
 
-			// Create the actual package!
+			// Create the package
 			return new TemplatePackage(submission, mimeType, format, pkg, customEntryName);
 			
 		} catch (IOException ioe) {

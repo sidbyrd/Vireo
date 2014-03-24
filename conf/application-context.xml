@@ -593,12 +593,12 @@
         		<entry key="SUPPLEMENTAL">
         			<props>
         				<prop key="customName">supp_file_{FILE_NAME}</prop>
-        				<prop key="directory">{LAST_NAME}_{FIRST_NAME}_media{SEPARATOR}</prop>
+        				<prop key="directory">{LAST_NAME}_{FIRST_NAME}_media</prop>
         			</props>
         		</entry>
         		<entry key="LICENSE">
         			<props>
-        				<prop key="directory">{LAST_NAME}_{FIRST_NAME}_permission{SEPARATOR}</prop>
+        				<prop key="directory">{LAST_NAME}_{FIRST_NAME}_permission</prop>
         			</props>
         		</entry>
         	</map>

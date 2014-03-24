@@ -17,6 +17,12 @@ import java.util.Map;
  * spring. This allows for many different package formats to be created by just
  * adding a new spring bean definition. See each of the injection methods below
  * for a description of the various injectable settings.
+ *
+ * Implementation note: everything this class does is just a special case of
+ * MultipleTemplatePackagerImpl, where the number of templates is one. So it
+ * makes sense that it's implemented as a subclass that just makes sure only one
+ * template is assigned (and adapts method names include the word 'manifest', for
+ * historical reasons), but otherwise passes all functions through.
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
  * @author Micah Cooper

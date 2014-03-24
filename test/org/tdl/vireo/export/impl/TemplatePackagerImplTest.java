@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.model.AttachmentType.PRIMARY;
+import static org.tdl.vireo.services.StringVariableReplacement.Variable.LAST_NAME;
 import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_NETID;
 
 /**
@@ -31,7 +32,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
     TemplatePackagerImpl packager = null;
 
     @BeforeClass
-    public static void setupClass() throws ParserConfigurationException{
+    public static void setupClass() throws ParserConfigurationException {
         AbstractPackagerTest.setupClass();
 
         // configure all the XML namespaces we're going to need to use with XPath
@@ -59,36 +60,43 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         packager.settingRepo = settingRepo;
         packager.proquestRepo = proquestRepo;
     }
+
+    // Configure with test template that uses every available template variable
+    // Also test custom entry and manifest names.
     @Test public void testAllTemplateVariables() throws Exception {
-        // configure with test template that uses every available template variable
         packager.setFormat("testFormat");
         packager.setMimeType("application/xml");
-        packager.setEntryName("custom-{" + STUDENT_NETID + "}");
-        packager.setManifestTemplatePath("test/org/tdl/vireo/export/impl/TestTemplatePackagerVars.xml");
-        packager.setManifestName("test.xml");
+        packager.setEntryName("custom-{"+STUDENT_NETID+"}");
+        packager.setManifestTemplatePath("test/org/tdl/vireo/export/impl/TestSingleTemplate.xml");
+        packager.setManifestName("test-{"+LAST_NAME+"}.xml");
+        Map<String, Object> templateArgs = new HashMap<String, Object>(1);
+        templateArgs.put("customArg", "verified");
+        packager.setManifestTemplateArguments(templateArgs);
         addAttachmentType(packager, PRIMARY, null, null);
         final File exportFile = generateFileAndAssertPackageBasics(packager, "custom-netid");
 
-        // test that it's just a manifest
+        // Test directories and files
         final Map<String, String> fileMap = getDirectoryFileContents(exportFile);
         assertStandardAttachments(packager, fileMap);
-        final Document manifest = getFileXML(fileMap, "test.xml");
-        assertEquals(0, fileMap.size()); // no leftover files
 
+        // Test that every template var was available
+        final Document manifest = getFileXML(fileMap, "test-last name.xml"); // customized here
+        assertEquals(0, fileMap.size()); // no leftover files
         // Test injected vars
         assertEquals(String.valueOf(sub.hashCode()), xpath.evaluate("/test/sub", manifest));
         assertEquals(String.valueOf(subRepo.hashCode()), xpath.evaluate("/test/subRepo", manifest));
         assertEquals(String.valueOf(personRepo.hashCode()), xpath.evaluate("/test/personRepo", manifest));
         assertEquals(String.valueOf(settingRepo.hashCode()), xpath.evaluate("/test/settingRepo", manifest));
         assertEquals(String.valueOf(proquestRepo.hashCode()), xpath.evaluate("/test/proquestRepo", manifest));
-
         // Test vars from packager
         assertEquals(dir.name(), xpath.evaluate("/test/packageType", manifest));
         assertEquals("testFormat", xpath.evaluate("/test/format", manifest));
         assertEquals("application/xml", xpath.evaluate("/test/mimeType", manifest));
         assertEquals("custom-netid", xpath.evaluate("/test/entryName", manifest));
         assertEquals(PRIMARY.name(), xpath.evaluate("/test/attachmentType[1]", manifest));
-        assertEquals("test.xml", xpath.evaluate("/test/manifestName", manifest));
+        assertEquals("test-{"+LAST_NAME+"}.xml", xpath.evaluate("/test/manifestName", manifest)); // not customized here
+        // Test custom template args
+        assertEquals("verified", xpath.evaluate("/test/custom", manifest));
     }
 
     // Test the standard VireoExport packager in default configuration
@@ -212,8 +220,8 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         packager.setManifestName("{LAST_NAME}_{FIRST_NAME}_DATA.xml");
         packager.setEntryName("upload_{LAST_NAME}_{FIRST_NAME}");
         addAttachmentType(packager, PRIMARY, "{LAST_NAME}_{FIRST_NAME}", null);
-        addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, "supp_file_{FILE_NAME}", "{LAST_NAME}_{FIRST_NAME}_media{SEPARATOR}");
-        addAttachmentType(packager, AttachmentType.LICENSE, null, "{LAST_NAME}_{FIRST_NAME}_permission{SEPARATOR}");
+        addAttachmentType(packager, AttachmentType.SUPPLEMENTAL, "supp_file_{FILE_NAME}", "{LAST_NAME}_{FIRST_NAME}_media");
+        addAttachmentType(packager, AttachmentType.LICENSE, null, "{LAST_NAME}_{FIRST_NAME}_permission");
         final File exportFile = generateFileAndAssertPackageBasics(packager, "upload_last name_first name");
 
         // test all expected directories, filenames and file contents
@@ -248,6 +256,8 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         assertEquals("last name_first name.pdf", xpath.evaluate("/DISS_submission/DISS_content/DISS_binary", manifest).trim());
     }
 
+    // The single template packagers takes configuration of manifest name and manifest template path separately, and
+    // it joins them together before passing them to MultipleTemplatePackagerImpl in one call. Test that.
     @Test public void testSetManifestNameAndPath() {
         // test default
         assertEquals(1, packager.templates.size());
@@ -283,6 +293,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         assertEquals("qdc.xml", packager.templates.get("name2").toString());
     }
 
+    // Test that only exactly one template is accepted.
     @Test public void testSetTemplatePaths() {
         final Map<String, String> templatePaths = new HashMap<String, String>(2);
         // This method is left over from superclass, but it's there and overridden to behave in single-template context.
@@ -312,6 +323,7 @@ public class TemplatePackagerImplTest extends AbstractPackagerTest { // subclass
         } catch (IllegalArgumentException e) { /**/ }
     }
 
+    // Test error conditions unique to TemplatePackagerImpl.
     @Test public void testGeneratePackageErrors() {
         // error - no manifest template file set.
         try {

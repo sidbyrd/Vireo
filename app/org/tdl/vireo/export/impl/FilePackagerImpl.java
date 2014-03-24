@@ -1,8 +1,10 @@
 package org.tdl.vireo.export.impl;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.Submission;
+import org.tdl.vireo.services.StringVariableReplacement;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -10,7 +12,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.zip.ZipOutputStream;
 
-import static org.tdl.vireo.services.StringVariableReplacement.*;
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
+import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 
 /**
  * Generic packager that exports attachment files only without any manifest. Each
@@ -19,7 +22,7 @@ import static org.tdl.vireo.services.StringVariableReplacement.*;
  * The values that define what format, which files, etc, are all injected by
  * spring. This allows for many different package formats to be created by just
  * adding a new spring bean definition. See each of the injection methods below
- * for a description of the various injectable settings.
+ * and in AbstractPackager for a description of the various injectable settings.
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
  * @author Micah Cooper
@@ -38,14 +41,26 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 			throw new IllegalArgumentException("Unable to generate package because the submission is null or has not been persisted.");
         }
 		
-        // Set String replacement parameters
-        Map<String, String> parameters = setParameters(submission);
+        // Set string replacement parameters
+        Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
+        // Customize entry name
+        String customEntryName = StringVariableReplacement.applyParameterSubstitutionWithFallback(entryName, parameters);
 
 		try {
-			File pkg = null;
+			File pkg;
 			
-			// Check the package type set in the spring configuration
-            if (packageType==PackageType.zip) {
+			// Produce the correct output format.
+            if (packageType==dir) {
+                // Create output directory
+				pkg = File.createTempFile("file-export-", ".dir");
+                FileUtils.deleteQuietly(pkg);
+                if (!pkg.mkdir()) {
+                    throw new IOException("Could not create package directory '"+pkg.getPath()+'\'');
+                }
+
+                writeAttachmentsToDir(pkg, submission, parameters);
+
+            } else if (packageType==zip) {
                 // Create output zip archive
 				pkg = File.createTempFile("file-export-", ".zip");
                 ZipOutputStream zos = null;
@@ -55,19 +70,12 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
                 } finally {
                     if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
                 }
-            } else if (packageType==PackageType.dir) {
-                // Create output directory
-				pkg = File.createTempFile("file-export-", ".dir");
-                pkg.delete();
-                pkg.mkdir();
 
-                writeAttachmentsToDir(pkg, submission, parameters);
             } else {
                 throw new RuntimeException("FilePackager: unsupported package type '"+packageType+'\'');
             }
 
 			// Create the package
-            String customEntryName = applyParameterSubstitutionWithFallback(entryName, parameters);
 			return new FilePackage(submission, pkg, customEntryName);
 			
 		} catch (IOException ioe) {

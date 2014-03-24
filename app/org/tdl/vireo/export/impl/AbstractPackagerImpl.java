@@ -2,6 +2,7 @@ package org.tdl.vireo.export.impl;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.springframework.beans.factory.BeanNameAware;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.export.Packager;
@@ -14,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.customName;
@@ -123,11 +125,34 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         this.attachmentAttributes = new LinkedHashMap<String, Properties>();
 
         if (attachmentTypeNames != null ) {
-            this.attachmentAttributes = attachmentTypeNames;
-            for (String name : attachmentTypeNames.keySet()) {
+            for (Map.Entry<String, Properties> entry: attachmentTypeNames.entrySet()) {
+
+                // Check that the properties are valid.
+                final Properties props = entry.getValue();
+                String propDirectory = props.getProperty(directory.name());
+                if (propDirectory!=null && propDirectory.endsWith(File.separator)) {
+                    // if directory name ends with /, just remove it.
+                    propDirectory = propDirectory.substring(0, propDirectory.length()-1);
+                    props.setProperty(directory.name(), propDirectory);
+                }
+                if (propDirectory!=null && propDirectory.contains(File.separator)) {
+                    this.attachmentTypes.clear(); // may have already saved some
+                    throw new IllegalArgumentException("Attachment directory name '"+propDirectory+"' cannot contain non-trailing '"+File.separator+"'.");
+                }
+                final String propCustomName = props.getProperty(customName.name());
+                if (propCustomName!=null && propCustomName.contains(File.separator)) {
+                    this.attachmentTypes.clear(); // may have already saved some
+                    throw new IllegalArgumentException("Attachment custom name '"+propCustomName+"' cannot contain '"+File.separator+"'.");
+                }
+
+                // Add the AttachmentType to separate list of just those.
+                final String name = entry.getKey();
                 AttachmentType type = AttachmentType.valueOf(name);
                 this.attachmentTypes.add(type);
             }
+
+            // Save attachment Properties
+            this.attachmentAttributes = attachmentTypeNames;
         }
     }
 
@@ -141,6 +166,9 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      * 			The name of the entry.
      */
     public void setEntryName(String entryName) {
+        if (entryName!= null && entryName.contains(File.separator)) {
+            throw new IllegalArgumentException("Custom entry name cannot contain '"+File.separator+"'.");
+        }
         this.entryName = entryName;
     }
 
@@ -156,7 +184,7 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 
     /**
      * Gets the correct filename for an exported attachment, applying any per-attachment-type customization
-     * to the filename.
+     * to the filename. Any File.separator will be replaced with '-'.
      * @param attachment the attachment being exported
      * @param parameters variable substitution map for the submission
      * @return the filename the attachment should have, with any customizations applied.
@@ -169,12 +197,16 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
             fileName = applyParameterSubstitutionWithFallback(pattern, parameters)+'.'+FilenameUtils.getExtension(fileName);
             parameters.remove(FILE_NAME.name());
         }
+        if (fileName.contains(File.separator)) {
+            fileName = fileName.replace(File.separator, "-");
+        }
         return fileName;
     }
 
     /**
      * Gets the correct relative directory for an exported attachment to go in, applying any
-     * per-attachment-type customization to the directory name.
+     * per-attachment-type customization to the directory name. Any non-trailing File.separator will be
+     * replaced with '-'.
      * @param attachment the attachment being exported
      * @param parameters variable substitution map for the submission
      * @return the relative directory path the exported attachment should go in, with a trailing /, or "" if the
@@ -185,12 +217,71 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty(directory.name());
         if (pattern!=null) {
             parameters.put(FILE_NAME.name(), FilenameUtils.getBaseName(attachment.getName()));
-            dirName = applyParameterSubstitutionWithFallback(pattern, parameters)+File.separator;
+            dirName = applyParameterSubstitutionWithFallback(pattern, parameters);
+            if (dirName.contains(File.separator)) {
+                dirName = dirName.replace(File.separator, "-");
+            }
+            dirName+=File.separator;
             parameters.remove(FILE_NAME.name());
         }
         return dirName;
     }
+
+    /**
+     * Adds an underscore and a number to the end of a filename before the file extension.
+     * For example, foo.txt -> foo_1.txt
+     * @param fileName the filename to modify
+     * @param number the number to put at the end. Will be incremented.
+     * @return the modified filename
+     */
+    public static String incrementFilename(String fileName, MutableInt number) {
+        final String baseName = FilenameUtils.getBaseName(fileName);
+        final String extension = FilenameUtils.getExtension(fileName);
+        final String incremented = baseName+'_'+number+'.'+extension;
+        number.increment();
+        return incremented;
+    }
     
+    /**
+     * For each applicable attachment, copy it to a customized file in a directory. The file to
+     * write may have a customized name and/or go in a customized subdirectory within the dir. If the customized
+     * dir+filename already exists, the file will be renamed with _x before the extension, where x is the lowest
+     * integer (starting with 1) where there isn't already a file with that name.
+     * @param pkg the directory to write to
+     * @param submission the submission being packaged
+     * @param parameters string replacement parameters corresponding to submission, but already extracted.
+     * @throws IOException if something couldn't be copied
+     */
+    protected void writeAttachmentsToDir(File pkg, Submission submission, Map<String, String> parameters) throws IOException {
+        for(Attachment attachment : submission.getAttachments()) {
+            // Do we include this attachment type?
+            if (!attachmentTypes.contains(attachment.getType())) {
+                continue;
+            }
+
+            // Process custom options for filename and file directory
+            String fileName = getAttachmentFileName(attachment, parameters);
+            String dirName = getAttachmentDirName(attachment, parameters);
+
+            // Make sure parent directory exists (if it didn't already)
+            File exportFileSubdir= new File(pkg.getPath()+File.separator+dirName);
+            if (!exportFileSubdir.exists() && !exportFileSubdir.mkdir()) {
+                throw new IOException("Could not create attachment directory '"+exportFileSubdir+'\'');
+            }
+
+            // Make sure new file isn't a duplicate name.
+            File exportFile = new File(exportFileSubdir, fileName);
+            MutableInt copyNumber = new MutableInt(1);
+            while (exportFile.exists()) {
+                // Duplicate found.
+                exportFile = new File(exportFileSubdir, incrementFilename(fileName, copyNumber));
+            }
+
+            // Copy file from attachment into package directory
+            FileUtils.copyFile(attachment.getFile(), exportFile);
+        }
+    }
+
     /**
      * For each applicable attachment, copy it to a customized entry in a zip archive. The file to
      * write may have a customized name and/or go in a customized subdirectory in the zip archive.
@@ -210,12 +301,26 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
             String fileName = getAttachmentFileName(attachment, parameters);
             String dirName = getAttachmentDirName(attachment, parameters);
 
-            // Copy file from attachment into zip archive
             // (Zip entries include directory name, so we don't have to do some sort of mkdir equivalent
-            //  first. It's allowed to make an entry for the directory first, but it doesn't seem required.)
-            ZipEntry ze = new ZipEntry(dirName+fileName);
-            zos.putNextEntry(ze);
+            //  first. It's allowed to make an entry for the directory first, but it doesn't seem to be required.)
 
+            // Make sure new file isn't a duplicate name.
+            MutableInt copyNumber = new MutableInt(1);
+            ZipEntry ze = new ZipEntry(dirName+fileName);
+            while (copyNumber!=null) {
+                try {
+                    zos.putNextEntry(ze);
+                    copyNumber=null; // done
+                } catch (ZipException e) {
+                    if (!e.getMessage().contains("duplicate entry")) {
+                        throw e; // something else happened; don't catch it.
+                    }
+                    // Duplicate found. We have to rename the new one, e.g. file.txt to file_1.txt
+                    ze = new ZipEntry(incrementFilename(dirName+fileName, copyNumber));
+                }
+            }
+
+            // Copy file from attachment into zip archive
             FileInputStream in = null;
             try {
                 in = new FileInputStream(attachment.getFile());
@@ -232,33 +337,6 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         }
     }
 
-    /**
-     * For each applicable attachment, copy it to a customized file in a directory. The file to
-     * write may have a customized name and/or go in a customized subdirectory within the dir.
-     * @param pkg the directory to write to
-     * @param submission the submission being packaged
-     * @param parameters string replacement parameters corresponding to submission, but already extracted.
-     * @throws IOException if something couldn't be copied
-     */
-    protected void writeAttachmentsToDir(File pkg, Submission submission, Map<String, String> parameters) throws IOException {
-        for(Attachment attachment : submission.getAttachments()) {
-            // Do we include this attachment type?
-            if (!attachmentTypes.contains(attachment.getType())) {
-                continue;
-            }
-
-            // Process custom options for filename and file directory
-            String fileName = getAttachmentFileName(attachment, parameters);
-            String dirName = getAttachmentDirName(attachment, parameters);
-
-            // Copy file from attachment into package directory
-            File exportFileSubdir= new File(pkg.getPath()+File.separator+dirName);
-            exportFileSubdir.mkdir(); // make sure it exists, if it didn't already.
-            File exportFile = new File(exportFileSubdir, fileName);
-            FileUtils.copyFile(attachment.getFile(), exportFile);
-        }
-    }
-
 	/**
 	 * The package interface.
 	 *
@@ -272,9 +350,19 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 		public final File file;
 		public final String entryName;
 
+        /**
+         * Creates a new ExportPackage with the given data
+         * @param submission the Submission this export is for
+         * @param file the dir or zip with the export contents
+         * @param entryName the entry name for this export, or null for the default. Any File.separator will be
+         * replaced with '-'.
+         */
 		public AbstractExportPackage(Submission submission, File file, String entryName) {
 			this.submission = submission;
 			this.file = file;
+            if (entryName!= null && entryName.contains(File.separator)) {
+                entryName = entryName.replace(File.separator, "-");
+            }
 			this.entryName = entryName;
 		}
 
@@ -304,7 +392,7 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
 						throw new RuntimeException("Unable to cleanup export package: " + file.getAbsolutePath(),ioe);
 					}
 				} else {
-					file.delete();
+                    FileUtils.deleteQuietly(file);
 				}
 			}
 		}

@@ -162,7 +162,6 @@ public abstract class AbstractPackagerTest extends UnitTest {
         assertTrue("Package file is not readable", exportFile.canRead());
         if (packageType==dir) {
             assertTrue("Package should be a directory", exportFile.isDirectory());
-            assertTrue("Package file should end in .dir", exportFile.getName().endsWith(".dir"));
         } else if (packageType==zip) {
             assertFalse("Package should not be a directory", exportFile.isDirectory());
             assertTrue("Package file should end in .zip", exportFile.getName().endsWith(".zip"));
@@ -206,14 +205,30 @@ public abstract class AbstractPackagerTest extends UnitTest {
         }
     }
 
+    /**
+     * Calls getDirectoryFileContents() or getZipFileContents() as appropriate.
+     * @param target the directory or zip file to be parsed
+     * @param packageType which specific parsing method to call
+     * @return map of file/entry names to contents
+     * @throws IOException if something doesn't work
+     */
+    public static Map<String, String> getExportPackageFileContents(File target, AbstractPackagerImpl.PackageType packageType) throws IOException {
+        if (packageType== AbstractPackagerImpl.PackageType.dir) {
+            return getDirectoryFileContents(target);
+        } else if (packageType== AbstractPackagerImpl.PackageType.zip) {
+            return getZipFileContents(target);
+        } else {
+            throw new IllegalArgumentException("Unsupported package type");
+        }
+    }
+
 	/**
 	 * Creates a map of file names to their contents as strings, traversing a starting
      * directory hierarchy.
      * Maybe don't call this on non-test files that aren't short and simple--it
      * doesn't try to be efficient with its String reading, for example.
 	 *
-	 * @param targetDir
-	 *            the source directory be parsed
+	 * @param targetDir the source directory to be parsed
      * @return a map of file names to their string contents. Contents of directories == null,
      * but files in the directory will have separate entries. For example,
      * "foo.txt" => "contents"
@@ -296,14 +311,14 @@ public abstract class AbstractPackagerTest extends UnitTest {
      * Removes the file contents from the map and returns its XML Document contents
      * for further examination.
      * @param fileMap map of filename to file contents
-     * @param manifestName name of file in the map
+     * @param fileName name of file in the map
      * @return parsed XML contents of the file
      * @throws IOException if can't read file
      * @throws org.xml.sax.SAXException if not valid XML
      */
-    public static Document getFileXML(Map<String, String> fileMap, String manifestName) throws IOException, SAXException {
-        assertTrue(fileMap.containsKey(manifestName));
-        final String manifest = fileMap.remove(manifestName);
+    public static Document getFileXML(Map<String, String> fileMap, String fileName) throws IOException, SAXException {
+        assertTrue(fileMap.containsKey(fileName));
+        final String manifest = fileMap.remove(fileName);
         return builder.parse(new ByteArrayInputStream(manifest.getBytes("UTF-8")));
     }
 }
