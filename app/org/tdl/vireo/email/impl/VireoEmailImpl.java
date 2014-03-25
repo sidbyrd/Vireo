@@ -16,7 +16,7 @@ import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.security.SecurityContext;
-import org.tdl.vireo.services.StringVariableReplacement;
+import org.tdl.vireo.services.StringCustomizer;
 
 import play.Play;
 
@@ -248,15 +248,15 @@ public class VireoEmailImpl implements VireoEmail {
 	@Override
 	public void addParameters(Submission sub) {
 		
-		this.parameters = StringVariableReplacement.setParameters(sub);
+		this.parameters = StringCustomizer.setParameters(sub);
 
 	}
 
 	@Override
 	public void applyParameterSubstitution() {
 
-		subject = StringVariableReplacement.applyParameterSubstitution(subject, parameters);
-		message = StringVariableReplacement.applyParameterSubstitution(message, parameters);
+		subject = StringCustomizer.applyParameterSubstitution(subject, parameters);
+		message = StringCustomizer.applyParameterSubstitution(message, parameters);
 	
 	}
 

@@ -4,7 +4,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.tdl.vireo.model.AttachmentType;
-import org.tdl.vireo.services.StringVariableReplacement;
 import org.tdl.vireo.services.Utilities;
 import org.w3c.dom.Document;
 
@@ -16,8 +15,8 @@ import java.util.Map;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 import static org.tdl.vireo.model.AttachmentType.*;
-import static org.tdl.vireo.services.StringVariableReplacement.TEMPLATE_MODE;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.*;
+import static org.tdl.vireo.services.StringCustomizer.TEMPLATE_MODE;
+import static org.tdl.vireo.services.StringCustomizer.Variable.*;
 
 /**
  * Test the multiple template packager, including one that recreates the default DSpaceSimpleArchive packager.
@@ -118,10 +117,10 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
         // test contents file
         assertTrue(fileMap.containsKey("contents"));
         String contents = fileMap.remove("contents");
-        assertTrue("contents="+contents, contents.contains("LASTNAME-SELECTEDDOCUMENTTYPE-2002.pdf\tbundle:CONTENT\tprimary:true"));
-        assertTrue("contents="+contents, contents.contains("fluff.jpg\tbundle:CONTENT"));
-        assertTrue("contents="+contents, contents.contains("source.pdf\tbundle:CONTENT"));
-        assertTrue("contents="+contents, contents.contains("license.txt\tbundle:LICENSE"));
+        assertTrue("contents=" + contents, contents.contains("LASTNAME-SELECTEDDOCUMENTTYPE-2002.pdf\tbundle:CONTENT\tprimary:true"));
+        assertTrue("contents=" + contents, contents.contains("fluff.jpg\tbundle:CONTENT"));
+        assertTrue("contents=" + contents, contents.contains("source.pdf\tbundle:CONTENT"));
+        assertTrue("contents=" + contents, contents.contains("license.txt\tbundle:LICENSE"));
 
         assertEquals(0, fileMap.size()); // no leftover files
     }
@@ -133,7 +132,7 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
         Map<String, String> templatePaths = new HashMap<String, String>(1);
         templatePaths.put("test.xml", "test/org/tdl/vireo/export/impl/TestMultipleTemplate.xml");
         packager.setTemplatePaths(templatePaths);
-        addAttachmentType(packager, SUPPLEMENTAL, "file-{"+FILE_NAME+"}-custom", "dir-{"+FILE_NAME+"}-custom");
+        addAttachmentType(packager, SUPPLEMENTAL, "file-{" + FILE_NAME + "}-custom", "dir-{" + FILE_NAME + "}-custom");
         File suppl2 = Utilities.fileWithNameAndContents("second.gif", "second");
 		sub.addAttachment(suppl2, AttachmentType.SUPPLEMENTAL);
 		sub.save();

@@ -11,9 +11,9 @@ import java.util.Properties;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
-import static org.tdl.vireo.services.StringVariableReplacement.OR;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_EMAIL;
+import static org.tdl.vireo.services.StringCustomizer.OR;
+import static org.tdl.vireo.services.StringCustomizer.Variable.FILE_NAME;
+import static org.tdl.vireo.services.StringCustomizer.Variable.STUDENT_EMAIL;
 
 /**
  * Test the generic template package.

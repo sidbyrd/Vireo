@@ -20,9 +20,9 @@ import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.customName;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.directory;
-import static org.tdl.vireo.services.StringVariableReplacement.TEMPLATE_MODE;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
-import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSubstitution;
+import static org.tdl.vireo.services.StringCustomizer.TEMPLATE_MODE;
+import static org.tdl.vireo.services.StringCustomizer.Variable.FILE_NAME;
+import static org.tdl.vireo.services.StringCustomizer.applyParameterSubstitution;
 
 /**
  * Abstract packager implementation.

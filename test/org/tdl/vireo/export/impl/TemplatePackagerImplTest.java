@@ -18,8 +18,8 @@ import java.util.Map;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.model.AttachmentType.PRIMARY;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.LAST_NAME;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_NETID;
+import static org.tdl.vireo.services.StringCustomizer.Variable.LAST_NAME;
+import static org.tdl.vireo.services.StringCustomizer.Variable.STUDENT_NETID;
 
 /**
  * Creates several TemplatePackagers with known configurations designed to test all the functions of a FilePackagerImpl,

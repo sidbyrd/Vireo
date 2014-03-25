@@ -5,19 +5,18 @@ import org.junit.Test;
 import org.tdl.vireo.export.impl.FilePackagerImpl;
 import org.tdl.vireo.model.MockPerson;
 import org.tdl.vireo.model.MockSubmission;
-import org.tdl.vireo.proquest.ProquestVocabularyRepository;
 import org.tdl.vireo.security.impl.LDAPAuthenticationMethodImpl;
 import org.tdl.vireo.state.MockState;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
-import org.tdl.vireo.services.StringVariableReplacement.Variable;
+import org.tdl.vireo.services.StringCustomizer.Variable;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.tdl.vireo.services.StringVariableReplacement.*;
-import static org.tdl.vireo.services.StringVariableReplacement.Variable.*;
+import static org.tdl.vireo.services.StringCustomizer.*;
+import static org.tdl.vireo.services.StringCustomizer.Variable.*;
 
 public class StringVariableReplacementTest extends UnitTest {
 
@@ -53,7 +52,7 @@ public class StringVariableReplacementTest extends UnitTest {
         sub.setCommitteeEmailHash("whatever");
         sub.id=999L;
 
-        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        Map<String, String> params = StringCustomizer.setParameters(sub);
         assertEquals("Zanoni Ineffable", params.remove(Variable.FULL_NAME.name()));
         assertEquals("Zanoni", params.remove(Variable.FIRST_NAME.name()));
         assertEquals("Ineffable", params.remove(LAST_NAME.name()));
@@ -74,13 +73,13 @@ public class StringVariableReplacementTest extends UnitTest {
 
     @Test public void testSetParameters_gradYearNoMonth() {
         sub.setGraduationYear(2014);
-        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        Map<String, String> params = StringCustomizer.setParameters(sub);
         assertEquals("2014", params.remove(Variable.GRAD_SEMESTER.name()));
     }
 
     @Test public void testSetParameters_minimal() {
         sub = new MockSubmission(); // as empty as possible
-        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        Map<String, String> params = StringCustomizer.setParameters(sub);
         assertEquals("n/a", params.remove(Variable.SUBMISSION_ASSIGNED_TO.name()));
         params.remove(Variable.STUDENT_URL.name());
         assertEquals(String.valueOf(sub.getId()), params.remove(Variable.SUBMISSION_ID.name()));
@@ -88,14 +87,16 @@ public class StringVariableReplacementTest extends UnitTest {
         assertEquals(0, params.size()); // that should be all
     }
 
+    //TODO test: {SUBMISSION_ASSIGNED_TO||n/a}
+
     @Test public void testModeSelection() {
-        Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        Map<String, String> params = StringCustomizer.setParameters(sub);
 
         // This string will be interpreted differently by each mode.
         final String indicator = "simple-{"+ STUDENT_ID +"}-fallback-{"+ FIRST_NAME+OR+STUDENT_ID +"}-template-${ "+STUDENT_ID+" }-end";
 
         // simple replacement mode - only gets the first part
-        assertEquals("simple-S01234-fallback-{"+ FIRST_NAME+OR+STUDENT_ID +"}-template-${ "+STUDENT_ID+" }-end",
+        assertEquals("simple-S01234-fallback-{" + FIRST_NAME + OR + STUDENT_ID + "}-template-${ " + STUDENT_ID + " }-end",
                 applyParameterSubstitution(indicator, params));
 
         // fallback mode - gets the first and second parts
@@ -104,7 +105,7 @@ public class StringVariableReplacementTest extends UnitTest {
 
         // template mode - only gets the third part
         assertEquals("simple-{"+ STUDENT_ID +"}-fallback-{"+ FIRST_NAME+OR+STUDENT_ID +"}-template-S01234-end",
-                applyParameterSubstitution(TEMPLATE_MODE+indicator, params));
+                applyParameterSubstitution(TEMPLATE_MODE + indicator, params));
     }
 
     @Test public void testTemplate() {
@@ -136,231 +137,231 @@ public class StringVariableReplacementTest extends UnitTest {
 /////////////////////////// thorough testing of fallback mode ///////////////////////////////////
 
     @Test public void testFallback_tokensNoVars() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         // starts and ends with invalid fallback token
         String test = OR +"this has no vars in it, but does have non-active uses of a "+ OR +" token."+ OR;
-        String result = applyParameterSubstitutionWithFallback(test, params);
+        String result = customizeString(test, params);
         assertEquals(test, result); // no tokens removed, nothing altered
 
         // starts and ends with plain text, back-to-back invalid fallback tokens in the middle
         test = "This has some "+ OR + OR +" tokens in the middle";
-        result = applyParameterSubstitutionWithFallback(test, params);
+        result = customizeString(test, params);
         assertEquals(test, result); // no tokens removed, nothing altered
     }
 
     @Test public void testFallback_yes_no() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "The first of {"+ STUDENT_ID+ OR + LAST_NAME+"} should work";
         assertTrue(params.containsKey(STUDENT_ID.name()));
         assertFalse(params.containsKey(LAST_NAME.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("The first of S01234 should work", resultWithFallback); // choose the first substitution
     }
 
     @Test public void testFallback_no_yes_no() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "The second of {"+ Variable.FIRST_NAME+ OR + STUDENT_ID+ OR + LAST_NAME+"} should work";
         assertFalse(params.containsKey(Variable.FIRST_NAME.name()));
         assertTrue(params.containsKey(STUDENT_ID.name()));
         assertFalse(params.containsKey(LAST_NAME.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("The second of S01234 should work", resultWithFallback); // choose the middle substitution
     }
 
     @Test public void testFallback_no_yes_yes() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "The second of {"+ Variable.FIRST_NAME+ OR + STUDENT_ID+ OR +Variable.STUDENT_NETID+"} should work";
         assertFalse(params.containsKey(Variable.FIRST_NAME.name()));
         assertTrue(params.containsKey(STUDENT_ID.name()));
         assertTrue(params.containsKey(Variable.STUDENT_NETID.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("The second of S01234 should work", resultWithFallback); // choose the middle substitution
     }
 
     @Test public void testFallback_no_no_no() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "None of {"+ Variable.FIRST_NAME+ OR +Variable.FULL_NAME+ OR + LAST_NAME+"} should work";
         assertFalse(params.containsKey(Variable.FIRST_NAME.name()));
         assertFalse(params.containsKey(Variable.FULL_NAME.name()));
         assertFalse(params.containsKey(LAST_NAME.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("None of  should work", resultWithFallback); // remove all substitutions
     }
 
     @Test public void testFallback_no_no_default() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "This {"+ Variable.FIRST_NAME+ OR +Variable.FULL_NAME+ OR +"chain} should use the default";
         assertFalse(params.containsKey(Variable.FIRST_NAME.name()));
         assertFalse(params.containsKey(Variable.FULL_NAME.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("This chain should use the default", resultWithFallback); // use default
     }
 
     @Test public void testFallback_yes_default() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "This chain {"+ STUDENT_ID+ OR +"default} should not get to the default";
         assertTrue(params.containsKey(STUDENT_ID.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("This chain S01234 should not get to the default", resultWithFallback);
     }
 
     @Test public void testFallback_defaultOnly() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "You can't start with a {default}.";
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // invalid chain, unchanged
     }
 
     @Test public void testFallback_var_default_var() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "The default {"+ STUDENT_ID+ OR +"default"+ OR +Variable.DOCUMENT_TITLE+"} has to be last.";
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // invalid chain, unchanged
     }
 
     @Test public void testFallback_rogueVar() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
         params.put("ROGUE", "rogue");
 
         String test = "This {"+ STUDENT_ID+ OR +"ROGUE"+ OR +"default} is a standard var.";
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals("This S01234 is a standard var.", resultWithFallback);
 
         test = "This {"+Variable.FULL_NAME+ OR +"ROGUE"+ OR +"default} is a rogue var.";
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("This rogue is a rogue var.", resultWithFallback);
 
         params.remove("ROGUE");
         // same test, but rogue var is now invalid.
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // unchanged
 
         test = "This {"+Variable.FULL_NAME+ OR +"ROGUE} is a rogue var turned default.";
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("This ROGUE is a rogue var turned default.", resultWithFallback);
     }
 
     @Test public void testFallback_var_default_default() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         final String test = "You can't have {"+ STUDENT_ID+ OR +"one"+ OR +"two} defaults.";
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // invalid chain, unchanged
     }
 
     @Test public void testFallback_no_null_yes() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
         params.put(Variable.DOCUMENT_TITLE.name(), null);
 
         String test = "Null is allowed {"+Variable.DOCUMENT_TYPE+ OR +Variable.DOCUMENT_TITLE+ OR + STUDENT_ID+"} but won't match.";
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals("Null is allowed S01234 but won't match.", resultWithFallback);
 
         params.put("ROGUE", null);
 
         test = "Even with a rogue var {"+Variable.DOCUMENT_TYPE+ OR +"ROGUE"+ OR + STUDENT_ID+'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("Even with a rogue var S01234", resultWithFallback);
     }
 
     @Test public void testFallback_firstAndLast() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         String test = "{"+ Variable.FIRST_NAME+ OR +Variable.FULL_NAME+"} empty start and full end {"+ STUDENT_ID+ OR +Variable.STUDENT_NETID+"}";
         assertFalse(params.containsKey(Variable.FIRST_NAME.name()));
         assertFalse(params.containsKey(Variable.FULL_NAME.name()));
         assertTrue(params.containsKey(STUDENT_ID.name()));
         assertTrue(params.containsKey(Variable.STUDENT_NETID.name()));
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals(" empty start and full end S01234", resultWithFallback);
 
         test = "{"+ Variable.FIRST_NAME+ OR +"default}";
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("default", resultWithFallback);
     }
 
     @Test public void testFallback_braceNoise() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
         final String test = "{}}{{"+ STUDENT_ID+"}{";
         assertTrue(params.containsKey(STUDENT_ID.name()));
-        final String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        final String resultWithFallback = customizeString(test, params);
         assertEquals("{}}{S01234{", resultWithFallback); // unchanged
     }
 
     @Test public void testFallback_malformed() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         String test = "{}";
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // unchanged
 
         test = '{'+ OR +'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = "{"+ STUDENT_ID;
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = "{"+ STUDENT_ID+ OR;
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = STUDENT_ID+ OR +'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = "{"+ STUDENT_ID+ STUDENT_ID+'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = "{"+ STUDENT_ID+'}'+ STUDENT_ID+'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("S01234"+ STUDENT_ID+'}', resultWithFallback); // first valid, second not
 
         test = "{"+ STUDENT_ID+'{'+ STUDENT_ID+'}';
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals("{"+ STUDENT_ID+"S01234", resultWithFallback); // second valid, first not
     }
 
     @Test public void testFallback_DefaultMalformed() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         String test = "{"+ STUDENT_ID+ OR +"default"+ OR +'}';
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); // unchanged
 
         test = "{"+ STUDENT_ID+ OR +"default{}";
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
 
         test = "{"+ STUDENT_ID+"default}"; // no OR
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(test, resultWithFallback); //unchanged
     }
 
     @Test public void testFallback_VarsOnlyNoFallback() {
-        final Map<String, String> params = StringVariableReplacement.setParameters(sub);
+        final Map<String, String> params = StringCustomizer.setParameters(sub);
 
         // starts and ends with vars
         String test = "{STUDENT_NETID}This has no OR tokens but does have vars like {STUDENT_ID} and {STUDENT_EMAIL}";
-        String resultNoFallback = StringVariableReplacement.applyParameterSubstitution(test, params);
-        String resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        String resultNoFallback = StringCustomizer.applyParameterSubstitution(test, params);
+        String resultWithFallback = customizeString(test, params);
         assertEquals(resultNoFallback, resultWithFallback); // same as no fallback version
 
         // starts and ends with plain text, back-to-back vars in the middle
         test = "This tests vars like {STUDENT_NETID}{STUDENT_ID} back-to-back in the middle.";
-        resultNoFallback = StringVariableReplacement.applyParameterSubstitution(test, params);
-        resultWithFallback = applyParameterSubstitutionWithFallback(test, params);
+        resultNoFallback = StringCustomizer.applyParameterSubstitution(test, params);
+        resultWithFallback = customizeString(test, params);
         assertEquals(resultNoFallback, resultWithFallback); // same as no fallback version
     }
 }

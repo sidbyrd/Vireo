@@ -4,7 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.services.StringVariableReplacement;
+import org.tdl.vireo.services.StringCustomizer;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -42,9 +42,9 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
         }
 		
         // Set string replacement parameters
-        Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
+        Map<String, String> parameters = StringCustomizer.setParameters(submission);
         // Customize entry name
-        String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
+        String customEntryName = StringCustomizer.applyParameterSubstitution(entryName, parameters);
 
 		try {
 			File pkg;

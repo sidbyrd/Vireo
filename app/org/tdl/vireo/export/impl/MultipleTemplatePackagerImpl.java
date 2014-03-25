@@ -10,7 +10,7 @@ import org.tdl.vireo.model.SettingsRepository;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.proquest.ProquestVocabularyRepository;
-import org.tdl.vireo.services.StringVariableReplacement;
+import org.tdl.vireo.services.StringCustomizer;
 import play.Play;
 import play.exceptions.TemplateNotFoundException;
 import play.templates.Template;
@@ -29,7 +29,7 @@ import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
-import static org.tdl.vireo.services.StringVariableReplacement.TEMPLATE_MODE;
+import static org.tdl.vireo.services.StringCustomizer.TEMPLATE_MODE;
 
 /**
  * Generic packager that uses the standard play templating system to generate
@@ -225,7 +225,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         for (String templateName : templates.keySet()) {
             final String templateRendered = renderTemplate(templateName, submission, customEntryName);
             // now customize the template name
-            templateName = StringVariableReplacement.applyParameterSubstitution(templateName, parameters);
+            templateName = StringCustomizer.applyParameterSubstitution(templateName, parameters);
             if (templateName.contains(File.separator)) {
                 templateName = templateName.replace(File.separator, "-");
             }
@@ -256,7 +256,7 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         for (String templateName : templates.keySet()) {
             final String templateRendered = renderTemplate(templateName, submission, customEntryName);
             // now customize the template name
-            templateName = StringVariableReplacement.applyParameterSubstitution(templateName, parameters);
+            templateName = StringCustomizer.applyParameterSubstitution(templateName, parameters);
             if (templateName.contains(File.separator)) {
                 templateName = templateName.replace(File.separator, "-");
             }
@@ -305,9 +305,9 @@ public class MultipleTemplatePackagerImpl extends AbstractPackagerImpl {
         }
 
         // Set string replacement parameters
-        Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
+        Map<String, String> parameters = StringCustomizer.setParameters(submission);
         // Customize entry name
-        String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
+        String customEntryName = StringCustomizer.applyParameterSubstitution(entryName, parameters);
 
 		try {
 			File pkg;
