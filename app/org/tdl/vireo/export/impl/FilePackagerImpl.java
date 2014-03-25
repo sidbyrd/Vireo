@@ -44,7 +44,7 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
         // Set string replacement parameters
         Map<String, String> parameters = StringVariableReplacement.setParameters(submission);
         // Customize entry name
-        String customEntryName = StringVariableReplacement.applyParameterSubstitutionWithFallback(entryName, parameters);
+        String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
 
 		try {
 			File pkg;

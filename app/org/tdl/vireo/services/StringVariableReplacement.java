@@ -8,6 +8,8 @@ import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.security.impl.LDAPAuthenticationMethodImpl;
 import play.mvc.Router;
 import play.mvc.Router.ActionDefinition;
+import play.templates.Template;
+import play.templates.TemplateLoader;
 
 import java.io.File;
 import java.text.DateFormatSymbols;
@@ -72,9 +74,15 @@ public class StringVariableReplacement {
         }
     }
 
+    /** A token that, used at the beginning of the string, indicates to process the string in fallback mode */
+    public static final String FALLBACK_MODE = "{FALLBACK_MODE}";
+
+    /** A token that, used at the beginning of the string, indicates to process the string in template mode */
+    public static final String TEMPLATE_MODE = "{TEMPLATE_MODE}";
+
     /** A token that, used between two other strings from the list above inside a variable name scope,
-        indicates fallback substitution (see applyParameterSubstitutionWithFallback() ). */
-    public static final String FALLBACK = "||";
+        indicates fallback substitution (when in fallback substitution mode). */
+    public static final String OR = "||";
 
 	/**
 	 * This generates a map of the strings to be replaced with a specific submission's metadata.
@@ -179,9 +187,18 @@ public class StringVariableReplacement {
 	 */
 	public static String applyParameterSubstitution(String string, Map<String, String> parameters) {
 		
-		if(string == null)
+		if(string == null) {
 			return null;
-		
+        }
+
+        if (string.startsWith(FALLBACK_MODE)) {
+            return applyParameterSubstitutionWithFallback(string.substring(FALLBACK_MODE.length()), parameters);
+        }
+        if (string.startsWith(TEMPLATE_MODE)) {
+            return applyTemplateParameterSubstitution(string.substring(TEMPLATE_MODE.length()), parameters);
+        }
+
+        // just use regular substitution mode
 		for (Map.Entry<String, String> stringStringEntry : parameters.entrySet()) {
             final String name =stringStringEntry.getKey();
 			final String value = stringStringEntry.getValue();
@@ -190,7 +207,6 @@ public class StringVariableReplacement {
 		}
 	
 		return string;
-		
 	}
 
     /**
@@ -263,7 +279,7 @@ public class StringVariableReplacement {
                     final int endPos = string.indexOf('}', chainPos);
                     if (endPos!=-1) {
                         final String defaultValue = string.substring(chainPos, endPos);
-                        if (!defaultValue.contains(FALLBACK) && !defaultValue.contains("{")) { // invalid if contains special stuff
+                        if (!defaultValue.contains(OR) && !defaultValue.contains("{")) { // invalid if contains special stuff
                             // It's valid.
                             if (replacement == null) {
                                 replacement = defaultValue;
@@ -275,9 +291,9 @@ public class StringVariableReplacement {
                 }
 
                 // Done looking for variable name. Where to next?
-                if (foundVariable && chainPos+FALLBACK.length()<=length && string.substring(chainPos, chainPos+FALLBACK.length()).equals(FALLBACK)) {
+                if (foundVariable && chainPos+ OR.length()<=length && string.substring(chainPos, chainPos+ OR.length()).equals(OR)) {
                     // Fallback token right after valid variable name. Keep consuming the fallback chain.
-                    chainPos += FALLBACK.length();
+                    chainPos += OR.length();
                 } else if (foundVariable && chainPos+1 <= length && string.substring(chainPos, chainPos+1).equals("}")) {
                     // Substitution end token right after variable name/default value. Chain came to a valid end.
                     chainPos += 1; // for closing '}'
@@ -303,4 +319,22 @@ public class StringVariableReplacement {
         result.append(string.substring(prevPos));
         return result.toString();
     }
+
+    /**
+     * Renders the supplied string using Play's template engine, supplying the given parameters as
+     * arguments to the template. Useful for more complicated substitution logic.
+     * @param string the template to run, as a string
+     * @param parameters binding arguments to the template.
+     * @return the rendered template result
+     */
+    public static String applyTemplateParameterSubstitution(String string, Map<String, String> parameters) {
+        // make a key so the compiled template can be cached in case we see this exact same string again later
+        String key = String.valueOf(string.hashCode());
+        Template template = TemplateLoader.load(key, string);
+
+        /// render the template with the given parameters (have to change type to Map<String, Object>)
+        Map<String, Object> templateBinding = new HashMap<String,Object>(parameters);
+        return template.render(templateBinding);
+    }
+
 }

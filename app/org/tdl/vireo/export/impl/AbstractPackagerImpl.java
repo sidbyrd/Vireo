@@ -20,8 +20,9 @@ import java.util.zip.ZipOutputStream;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.customName;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.AttachmentPropertyKey.directory;
+import static org.tdl.vireo.services.StringVariableReplacement.TEMPLATE_MODE;
 import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
-import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSubstitutionWithFallback;
+import static org.tdl.vireo.services.StringVariableReplacement.applyParameterSubstitution;
 
 /**
  * Abstract packager implementation.
@@ -132,13 +133,13 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
                 propDirectory = propDirectory.substring(0, propDirectory.length()-1);
                 props.setProperty(directory.name(), propDirectory);
             }
-            if (propDirectory!=null && propDirectory.contains(File.separator)) {
+            if (propDirectory!=null && !propDirectory.startsWith(TEMPLATE_MODE)  && propDirectory.contains(File.separator)) {
                 attachmentTypes.clear(); // if error, revert to no attachments.
                 attachmentAttributes = new LinkedHashMap<String, Properties>(0); // don't clear the method parameter, just my field.
                 throw new IllegalArgumentException("Attachment directory name '"+propDirectory+"' cannot contain non-trailing '"+File.separator+"'.");
             }
             final String propCustomName = props.getProperty(customName.name());
-            if (propCustomName!=null && propCustomName.contains(File.separator)) {
+            if (propCustomName!=null && !propCustomName.startsWith(TEMPLATE_MODE)  && propCustomName.contains(File.separator)) {
                 attachmentTypes.clear(); // if error, revert to no attachments.
                 attachmentAttributes = new LinkedHashMap<String, Properties>(0); // don't clear the method parameter, just my field.
                 throw new IllegalArgumentException("Attachment custom name '"+propCustomName+"' cannot contain '"+File.separator+"'.");
@@ -164,8 +165,8 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
      * 			The name of the entry.
      */
     public void setEntryName(String entryName) {
-        if (entryName!= null && entryName.contains(File.separator)) {
-            throw new IllegalArgumentException("Custom entry name cannot contain '"+File.separator+"'.");
+        if (entryName!= null && !entryName.startsWith(TEMPLATE_MODE) && entryName.contains(File.separator)) {
+            throw new IllegalArgumentException("Custom entry name '"+entryName+"' cannot contain '"+File.separator+"'.");
         }
         this.entryName = entryName;
     }
@@ -192,7 +193,7 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty(customName.name());
         if (pattern!=null) {
             parameters.put(FILE_NAME.name(), FilenameUtils.getBaseName(fileName));
-            fileName = applyParameterSubstitutionWithFallback(pattern, parameters)+'.'+FilenameUtils.getExtension(fileName);
+            fileName = applyParameterSubstitution(pattern, parameters)+'.'+FilenameUtils.getExtension(fileName);
             parameters.remove(FILE_NAME.name());
         }
         if (fileName.contains(File.separator)) {
@@ -215,7 +216,7 @@ public abstract class AbstractPackagerImpl implements Packager, BeanNameAware {
         final String pattern = attachmentAttributes.get(attachment.getType().name()).getProperty(directory.name());
         if (pattern!=null) {
             parameters.put(FILE_NAME.name(), FilenameUtils.getBaseName(attachment.getName()));
-            dirName = applyParameterSubstitutionWithFallback(pattern, parameters);
+            dirName = applyParameterSubstitution(pattern, parameters);
             if (dirName.contains(File.separator)) {
                 dirName = dirName.replace(File.separator, "-");
             }

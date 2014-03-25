@@ -275,13 +275,13 @@
     <!-- Package Formats -->
     <!--
     	Note: Certain configuration options' values, marked below as {CUSTOMIZABLE}, can be
-    	customized in the export package using the same placeholder system as email templates.
+    	customized in Packager configurations using the same placeholder system as email templates.
     	Example: <property value="{LAST_NAME}, {FIRST_NAME}"/> produces "Thornton, Billy".
 
         Configuration options:
 
-        Package Type: (optional, default is 'dir' if omitted)
-            You can assign different package types to any export.
+        Package Type: (optional, default if omitted is 'dir')
+            You can assign different package types to any configured Packager.
             Currently there are 2 options: "dir" and "zip" structures.
 
                 <property name="packageType" value="zip"/>
@@ -306,18 +306,23 @@
                         manifest.xml
                         supplemental.doc
 
-        Entry Name: (optional)
-            A name for the resulting export package, which may be used when depositing or
-            saving that package if applicable. (For example, SWORD deposits ignore this.)
+        Entry Name: (optional; default if omitted is chosen by exporter or depositor)
+            Once the submission is packaged, its entry name may be used by the depositor or
+            exporter that triggered the package to be made. (That would be the batch exporter,
+            the SWORD depositor, etc.) If no customized entry name is configured here, the
+            depositor or exporter will pick one. Sometimes the entry name is simply not
+            applicable and is ignored. For example, SWORD deposits don't have names, but exports
+            to a file do need a file name.
 
             <property name="entryName" value="{CUSTOMIZABLE}"/>
 
-        Files: (optional unless using FilePackager, in which case it's required)
-            Selects which types of attachment files (if any) are including in the export package.
+        Files: (optional unless using FilePackager, in which case it's required;
+                default if omitted is not to include any attachments)
+            Selects which types of attachment files (if any) are including in the packaged submission.
             You can add properties, per attachment type, to change the files' names and tell the
-            export if they should be placed in a directory. If there are no customizations, be
-            sure to still include an empty <props></props> markup. Inside the customizable 'props'
-            below, the additional placeholder {FILE_NAME} is available.
+            Packager if they should be placed in a directory. If there are no customized properties
+            for an attachment type, be sure to still include an empty <props></props> markup.
+            Inside the property value, the additional placeholder {FILE_NAME} is available.
 
             <property name="attachmentTypeNames">
                 <map>
@@ -342,14 +347,14 @@
         Configuration options that only apply to TemplatePackager and MultipleTemplatePackager:
 
         Manifest Name: (required for TemplatePackager only)
-            The name given to the XML manifest document.
+            The name given to the XML manifest document included in the package.
 
             <property name="manifestName" value="{CUSTOMIZABLE}"/>
 
         Manifest Template Path: (required for TemplatePackager only)
-            The template file used to produce the manifest document.
+            The location of the template file used to produce the manifest document.
 
-            <property name="manifestName" value="{CUSTOMIZABLE}"/>
+            <property name="manifestTemplatePath" value="conf/formats/vireo.xml"/>
 
         Template Paths: (required for MultipleTemplatePackager only)
             The keys are used as the manifest names, and the values are the template files
@@ -362,17 +367,17 @@
             </property>
 
         Format: (required)
-            A standardized name to identify the format of the export package.
+            A standardized name to identify the format with which the submission has been packaged.
 
             <property name="format" value="http://purl.org/dc/elements/1.1/"/>
 
-        Mimetype: (optional)
-            Most configurations should not use this. For TemplatePackager exports which produce nothing
-            except one manifest, set this to the correct mimetype for the manifest.
+        Mimetype: (optional; default if omitted is not to have a mimetype)
+            Most configurations should not use this. For TemplatePackager configurations which produce
+            nothing except one manifest, set this to the correct mimetype for the manifest.
 
             <property name="mimeType" value="application/xml"/>
 
-        Template Arguments: (optional)
+        Template Arguments: (optional; default if omitted is no additional template arguments)
             Creates additional values to make available to templates when creating manifest documents.
             You can define a key here, then use it in the manifest template to access its value.
 
@@ -382,6 +387,10 @@
                     <entry key="anotherKey" value="another value"/>
                 </util:map>
             </property>
+
+
+    It is recommended that, if you wish to customize any of the default Packagers, you make a copy
+    first and then customize the copy.
 
      -->
     <bean id="VireoExport" class="org.tdl.vireo.export.impl.TemplatePackagerImpl" scope="prototype">
@@ -544,7 +553,13 @@
     </bean>
     <bean id="OnBaseExport" class="org.tdl.vireo.export.impl.FilePackagerImpl" scope="prototype">
         <property name="displayName" value="OnBase administrative docs export"/>
-        <property name="entryName" value="{sid-STUDENT_ID||netid-STUDENT_NETID||email-STUDENT_EMAIL}"/>
+        <property name="entryName" value="#{'{TEMPLATE_MODE}#{if STUDENT_ID!=null}sid=$'+'{STUDENT_ID}#{/if}#{elseif STUDENT_NETID!=null}netid=$'+'{STUDENT_NETID}#{/elseif}#{else}email=$'+'{STUDENT_EMAIL}#{/else},thesis-id=$'+'{SUBMISSION_ID}'}"/>
+        <!--
+            above: the outer #{' ... '} tells SpEL (Spring Expression Language) to treat the ... as a
+            string, so the inner #{ } don't trigger evaluations. But there is literally no way to
+            escape a ${ in SpEL! So the idiot parser must be tricked by separating the string between
+            the $ and the { characters.
+        -->
         <property name="packageType" value="dir"/>
         <property name="attachmentTypeNames">
 	        <map>

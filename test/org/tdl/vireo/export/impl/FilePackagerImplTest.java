@@ -11,7 +11,7 @@ import java.util.Properties;
 
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
-import static org.tdl.vireo.services.StringVariableReplacement.FALLBACK;
+import static org.tdl.vireo.services.StringVariableReplacement.OR;
 import static org.tdl.vireo.services.StringVariableReplacement.Variable.FILE_NAME;
 import static org.tdl.vireo.services.StringVariableReplacement.Variable.STUDENT_EMAIL;
 
@@ -63,7 +63,7 @@ public class FilePackagerImplTest extends AbstractPackagerTest {
     // Test using entryName, custom filenames, and custom dirnames, with both "dir" and "zip" output.
 	@Test public void testGeneratePackage_allOptions() throws IOException {
         FilePackagerImpl packager = new FilePackagerImpl();
-        packager.setEntryName("entry-{" + STUDENT_EMAIL + "}-notvar-{" + FILE_NAME + FALLBACK + "fallback}"); // FILE_NAME is not valid on anything but files; replaced with "fallback".
+        packager.setEntryName("entry-{" + STUDENT_EMAIL + "}-notvar-{" + FILE_NAME + OR + "fallback}"); // FILE_NAME is not valid on anything but files; replaced with "fallback".
         packager.setPackageType(dir);
         addAttachmentType(packager, AttachmentType.PRIMARY,
                 "primaryFile-{" + FILE_NAME + "}-{" + STUDENT_EMAIL + '}', /* FILE_NAME still gets "PRIMARY-DOCUMENT", not "bottle" */

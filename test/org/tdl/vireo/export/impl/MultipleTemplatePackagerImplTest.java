@@ -4,6 +4,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.tdl.vireo.model.AttachmentType;
+import org.tdl.vireo.services.StringVariableReplacement;
 import org.tdl.vireo.services.Utilities;
 import org.w3c.dom.Document;
 
@@ -15,6 +16,7 @@ import java.util.Map;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.dir;
 import static org.tdl.vireo.export.impl.AbstractPackagerImpl.PackageType.zip;
 import static org.tdl.vireo.model.AttachmentType.*;
+import static org.tdl.vireo.services.StringVariableReplacement.TEMPLATE_MODE;
 import static org.tdl.vireo.services.StringVariableReplacement.Variable.*;
 
 /**
@@ -208,6 +210,43 @@ public class MultipleTemplatePackagerImplTest extends AbstractPackagerTest {
             assertTrue( file2contents.equals("bottle") && file3contents.equals("source") ||
                         file3contents.equals("bottle") && file2contents.equals("source"));
         }
+    }
+
+    /**
+     * There are four customizable (i.e. string parameter replaced) fields where, once customization
+     * is complete, if they have a / in the output, it must be replaced with -. That's a nice
+     * runtime workaround that's beats failing, but it is still undesirable. Those fields should
+     * not be knowingly initialized with something that will result in / .
+     * @throws IOException
+     */
+    @Test public void testFileSeparators_configError() throws IOException {
+        Map<String, String> templatePaths = new HashMap<String, String>(1);
+
+        try {
+            packager.setEntryName("no"+File.separator+"slash");
+            fail("Should not be able to set entry with known "+File.separator+" in it.");
+        } catch (IllegalArgumentException e) { /**/ }
+        try {
+            templatePaths.put("no"+File.separator+"slash", "test/org/tdl/vireo/export/impl/TestMultipleTemplate.xml");
+            packager.setTemplatePaths(templatePaths);
+            fail("Should not be able to set template name with known "+File.separator+" in it.");
+        } catch (IllegalArgumentException e) { /**/ }
+        try {
+            addAttachmentType(packager, PRIMARY, "no"+File.separator+"slash", null);
+            fail("Should not be able to custom attachment name with known "+File.separator+" in it.");
+        } catch (IllegalArgumentException e) { /**/ }
+        try {
+            addAttachmentType(packager, PRIMARY, null, "no"+File.separator+"slash");
+            fail("Should not be able to set attachment directory with known "+File.separator+" in it.");
+        } catch (IllegalArgumentException e) { /**/ }
+
+        // But it should be legal to do those things if the input uses template mode for
+        // customization, because templates can contain / without outputting / .
+        packager.setEntryName(TEMPLATE_MODE+"no"+File.separator+"slash");
+        templatePaths.clear();
+        templatePaths.put(TEMPLATE_MODE+"no"+File.separator+"slash", "test/org/tdl/vireo/export/impl/TestMultipleTemplate.xml");
+        packager.setTemplatePaths(templatePaths);
+        addAttachmentType(packager, PRIMARY, TEMPLATE_MODE+"no"+File.separator+"slash", TEMPLATE_MODE+"no"+File.separator+"slash");
     }
 
     // If a File.separator sneaks in somewhere it shouldn't be as a result of customization when generatePackage is
