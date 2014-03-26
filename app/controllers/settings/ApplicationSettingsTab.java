@@ -586,7 +586,7 @@ public class ApplicationSettingsTab extends SettingsTab {
 				
 		}
 
-		// IF the user want's let's test a real submission.
+		// IF the user wants let's test a real submission.
 		String testDepositId = null;
 		if (!validation.hasErrors() && location != null && "depositLocation-test-submit".equals(action)) {
 			

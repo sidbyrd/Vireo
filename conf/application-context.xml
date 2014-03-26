@@ -643,7 +643,7 @@
 		<property name="format" value="http://www.proquest.com/assets/downloads/products/ftp_submissions.pdf"/>
 		<property name="manifestTemplatePath" value="conf/formats/ProquestUMI.xml"/>
 		<property name="manifestName" value="{LAST_NAME}_{FIRST_NAME}_DATA.xml"/>
-		<property name="entryName" value="upload_{LAST_NAME}_{FIRST_NAME}"/>
+		<property name="entryName" value="upload_{LAST_NAME}_{FIRST_NAME}.zip"/>
 		<property name="attachmentTypeNames">
 			<map>
 				<entry key="PRIMARY">

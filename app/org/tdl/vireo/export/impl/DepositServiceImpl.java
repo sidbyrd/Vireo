@@ -140,7 +140,7 @@ public class DepositServiceImpl implements DepositService{
 		 *            Normally this job is expected to be run as a background
 		 *            job. However for some circumstances it is better to run
 		 *            the deposit in the same thread. When this is done, errors
-		 *            are re-thrown. This allows the UI to immediatly handle
+		 *            are re-thrown. This allows the UI to immediately handle
 		 *            those errors instead of inspecting the submission's action
 		 *            log.
 		 */
@@ -154,7 +154,7 @@ public class DepositServiceImpl implements DepositService{
 			if (context.getPerson() != null) {
 				
 				if (!context.isReviewer())
-					throw new SecurityException("Not authorized to preform deposit operation.");
+					throw new SecurityException("Not authorized to perform deposit operation.");
 				
 				if ( runInThread ) {
 					this.personId = null;
@@ -167,7 +167,7 @@ public class DepositServiceImpl implements DepositService{
 			} else {
 				
 				if (context.isAuthorizationActive())
-					throw new SecurityException("Not authorized to preform deposit operation.");
+					throw new SecurityException("Not authorized to perform deposit operation.");
 
 				this.personId = null;
 				this.ignoreAuthorizations = true;

@@ -22,15 +22,12 @@
             </div>
             
             #{if depositLocations.size() > 1}
-	            <div id="select-depositLocation" class="control-group error hidden">
-	                <p>Multiple deposit locations are defined. Please select a deposit location below where this submission should be sent to. Then try the submission again.</p>
-	        		<p><strong>Deposit location:</strong> 
-		            <select class="input-xlarge" name="depositLocationId" id="depositLocationId">
-		                #{list items:depositLocations, as:'location'}
-		                    <option value="${location.getId() }">${location.getName()}</option>
-		                #{/list}
-		            </select>
-		            </p>
+	            <div id="select-depositLocation" class="control-group hidden well">
+                    <h4>Deposit locations</h4>
+	                <p>Multiple deposit locations are defined. Please select which deposit locations this submission should be sent to. Then click the button again to confirm.</p>
+                    #{list items:depositLocations, as:'location'}
+                        <input class="input-xlarge" type="checkbox" name="depositLocationId" value="${location.getId()}" checked="checked" id="dl-check-${location.getId()}" /><label for="dl-check-${location.getId()}">${location.getName()}</label><br />
+                    #{/list}
 	            </div>
             #{/if}
             #{elseif depositLocations.size() == 1}

@@ -677,10 +677,12 @@ public class ViewTab extends AbstractVireoController {
 	 * A method to change the status of a submission.
 	 * 
 	 * @param id (The submission id)
+	 * @param depositLocationId list of DepositLocation id values to deposit to if the new state is
+	 * depositable. Null if none.
 	 */
 	
 	@Security(RoleType.REVIEWER)
-	public static void changeSubmissionStatus(Long id) {
+	public static void changeSubmissionStatus(Long id, List<Long> depositLocationId) {
 
 		String beanName = params.get("submission-status");
 		
@@ -689,26 +691,34 @@ public class ViewTab extends AbstractVireoController {
 		
 		Submission submission = subRepo.findSubmission(id);
 
-		State state = null;
-		
 		if("deleteState".equals(beanName)) {
 			submission.delete();
-			controllers.FilterTab.list();
+			FilterTab.list();
 		} else {
+			State state;
 			if("cancelState".equals(beanName)) {
 				state = stateManager.getCancelState();
 			} else {
 				state = stateManager.getState(beanName);
 			}
-			
-			Long depositLocationId = params.get("depositLocationId", Long.class);
+
+			// If new state is depositable, do all the deposit locations that were checked.
 			if (state.isDepositable() && depositLocationId != null) {
-				// Deposit the item
-				DepositLocation location = settingRepo.findDepositLocation(depositLocationId);
-				depositService.deposit(location, submission, state, true);
-				view();
+				if (depositLocationId.size()==1) {
+					// Do single deposit on this thread, and change state when finished.
+					DepositLocation location = settingRepo.findDepositLocation(depositLocationId.get(0));
+					depositService.deposit(location, submission, state, true);
+					// We just changed state as part of the deposit, so we're done.
+					view();
+				} else {
+					// Do multiple deposits in the background, without changing submission state.
+					for (Long dlid : depositLocationId) {
+						DepositLocation location = settingRepo.findDepositLocation(dlid);
+						depositService.deposit(location, submission, null, false);
+					}
+				}
 			}
-			
+
 			// Normal state transition, update & save.
 			submission.setState(state);
 			submission.save();
@@ -775,7 +785,7 @@ public class ViewTab extends AbstractVireoController {
 	/**
 	 * A method to add an Action Log Comment and send an email if requested.
 	 * 
-	 * @param id (The submission id)
+	 * @param submission The submission
 	 */
 	
 	@Security(RoleType.REVIEWER)
@@ -899,7 +909,7 @@ public class ViewTab extends AbstractVireoController {
 	 * This checks the type of file being uploaded (note, primary, supplement)
 	 * and calls the appropriate private method.
 	 * 
-	 * @param subId (The submission id)
+	 * @param sub the submission
 	 */
 	@Security(RoleType.REVIEWER)
 	private static void addFile(Submission sub){

@@ -175,7 +175,7 @@ function editCommitteeMemberHandler(){
 				jQuery.each(availableRoles, function(index, value) {
 					var selected = '';				
 					if (currentRoles.indexOf(value) > -1)
-						var selected = 'selected="selected"';
+						selected = 'selected="selected"';
 					
 					markup += '<option value="'+value+'" '+selected+'>'+value+'</option>'
 				});
