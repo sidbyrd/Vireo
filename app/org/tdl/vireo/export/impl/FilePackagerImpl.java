@@ -4,7 +4,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.Submission;
-import org.tdl.vireo.services.StringCustomizer;
+import org.tdl.vireo.services.StringVariableReplacement;
+import org.tdl.vireo.services.SubmissionParams;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -35,55 +36,55 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 		if (attachmentTypes.isEmpty()) {
 			throw new IllegalArgumentException("Unable to generate package because no attachment types have been defined.");
 		}
-		
+
 		// Check that we have everything that we need.
 		if (submission == null || submission.getId() == null) {
 			throw new IllegalArgumentException("Unable to generate package because the submission is null or has not been persisted.");
-        }
-		
-        // Set string replacement parameters
-        Map<String, String> parameters = StringCustomizer.setParameters(submission);
-        // Customize entry name
-        String customEntryName = StringCustomizer.applyParameterSubstitution(entryName, parameters);
+		}
+
+		// Set string replacement parameters
+		Map<String, String> parameters = new SubmissionParams(submission);
+		// Customize entry name
+		String customEntryName = StringVariableReplacement.applyParameterSubstitution(entryName, parameters);
 
 		try {
 			File pkg;
-			
+						
 			// Produce the correct output format.
-            if (packageType==dir) {
-                // Create output directory
+			if (packageType==dir) {
+				// Create output directory
 				pkg = File.createTempFile("file-export-", ".dir");
-                FileUtils.deleteQuietly(pkg);
-                if (!pkg.mkdir()) {
-                    throw new IOException("Could not create package directory '"+pkg.getPath()+'\'');
-                }
+				FileUtils.deleteQuietly(pkg);
+				if (!pkg.mkdir()) {
+					throw new IOException("Could not create package directory '"+pkg.getPath()+'\'');
+				}
 
-                writeAttachmentsToDir(pkg, submission, parameters);
+				writeAttachmentsToDir(pkg, submission, parameters);
 
-            } else if (packageType==zip) {
-                // Create output zip archive
+			} else if (packageType==zip) {
+				// Create output zip archive
 				pkg = File.createTempFile("file-export-", ".zip");
-                ZipOutputStream zos = null;
-                try {
-                    zos = new ZipOutputStream(new FileOutputStream(pkg));
-                    writeAttachmentsToZip(zos, submission, parameters);
-                } finally {
-                    if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
-                }
+				ZipOutputStream zos = null;
+				try {
+					zos = new ZipOutputStream(new FileOutputStream(pkg));
+					writeAttachmentsToZip(zos, submission, parameters);
+				} finally {
+					if (zos!=null) { IOUtils.closeQuietly(zos); } // also closes wrapped fos
+				}
 
-            } else {
-                throw new RuntimeException("Packager: unsupported package type '"+packageType+'\'');
-            }
+			} else {
+				throw new RuntimeException("Packager: unsupported package type '"+packageType+'\'');
+			}
 
 			// Create the package
 			return new FilePackage(submission, pkg, customEntryName);
-			
+
 		} catch (IOException ioe) {
 			throw new RuntimeException("Unable to generate package",ioe);
 		}
 	}
-	
-	
+
+
 	/**
 	 * The package interface.
 	 * 
@@ -106,5 +107,5 @@ public class FilePackagerImpl extends AbstractPackagerImpl {
 			return "File System";
 		}
 	}
-	
+
 }

@@ -186,11 +186,12 @@ public class VireoEmailImplTest extends UnitTest {
 		sub.state = state;
 		sub.assignee = assignee;
 
-		VireoEmail email = Spring.getBeanOfType(VireoEmailImpl.class);
+		VireoEmailImpl email = Spring.getBeanOfType(VireoEmailImpl.class);
 
 		email.addParameters(sub);
 
-		Map<String,String> params = email.getParameters();
+		Map<String,String> params = email.parameters;
+        assertNotNull(params);
 		assertEquals("First Last",params.get("FULL_NAME"));
 		assertEquals("First",params.get("FIRST_NAME"));
 		assertEquals("Last",params.get("LAST_NAME"));

@@ -16,8 +16,9 @@ import org.tdl.vireo.model.PersonRepository;
 import org.tdl.vireo.model.Submission;
 import org.tdl.vireo.model.SubmissionRepository;
 import org.tdl.vireo.security.SecurityContext;
-import org.tdl.vireo.services.StringCustomizer;
+import org.tdl.vireo.services.StringVariableReplacement;
 
+import org.tdl.vireo.services.SubmissionParams;
 import play.Play;
 
 /**
@@ -60,26 +61,26 @@ public class VireoEmailImpl implements VireoEmail {
 	 *            The submisison repository.
 	 */
 	protected VireoEmailImpl(SecurityContext context, PersonRepository personRepo, SubmissionRepository subRepo) {
-	
+
 		// Check our play requirements
 		if (Play.configuration.getProperty("mail.from") == null ||
 			Play.configuration.getProperty("mail.replyto") == null)
 			throw new IllegalArgumentException("The configuration parameters \"mail.from\" and \"mail.replyto\" are required for sending email and must be defined in the application.conf");
-		
+
 		this.personRepo = personRepo;
 		this.subRepo = subRepo;
-	
+
 		// Set the default from address
 		this.setFrom(Play.configuration.getProperty("mail.from"));
 		this.setReplyTo(Play.configuration.getProperty("mail.replyto"));
-		
+
 		// Check to see if the current person want's to be CC'ed
 		Person person = context.getPerson();
 		if (person != null && person.getPreference(UserPref.CC_EMAILS) != null) {
 			String email = person.getEmail();
 			if (person.getCurrentEmailAddress() != null)
 				email = person.getCurrentEmailAddress();
-			
+
 			this.addCc(email,person.getFormattedName(NameFormat.LAST_FIRST));
 		}
 	}
@@ -103,7 +104,7 @@ public class VireoEmailImpl implements VireoEmail {
 	public void addTo(Person person) {
 		addTo(createAddress(person));
 	}
-	
+
 	@Override
 	public void addTo(InternetAddress address) {
 		to.add(validateAddress(address));
@@ -123,12 +124,12 @@ public class VireoEmailImpl implements VireoEmail {
 	public void addCc(String email, String name) {
 		addCc(createAddress(email, name));
 	}
-	
+
 	@Override
 	public void addCc(Person person) {
 		addCc(createAddress(person));
 	}
-	
+
 	@Override
 	public void addCc(InternetAddress address) {
 		cc.add(validateAddress(address));
@@ -153,7 +154,7 @@ public class VireoEmailImpl implements VireoEmail {
 	public void addBcc(Person person) {
 		addBcc(createAddress(person));
 	}
-	
+
 	@Override
 	public void addBcc(InternetAddress address) {
 		bcc.add(validateAddress(address));
@@ -178,7 +179,7 @@ public class VireoEmailImpl implements VireoEmail {
 	public void setReplyTo(Person person) {
 		setReplyTo(createAddress(person));
 	}
-	
+
 	@Override
 	public void setReplyTo(InternetAddress address) {
 		_replyTo = validateAddress(address);
@@ -203,7 +204,7 @@ public class VireoEmailImpl implements VireoEmail {
 	public void setFrom(Person person) {
 		setFrom(createAddress(person));
 	}
-	
+
 	@Override
 	public void setFrom(InternetAddress address) {
 		_from = validateAddress(address);
@@ -236,35 +237,31 @@ public class VireoEmailImpl implements VireoEmail {
 	}
 
 	@Override
-	public Map<String, String> getParameters() {
-		return parameters;
-	}
-
-	@Override
 	public void addParameter(String name, String value) {
 		parameters.put(name,value);
 	}
 
 	@Override
 	public void addParameters(Submission sub) {
-		
-		this.parameters = StringCustomizer.setParameters(sub);
+		// extract params from the submission
+		final Map<String, String> subParams = new SubmissionParams(sub);
 
+		// make sure to keep any params that had already been set.
+		subParams.putAll(parameters);
+		parameters = subParams;
 	}
 
 	@Override
 	public void applyParameterSubstitution() {
-
-		subject = StringCustomizer.applyParameterSubstitution(subject, parameters);
-		message = StringCustomizer.applyParameterSubstitution(message, parameters);
-	
+		subject = StringVariableReplacement.applyParameterSubstitution(subject, parameters);
+		message = StringVariableReplacement.applyParameterSubstitution(message, parameters);
 	}
 
 	@Override
 	public Person getLogPerson() {
 		if (logPersonId == null)
 			return null;
-		
+
 		return personRepo.findPerson(logPersonId);
 	}
 
@@ -272,18 +269,18 @@ public class VireoEmailImpl implements VireoEmail {
 	public Submission getLogSubmission() {
 		if (logSubmissionId == null)
 			return null;
-		
+
 		return subRepo.findSubmission(logSubmissionId);
 	}
 
 	@Override
 	public void setLogOnCompletion(Person person, Submission submission) {
-		
+
 		if (person == null)
 			logPersonId = null;
 		else
 			logPersonId = person.getId();
-		
+
 		if (submission == null)
 			logSubmissionId = null;
 		else
@@ -292,11 +289,11 @@ public class VireoEmailImpl implements VireoEmail {
 
 	@Override
 	public String getSuccessLogMessage() {
-		
+
 		if (logSuccessMessage != null) {
 			return logSuccessMessage;
 		}
-		
+
 		// Build a default success message
 		String recipients = "";
 		for (InternetAddress address : to) {
@@ -307,9 +304,9 @@ public class VireoEmailImpl implements VireoEmail {
 			else
 				recipients += address.getAddress();
 		}
-		
+
 		return String.format("Email sent to %1s; %2s: '%3s'",recipients,subject,message);
-		
+
 	}
 
 	@Override
@@ -322,7 +319,7 @@ public class VireoEmailImpl implements VireoEmail {
 		if (logFailureMessage != null) {
 			return logFailureMessage;
 		}
-		
+
 		// Build a default success message
 		String recipients = "";
 		for (InternetAddress address : to) {
@@ -333,11 +330,11 @@ public class VireoEmailImpl implements VireoEmail {
 			else
 				recipients += address.getAddress();
 		}
-		
+
 		String because = "";
 		if (reason != null && reason.trim().length() > 0)
 			because = " because '"+reason+"'";
-		
+
 		return String.format("Failed to send email to %1s; %2s: '%3s'%4s",recipients,subject,message,because);
 	}
 
@@ -371,7 +368,7 @@ public class VireoEmailImpl implements VireoEmail {
 		}
 
 	}
-	
+
 	/**
 	 * Internal helper method to create InternedAddresses from people.
 	 * 
@@ -382,11 +379,11 @@ public class VireoEmailImpl implements VireoEmail {
 		String email = person.getEmail();
 		if (person.getCurrentEmailAddress() != null)
 			email = person.getCurrentEmailAddress();
-		
+
 		String name = person.getFormattedName(NameFormat.FIRST_LAST);
 		return createAddress(email,name);
 	}
-	
+
 	/**
 	 * Validate the provided email address, and throw a runtime exception if
 	 * invalid.

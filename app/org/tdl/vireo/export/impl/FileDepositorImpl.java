@@ -45,7 +45,7 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 	public void setBeanName(String beanName) {
 		this.beanName = beanName;
 	}
-	
+
 	@Override
 	public String getDisplayName() {
 		return displayName;
@@ -56,9 +56,9 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 	}
 
 	public void setBaseDirectory(String path) {
-		this.baseDir = new File(path);
+		baseDir = new File(path);
 	}
-	
+
 
 	@Override
 	public Map<String, String> getCollections(DepositLocation location) {
@@ -66,16 +66,16 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 		try {
 			if (baseDir == null)
 				throw new IllegalArgumentException("The preconfigured base deposit directory has not been defined. Please contact your system administrator to correct Vireo's configuration");
-			
+
 			if (!baseDir.exists())
 				throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory does not exist. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
-			
+
 			if (!baseDir.canRead())
 				throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory is not readable. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
-			
+
 			if (!baseDir.isDirectory())
 				throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory is not a directory. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
-			
+
 			// Check that the repository contained within our base directory
 			String repoPath = location.getRepository();		
 			File repoDir = new File(repoPath);
@@ -86,56 +86,56 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 
 			if (!repoDir.exists())
 				throw new IllegalArgumentException("The deposit directory '"+repoPath+"' does not exist.");
-			
+
 			if (!repoDir.canRead())
 				throw new IllegalArgumentException("The deposit directory '"+repoPath+"' is not readable.");
-			
+
 			if (!repoDir.isDirectory())
 				throw new IllegalArgumentException("The deposit directory '"+repoPath+"' is not a directory.");
 
-			
-			
+
+
 			File[] children = repoDir.listFiles();
-			
-			Map<String,String> collections = new HashMap<String,String>();
+
+			Map<String,String> collections = new HashMap<String,String>(children.length+1);
 			collections.put("Base directory", baseDir.getCanonicalPath());
 			for (File child : children) {
 				if (child.isDirectory())
 					collections.put(child.getName(), child.getCanonicalPath());
 			}
-			
+
 			return collections;
 
 		} catch (IllegalArgumentException iae) {
 			Logger.error(iae,"Unable to getCollections()");
-					
+
 			FIELD field = FIELD.REPOSITORY;
 			String message = iae.getMessage();
 
 			throw new DepositException(field, message, iae);
-			
+
 		} catch (SecurityException se) {
 			Logger.error(se,"Unable to deposit()");
-					
+
 			FIELD field = FIELD.REPOSITORY;
 			String message = se.getMessage();
 
 			throw new DepositException(field, message, se);
-			
+
 		} catch (IOException ioe) {
 			Logger.error(ioe,"Unable to getCollections()");
 
 			FIELD field = FIELD.REPOSITORY;
 			String message = ioe.getMessage();
-			
+
 			throw new DepositException(field, message, ioe);
-					
+
 		} catch (RuntimeException re) {
 			Logger.error(re,"Unable to getCollections()");
-			
+
 			FIELD field = FIELD.OTHER;
 			String message = re.getMessage();
-			
+
 			throw new DepositException(field, message, re);
 		} 
 	}
@@ -143,11 +143,11 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 
 	@Override
 	public String getCollectionName(DepositLocation location, String collection) {
-		Map<String, String> namesToCollections = this.getCollections(location);
-		for( String name : namesToCollections.keySet())
+		Map<String, String> namesToCollections = getCollections(location);
+		for(Map.Entry<String, String> entries : namesToCollections.entrySet())
 		{
-			if(namesToCollections.get(name).equals(collection))
-				return name;
+			if(entries.getValue().equals(collection))
+				return entries.getKey();
 		}
 		return null;
 	}
@@ -174,13 +174,13 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 
 		if (baseDir == null)
 			throw new IllegalArgumentException("The preconfigured base deposit directory has not been defined. Please contact your system administrator to correct Vireo's configuration");
-		
+
 		if (!baseDir.exists())
 			throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory does not exist. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
-		
+
 		if (!baseDir.canRead())
 			throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory is not readable. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
-		
+
 		if (!baseDir.isDirectory())
 			throw new IllegalArgumentException("The preconfigured '"+baseDir.getPath()+"' base deposit directory is not a directory. Please contact your system administrator to either create the base deposit directory or correct vireo's configuration");
 
@@ -191,76 +191,76 @@ public class FileDepositorImpl implements Depositor, BeanNameAware {
 		String depositDirCanonical = depositDir.getCanonicalPath();
 		if (!depositDirCanonical.startsWith(baseDirCanonical))
 			throw new SecurityException("Unauthorized deposit location; the collection path '"+depositDirCanonical+"' must be restricted to the base directory '"+baseDirCanonical+"'");
-		
-		
-		
+
+
+
 		if (!depositDir.exists())
 			throw new IllegalArgumentException("The deposit directory '"+depositPath+"' does not exist.");
-		
+
 		if (!depositDir.canWrite())
 			throw new IllegalArgumentException("The deposit directory '"+depositPath+"' is not writable.");
-		
+
 		if (!depositDir.isDirectory())
 			throw new IllegalArgumentException("The deposit directory '"+depositPath+"' is not a directory.");
 
-		
-		
-		
-		
+
+
+
+
 		// Figure out the destination file
 		Submission submission = exportPackage.getSubmission();
 		File packageFile = exportPackage.getFile();
 		String packageName = packageFile.getName();
 		String packageExt = '.'+FilenameUtils.getExtension(packageName);
-        if (packageExt.equals(".")) {
-            packageExt = ".pkg";
-        }
-        String entryName = exportPackage.getEntryName();
-        if (entryName == null) {
-            entryName = "package_"+submission.getId()+packageExt;
-        }
+		if (packageExt.equals(".")) {
+			packageExt = ".pkg";
+		}
+		String entryName = exportPackage.getEntryName();
+		if (entryName == null) {
+			entryName = "package_"+submission.getId()+packageExt;
+		}
 		File exportFile = new File(depositPath + File.separator + entryName);
-		
+
 		// Do the actual deposit
 		if (packageFile.isDirectory()) {
 			FileUtils.copyDirectory(packageFile, exportFile);
 		} else {
 			FileUtils.copyFile(packageFile, exportFile);
 		}
-		
+
 		// We don't return a deposit id
 		return null;
-			
+
 		} catch (SecurityException se) {
 			Logger.error(se,"Unable to deposit()");
-					
+
 			FIELD field = FIELD.COLLECTION;
 			String message = se.getMessage();
 
 			throw new DepositException(field, message, se);
-			
+
 		} catch (IllegalArgumentException iae) {
 			Logger.error(iae,"Unable to deposit()");
-					
+
 			FIELD field = FIELD.REPOSITORY;
 			String message = iae.getMessage();
 
 			throw new DepositException(field, message, iae);
-			
+
 		} catch (IOException ioe) {
 			Logger.error(ioe,"Unable to deposit()");
 
 			FIELD field = FIELD.REPOSITORY;
 			String message = ioe.getMessage();
-			
+
 			throw new DepositException(field, message, ioe);
-					
+
 		} catch (RuntimeException re) {
 			Logger.error(re,"Unable to deposit()");
-			
+
 			FIELD field = FIELD.OTHER;
 			String message = re.getMessage();
-			
+
 			throw new DepositException(field, message, re);
 		}
 	}	

@@ -1,23 +1,18 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.MalformedURLException;
-import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import org.tdl.vireo.export.MockExportPackage;
 import org.tdl.vireo.model.MockDepositLocation;
 import org.tdl.vireo.model.MockSubmission;
-
 import org.tdl.vireo.services.Utilities;
-import play.Play;
 import play.modules.spring.Spring;
 import play.test.UnitTest;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.Map;
 
 /**
  * Test the simple file depositor
@@ -28,7 +23,7 @@ public class FileDepositorImplTest extends UnitTest {
 
 	public static FileDepositorImpl depositor = Spring.getBeanOfType(FileDepositorImpl.class);
 
-	
+
 	/**
 	 * Test that the bean name for this depositor is accurate.
 	 */
@@ -38,11 +33,12 @@ public class FileDepositorImplTest extends UnitTest {
 		String beanName = depositor.getBeanName();
 		assertNotNull(beanName);
 		Object bean = Spring.getBean(beanName);
-		if (!(bean instanceof FileDepositorImpl))
+		if (!(bean instanceof FileDepositorImpl)) {
 			fail("Bean returned by name '" + beanName + "' is not a FileDepositorImpl.");
+		}
 	}
 
-	
+
 	/**
 	 * Test that the display name returns a readable string name
 	 * 
@@ -52,7 +48,7 @@ public class FileDepositorImplTest extends UnitTest {
 		assertNotNull(depositor.getDisplayName());
 	}
 
-	
+
 	/**
 	 * Test that directories are returned as collections.
 	 */
@@ -71,30 +67,30 @@ public class FileDepositorImplTest extends UnitTest {
 
 		assertNotNull(collections);
 		assertTrue(collections.size() >= 4); // There could all ready be other collections.
-		
+
 		assertNotNull(collections.get("Collection_A"));
 		assertNotNull(collections.get("Collection_B"));
 		assertNotNull(collections.get("Collection_C"));
-		
+
 		new File(baseDir.getPath()+File.separator+"Collection_A").delete();
 		new File(baseDir.getPath()+File.separator+"Collection_B").delete();
 		new File(baseDir.getPath()+File.separator+"Collection_C").delete();
 
 	}
-	
+
 	/**
 	 * Test that the depositor returns the correct names for the
 	 * hard-coded collections A, B, and C.
 	 */
 	@Test
 	public void testGetCollectionName() throws IOException {
-		
+
 		// Create some sub-directories to be collections.
 		File baseDir = depositor.baseDir;
 		FileUtils.forceMkdir(new File(baseDir.getPath()+File.separator+"Collection_A"));
 		FileUtils.forceMkdir(new File(baseDir.getPath()+File.separator+"Collection_B"));
 		FileUtils.forceMkdir(new File(baseDir.getPath()+File.separator+"Collection_C"));
-		
+
 		MockDepositLocation location = getDepositLocation();
 
 		// resolve collection A
@@ -104,7 +100,7 @@ public class FileDepositorImplTest extends UnitTest {
 		// resolve collection B
 		name = depositor.getCollectionName(location, baseDir.getCanonicalPath()+File.separator+"Collection_B");
 		assertEquals("Collection_B", name);
-		
+
 		// resolve collection C
 		name = depositor.getCollectionName(location, baseDir.getCanonicalPath()+File.separator+"Collection_C");
 		assertEquals("Collection_C", name);
@@ -114,7 +110,7 @@ public class FileDepositorImplTest extends UnitTest {
 		new File(baseDir.getPath()+File.separator+"Collection_C").delete();
 	}
 
-	
+
 	/**
 	 * Test that the depositor returns null when queried for the
 	 * name of a collection that does not exist.
@@ -126,14 +122,14 @@ public class FileDepositorImplTest extends UnitTest {
 		assertNull(depositor.getCollectionName(location, "thisdoesnotexist"));
 	}
 
-	
+
 	/**
 	 * Test that the depositor reports success for the valid deposit package.
 	 */
 	@Test
 	public void testDeposit() throws IOException {
 		MockDepositLocation location = getDepositLocation();
-		
+
 		MockExportPackage pkg = new MockExportPackage();
 		pkg.file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
 		pkg.mimeType = "application/zip";
@@ -141,44 +137,44 @@ public class FileDepositorImplTest extends UnitTest {
 		pkg.submission = new MockSubmission();
 
 		String depositID = depositor.deposit(location, pkg);
-		
+
 		assertNull(depositID);
-		
+
 		File depositFile = new File(depositor.baseDir.getPath()+File.separator+"package_"+pkg.submission.getId()+".zip");
 		assertTrue(depositFile.exists());
-		
+
 		depositFile.delete();
 	}
 
-    /**
-     * Test that the depositor respects the custom entry name if the package has one.
-     */
-    @Test
-    public void testEntryName() throws IOException {
-        MockDepositLocation location = getDepositLocation();
+	/**
+	 * Test that the depositor respects the custom entry name if the package has one.
+	 */
+	@Test
+	public void testEntryName() throws IOException {
+		MockDepositLocation location = getDepositLocation();
 
-        MockExportPackage pkg = new MockExportPackage();
-        pkg.file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
-        pkg.mimeType = "application/zip";
-        pkg.format = "http://purl.org/net/sword-types/METSDSpaceSIP";
-        pkg.submission = new MockSubmission();
-        pkg.entryName = "entryName.test";
+		MockExportPackage pkg = new MockExportPackage();
+		pkg.file = Utilities.getResourceFile("org/tdl/vireo/export/impl/Sword1_ValidDeposit.zip");
+		pkg.mimeType = "application/zip";
+		pkg.format = "http://purl.org/net/sword-types/METSDSpaceSIP";
+		pkg.submission = new MockSubmission();
+		pkg.entryName = "entryName.test";
 
-        String depositID = depositor.deposit(location, pkg);
+		String depositID = depositor.deposit(location, pkg);
 
-        assertNull(depositID);
+		assertNull(depositID);
 
-        File depositFile = new File(depositor.baseDir.getPath()+File.separator+"entryName.test");
-        assertTrue(depositFile.exists());
+		File depositFile = new File(depositor.baseDir.getPath()+File.separator+"entryName.test");
+		assertTrue(depositFile.exists());
 
-        depositFile.delete();
-    }
+		depositFile.delete();
+	}
 
 	/**
 	 * @return A basic deposit location.
 	 */
 	protected static MockDepositLocation getDepositLocation() {
-		
+
 		MockDepositLocation location = new MockDepositLocation();
 		location.repository = "data/deposits";
 		location.collection = "data/deposits";

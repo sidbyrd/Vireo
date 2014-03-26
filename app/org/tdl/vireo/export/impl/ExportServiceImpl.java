@@ -33,21 +33,21 @@ import java.util.zip.ZipOutputStream;
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
  */
 public class ExportServiceImpl implements ExportService {
-	
+
 	public final static String MIME_TYPE = "application/zip";
 	public final static int BUFFER_SIZE = 10; // Each chunk may be big.
-	
+
 	// The repositories
 	public PersonRepository personRepo;
 	public SubmissionRepository subRepo;
 	public ErrorLog errorLog;
-	
+
 	// The searcher used to find submissions in a batch.
 	public Searcher searcher;
-	
+
 	// The security context, who's logged in.
 	public SecurityContext context;
-	
+
 	// Maintains job metadata
 	public JobManager jobManager;
 
@@ -67,7 +67,7 @@ public class ExportServiceImpl implements ExportService {
 	public void setPersonRepository(PersonRepository repo) {
 		this.personRepo = repo;
 	}
-	
+
 	/**
 	 * @param repo
 	 *            The submission repository
@@ -75,7 +75,7 @@ public class ExportServiceImpl implements ExportService {
 	public void setSubmissionRepository(SubmissionRepository repo) {
 		this.subRepo = repo;
 	}
-	
+
 	/**
 	 * @param errorLog
 	 *            The error log
@@ -83,7 +83,7 @@ public class ExportServiceImpl implements ExportService {
 	public void setErrorLog(ErrorLog errorLog) {
 		this.errorLog = errorLog;
 	}
-	
+
 
 	/**
 	 * @param context
@@ -92,7 +92,7 @@ public class ExportServiceImpl implements ExportService {
 	public void setSecurityContext(SecurityContext context) {
 		this.context = context;
 	}	
-	
+
 	/**
 	 * @param jobManager
 	 *            The manager which maintains metadata about jobs.
@@ -106,34 +106,34 @@ public class ExportServiceImpl implements ExportService {
 
 		if (packager == null)
 			throw new IllegalArgumentException("A packager is required");
-		
+
 		if (filter == null)
 			throw new IllegalArgumentException("A search filter is required");
-		
+
 		ChunkStreamImpl stream = new ChunkStreamImpl(
 				MIME_TYPE, 
 				"attachment; filename="+packager.getBeanName()+".zip", 
 				BUFFER_SIZE);
-		
+
 		new ExportJob(packager,filter,stream).now();
-		
+
 		return stream;
 	}
-	
+
 	/**
 	 * Background job to export
 	 */
 	public class ExportJob extends Job {
-		
+
 		// Member fields
 		public final Packager packager;
 		public final SearchFilter filter;
 		public final OutputStream out;
 		public final Long personId;
-		
+
 		// Metadata about this job
 		public final JobMetadata meta;
-		
+
 		/**
 		 * Construct a new export job.
 		 * 
@@ -148,27 +148,27 @@ public class ExportServiceImpl implements ExportService {
 			this.packager = packager;
 			this.filter = filter;
 			this.out = out;
-			
+
 			if (context.getPerson() != null) {
-				
+
 				if (!context.isReviewer())
 					throw new SecurityException("Not authorized to perform export operation.");
-				
+
 				this.personId = context.getPerson().getId();
 			} else {
-				
+
 				if (!context.isAuthorizationActive())
 					throw new SecurityException("Not authorized to perform export operation.");
 
 				this.personId = null;
 			}
-			
+
 			// Register the job's metadata
 			meta = jobManager.register("Download " + packager.getDisplayName(),context.getPerson());
 			meta.setJob(this);
 			meta.setStatus(JobStatus.READY);
 		}
-		
+
 		/**
 		 * Run the back ground job.
 		 * 
@@ -181,8 +181,8 @@ public class ExportServiceImpl implements ExportService {
 
 			try {
 				meta.setStatus(JobStatus.RUNNING);
-				
-				
+
+
 				if (personId != null) {
 					Person person = personRepo.findPerson(personId);
 					if (person == null)
@@ -194,12 +194,12 @@ public class ExportServiceImpl implements ExportService {
 					// Assume we're running as a background admin process.
 					context.turnOffAuthorization();
 				}
-				
+
 				// Figure out how many submissions total we are exporting
 				long[] subIds = searcher.submissionSearch(filter, SearchOrder.ID, SearchDirection.ASCENDING);
 				meta.getProgress().total = subIds.length;
 				meta.getProgress().completed = 0;
-				
+
 				// Start processing bitstreams
 				BufferedOutputStream bos = new BufferedOutputStream(out);
 				ZipOutputStream zos = new ZipOutputStream(bos);
@@ -224,15 +224,15 @@ public class ExportServiceImpl implements ExportService {
 							// Ensure the package is deleted.
 							pkg.delete();
 						}
-						
+
 						// Immediately save the transaction
 						JPA.em().getTransaction().commit();
 						JPA.em().clear();
 						JPA.em().getTransaction().begin();
-						
+
 						// Don't let memory get out of control
 						System.gc();
-						
+
 						meta.getProgress().completed++;
 					}
 				} finally {
@@ -248,18 +248,18 @@ public class ExportServiceImpl implements ExportService {
 				Logger.fatal(re,"Unexepcted exception while exporting items. Aborted.");
 				meta.setMessage(re.toString());
 				meta.setStatus(JobStatus.FAILED);
-				
+
 				errorLog.logError(re, meta);
-				
+
 				throw re;
 
 			} catch (IOException ioe) {
 				Logger.error(ioe,"Unexpected expection while exporting items. Aborted.");
 				meta.setMessage(ioe.toString());
 				meta.setStatus(JobStatus.FAILED);
-				
+
 				errorLog.logError(ioe, meta);
-				
+
 				throw ioe;
 
 			} finally {
@@ -290,12 +290,12 @@ public class ExportServiceImpl implements ExportService {
 			// Add all the files
 			File[] files = directory.listFiles();
 			for (File file : files) {
-				
+
 				if (file.isDirectory()) {					
 					zipDirectory(baseName + file.getName() + File.separator, file, zos);
 				} else {					
 					InputStream is = new BufferedInputStream(new FileInputStream(file));
-					
+
 					zos.putNextEntry(new ZipEntry(baseName + file.getName()));
 
 					byte[] buf = new byte[1024];
@@ -309,7 +309,7 @@ public class ExportServiceImpl implements ExportService {
 				}	
 			}
 		}
-		
+
 		/**
 		 * Zip a single file and include it in the archive. This method will use
 		 * the baseName for the entry name, with the extension of the actual
@@ -344,7 +344,7 @@ public class ExportServiceImpl implements ExportService {
 			zos.closeEntry();
 
 		}
-		
+
 	}
 
 }

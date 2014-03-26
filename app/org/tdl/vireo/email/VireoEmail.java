@@ -14,7 +14,7 @@ import org.tdl.vireo.model.Submission;
  * details about how to handle an email so that it can be sent by the
  * EmailService. It supports the basic fields: To, Cc, Bcc, From, and ReplyTo.
  * Along with a set of parameters that can be embedded in the subject or email
- * message. If configured the email message can log it's success or failure to a
+ * message. If configured the email message can log its success or failure to a
  * submission.
  * 
  * @author <a href="http://www.scottphillips.com">Scott Phillips</a>
@@ -253,8 +253,8 @@ public interface VireoEmail {
 
 	/**
 	 * Set the message, which may contain variable parameters in the form
-	 * {name}. The parameteres will be replaced with values when
-	 * applyParamaterSubstitution is called.
+	 * {name}. The parameters will be replaced with values when
+	 * applyParameterSubstitution is called.
 	 * 
 	 * @param message
 	 *            The message
@@ -272,12 +272,7 @@ public interface VireoEmail {
 	// Parameters
 
 	/**
-	 * @return A list of all proposed parameter substitutions.
-	 */
-	public Map<String, String> getParameters();
-
-	/**
-	 * Add a new parameter substitutions
+	 * Add a new parameter substitution.
 	 * 
 	 * @param name
 	 *            The name of the new parameter. In the message or body this
@@ -289,17 +284,8 @@ public interface VireoEmail {
 	public void addParameter(String name, String value);
 
 	/**
-	 * Add the set of predefined parameters based upon the value of the
-	 * submission. These are:
-	 * 
-	 * FULL_NAME 
-	 * FIRST_NAME 
-	 * LAST_NAME 
-	 * DOCUMENT_TITLE 
-	 * GRAD_SEMESTER
-	 * SUBMISSION_STATUS 
-	 * SUBMISSION_STATUS_ASSIGNED_TO
-	 * 
+	 * Add all the substitution parameters that are derived from a Submission.
+	 *
 	 * @param submission
 	 *            The submission
 	 */

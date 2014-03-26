@@ -598,7 +598,7 @@ public class Authentication extends AbstractVireoController {
 	}
 	
 	/**
-	 * View the current user's profile. This is purly informational. However if
+	 * View the current user's profile. This is purely informational. However if
 	 * configured this person will be able to follow links from this page to
 	 * update their profile or their password.
 	 */

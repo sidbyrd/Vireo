@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 *{
-        This tests every template variable that's supposed to be present from a TemplagePackager
+		This tests every template variable that's supposed to be present from a TemplagePackager
 }*
 <test>
-    <!-- Spring injected -->
-    <sub>${ sub?.hashCode() }</sub>
-    <subRepo>${ subRepo?.hashCode() }</subRepo>
-    <personRepo>${ personRepo?.hashCode() }</personRepo>
-    <settingRepo>${ settingRepo?.hashCode() }</settingRepo>
-    <proquestRepo>${ proquestRepo?.hashCode() }</proquestRepo>
+	<!-- Spring injected -->
+	<sub>${ sub?.hashCode() }</sub>
+	<subRepo>${ subRepo?.hashCode() }</subRepo>
+	<personRepo>${ personRepo?.hashCode() }</personRepo>
+	<settingRepo>${ settingRepo?.hashCode() }</settingRepo>
+	<proquestRepo>${ proquestRepo?.hashCode() }</proquestRepo>
 
-    <!-- from Packager -->
-    <packageType>${ packageType }</packageType>
-    <format>${ format.escapeXml()?.raw() }</format>
-    <mimeType>${ mimeType?.escapeXml()?.raw() }</mimeType>
-    <entryName>${ entryName?.escapeXml()?.raw() }</entryName>
-    #{list items:attachmentTypes, as:'attachmentType'}
-    <attachmentType>${ attachmentType.name() }</attachmentType>
-    #{/list}
-    <manifestName>${ manifestName.escapeXml()?.raw() }</manifestName>
-    <custom>${ customArg?.escapeXml()?.raw() }</custom>
+	<!-- from Packager -->
+	<packageType>${ packageType }</packageType>
+	<format>${ format.escapeXml()?.raw() }</format>
+	<mimeType>${ mimeType?.escapeXml()?.raw() }</mimeType>
+	<entryName>${ entryName?.escapeXml()?.raw() }</entryName>
+	#{list items:attachmentTypes, as:'attachmentType'}
+	<attachmentType>${ attachmentType.name() }</attachmentType>
+	#{/list}
+	<manifestName>${ manifestName.escapeXml()?.raw() }</manifestName>
+	<custom>${ customArg?.escapeXml()?.raw() }</custom>
 </test>
