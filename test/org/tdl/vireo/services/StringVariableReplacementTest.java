@@ -15,7 +15,7 @@ import static org.tdl.vireo.services.SubmissionParams.Variable.*;
 
 public class StringVariableReplacementTest extends UnitTest {
 
-	private final Map<String, String> params = new HashMap(8);
+	private final Map<String, String> params = new HashMap<String, String>(8);
 
 	@Before public void setup() {
 		// vars that have valid replacements
