@@ -1,5 +1,14 @@
 package org.tdl.vireo.model.jpa;
 
+import org.hibernate.HibernateException;
+import org.hibernate.type.StringType;
+import org.hibernate.usertype.UserType;
+import play.Play;
+import play.db.Model.BinaryField;
+import play.exceptions.UnexpectedException;
+import play.libs.Codec;
+import play.libs.IO;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -8,17 +17,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-
-import org.hibernate.HibernateException;
-import org.hibernate.engine.SessionImplementor;
-import org.hibernate.type.StringType;
-import org.hibernate.usertype.UserType;
-
-import play.Play;
-import play.db.Model.BinaryField;
-import play.exceptions.UnexpectedException;
-import play.libs.Codec;
-import play.libs.IO;
 
 /**
  * This is a slight update upon the default Play "blob" datatype. The HashedBlob
@@ -165,7 +163,7 @@ public class HashedBlob implements BinaryField, UserType {
     }
 
     public Object replace(Object o, Object o1, Object o2) throws HibernateException {
-        throw new UnsupportedOperationException("Not supported yet.");
+	    return deepCopy(o);
     }
 
     //

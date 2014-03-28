@@ -711,10 +711,10 @@ public class ViewTab extends AbstractVireoController {
 					// We just changed state as part of the deposit, so we're done.
 					view();
 				} else {
-					// Do multiple deposits in the background, without changing submission state.
+					// Do each deposit on this thread, but don't ask it to handle the state change.
 					for (Long dlid : depositLocationId) {
 						DepositLocation location = settingRepo.findDepositLocation(dlid);
-						depositService.deposit(location, submission, null, false);
+						depositService.deposit(location, submission, null, true);
 					}
 				}
 			}

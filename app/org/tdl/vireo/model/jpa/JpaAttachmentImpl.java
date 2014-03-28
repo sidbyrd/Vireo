@@ -75,7 +75,7 @@ public class JpaAttachmentImpl extends JpaAbstractModel<JpaAttachmentImpl> imple
 
 		assertReviewerOrOwner(submission.getSubmitter());
 
-		// If the person operating is not a persistant person, a mock or
+		// If the person operating is not a persistent person, a mock or
 		// otherwise then don't record the link.
 		SecurityContext context = Spring.getBeanOfType(SecurityContext.class);		
 		Person person = context.getPerson();
@@ -227,8 +227,8 @@ public class JpaAttachmentImpl extends JpaAbstractModel<JpaAttachmentImpl> imple
 			this.data.getFile().delete();
 		
 
-		// Scrub the actionlog of references to this file. The entries will
-		// still exist, but it won't have a foriegn key reference.
+		// Scrub the action log of references to this file. The entries will
+		// still exist, but they won't have a foreign key reference.
 		em().createQuery(
 				"UPDATE JpaActionLogImpl " +
 				"SET Attachment_Id = null " +
@@ -364,7 +364,7 @@ public class JpaAttachmentImpl extends JpaAbstractModel<JpaAttachmentImpl> imple
 	 */
 	protected String rename(String basename, String extension) {
 		
-		// Check if the new filename exsits, if so add a copy number. Repeate until found.
+		// Check if the new filename exists, if so add a copy number. Repeat until found.
 		int i = 0;
 		while (true) {
 			
@@ -400,7 +400,7 @@ public class JpaAttachmentImpl extends JpaAbstractModel<JpaAttachmentImpl> imple
 	 */
 	protected Attachment renamePrimaryDocument() {
 		
-		// We only enforce the nameing convention on primary documents.
+		// We only enforce the naming convention on primary documents.
 		if (this.type != AttachmentType.PRIMARY)
 			throw new IllegalStateException("Unable to rename the primary document on an attachment which is not of type = PRIMARY.");
 		
@@ -426,7 +426,7 @@ public class JpaAttachmentImpl extends JpaAbstractModel<JpaAttachmentImpl> imple
 		
 		String yearPart = null;
 		if (submission.getGraduationYear() != null)
-			// Add the year if helpfull
+			// Add the year if helpful
 			yearPart = String.valueOf(submission.getGraduationYear());
 		
 		// Put it all together
