@@ -9,8 +9,6 @@ import org.tdl.vireo.model.Submission;
 import play.mvc.Router;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.text.DateFormatSymbols;
 import java.util.*;
 
@@ -46,6 +44,8 @@ public class SubmissionParams extends HashMap<String, String> {
 		DOCUMENT_TITLE,
 		/** submission type */
 		DOCUMENT_TYPE,
+		/** degree level at a string: "MASTERS", "DOCTORAL", etc. */
+		DEGREE_LEVEL,
 		/** submission current status */
 		SUBMISSION_STATUS,
 		/** submission graduation semester as monthname, year */
@@ -259,6 +259,12 @@ public class SubmissionParams extends HashMap<String, String> {
 			case DOCUMENT_TYPE:
 				if (submission.getDocumentType() != null) {
 					return submission.getDocumentType();
+				}
+				break;
+
+			case DEGREE_LEVEL:
+				if (submission.getDegreeLevel() != null) {
+					return submission.getDegreeLevel().toString();
 				}
 				break;
 

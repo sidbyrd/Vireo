@@ -448,7 +448,9 @@
 		<property name="attachmentTypeNames">
 			<map>
 				<entry key="PRIMARY">
-					<props></props>
+					<props>
+						<prop key="customName">{TEMPLATE_MODE}%{LAST_NAME.toUpperCase()+'-'+DOCUMENT_TYPE.toUpperCase()+'-'+DEGREE_LEVEL}%</prop>
+					</props>
 				</entry>
 				<entry key="SUPPLEMENTAL">
 					<props></props>

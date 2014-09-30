@@ -133,7 +133,7 @@
                     <dim:field mdschema="dc" element="type" qualifier="material">Text</dim:field>
                     
                     <!-- dc.type = "Thesis" // constant -->
-                    <dim:field mdschema="dc" element="type">Thesis</dim:field>
+                    <dim:field mdschema="dc" element="type" qualifier="genre">Thesis</dim:field>
                     
                     <!-- dc.identifier.uri == Deposit ID, this would only be available when re-depositing -->
                     #{if sub.getDepositId() != null } 

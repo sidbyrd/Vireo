@@ -1,23 +1,6 @@
 package org.tdl.vireo.export.impl;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-import org.purl.sword.base.Collection;
-import org.purl.sword.base.DepositResponse;
-import org.purl.sword.base.Service;
-import org.purl.sword.base.ServiceDocument;
-import org.purl.sword.base.Workspace;
+import org.purl.sword.base.*;
 import org.purl.sword.client.Client;
 import org.purl.sword.client.PostMessage;
 import org.purl.sword.client.SWORDClientException;
@@ -27,8 +10,15 @@ import org.tdl.vireo.export.DepositException.FIELD;
 import org.tdl.vireo.export.Depositor;
 import org.tdl.vireo.export.ExportPackage;
 import org.tdl.vireo.model.DepositLocation;
-
 import play.Logger;
+
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Sword, version 1, depositor. This supports identifying collections from the
@@ -222,7 +212,7 @@ public class Sword1DepositorImpl implements Depositor, BeanNameAware {
 			message.setVerbose(false);
 			message.setNoOp(false);
 			message.setFormatNamespace(exportPackage.getFormat());
-			message.setSlug("");
+			message.setSlug("ETD-VID-"+exportPackage.getSubmission().getId());
 			message.setChecksumError(false);
 			message.setUserAgent(USER_AGENT);
 			if (location.getOnBehalfOf() != null)
@@ -284,7 +274,7 @@ public class Sword1DepositorImpl implements Depositor, BeanNameAware {
 	}	
 
 	/**
-	 * Internal method for ziping a directory together into a single deposit
+	 * Internal method for zipping a directory together into a single deposit
 	 * package.
 	 * 
 	 * One tricky note, the file name of the directory is not included in the
