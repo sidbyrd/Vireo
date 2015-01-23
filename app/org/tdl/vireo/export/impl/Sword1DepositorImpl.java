@@ -212,7 +212,7 @@ public class Sword1DepositorImpl implements Depositor, BeanNameAware {
 			message.setVerbose(false);
 			message.setNoOp(false);
 			message.setFormatNamespace(exportPackage.getFormat());
-			message.setSlug("ETD-VID-"+exportPackage.getSubmission().getId());
+			message.setSlug("ETD-VID-"+ exportPackage.getSubmission().getId());
 			message.setChecksumError(false);
 			message.setUserAgent(USER_AGENT);
 			if (location.getOnBehalfOf() != null)
@@ -222,7 +222,7 @@ public class Sword1DepositorImpl implements Depositor, BeanNameAware {
 
 
 			if (response.getHttpResponse() < 200 || response.getHttpResponse() > 204 )
-				throw new RuntimeException("Sword server responed with a non success HTTP status code: "+response.getHttpResponse());
+				throw new RuntimeException("SWORD server responded with a non-success HTTP status code: "+response.getHttpResponse());
 
 			String depositId = response.getEntry().getId();
 			if (depositId == null)

@@ -392,10 +392,11 @@ public class LDAPAuthenticationMethodImpl extends
             }
             // sanity check -- did the search return the user we asked for?
             String foundNetId = attributes.get(AttributeName.NetID); // will be null if we couldn't search
-            if(foundNetId != null && !foundNetId.equals(netID)) {
+            if(foundNetId != null && !foundNetId.equalsIgnoreCase(netID)) {
                 Logger.error("ldap: search returned record with netID="+foundNetId+" but request was for netID="+netID);
                 return AuthenticationResult.UNKNOWN_FAILURE;
             }
+	        netID = foundNetId; // use case from server if they differ
 
             // 2. try to authenticate against LDAP with the user's supplied credentials
             if (!ldapAuthenticate(dn, password)) {

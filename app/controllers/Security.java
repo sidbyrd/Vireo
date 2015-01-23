@@ -1,11 +1,11 @@
 package controllers;
 
+import org.tdl.vireo.model.RoleType;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import org.tdl.vireo.model.RoleType;
 
 /**
  * Security annotation to enforce particular Vireo roles at the controller level.
@@ -14,7 +14,7 @@ import org.tdl.vireo.model.RoleType;
  * 
  * 1) On all vireo controllers add the @With(Authentication.class) annotation
  *    to the class. This class makes the security annotation actionable. 
- *    Without that annotation no security contstraints will be imposed by this
+ *    Without that annotation no security constraints will be imposed by this
  *    annotation.
  * 
  * 2) On any controller action you need to ensure is only accessed by users
@@ -29,7 +29,7 @@ import org.tdl.vireo.model.RoleType;
  * }
  * 
  * In this example only users who are logged in with a role of either 
- * ADMINISTRATOR, MANAGER, or REVIWER are able to access this method.
+ * ADMINISTRATOR, MANAGER, or REVIEWER are able to access this method.
  * 
  * @Security(RoleType.STUDENT)
  * public void startSubmission() {
