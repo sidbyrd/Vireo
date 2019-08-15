@@ -198,6 +198,10 @@ public class Sword1DepositorImpl implements Depositor, BeanNameAware {
 					repositoryURL.getHost(), 
 					repositoryURL.getPort());
 			client.setUserAgent(USER_AGENT);
+			// SWB our DSpace routinely takes ~30 seconds to finish a SWORD deposit.
+			// Default timeout is 20 seconds, which causes Vireo to abort the deposit, but the
+			//  item actually does get deposited, and then we have to find and delete the dupes.
+			client.setSocketTimeout(60000);
 	
 			//If the credentials include a username and password, set those on the client.
 			if (location.getUsername() != null && location.getPassword() != null)
